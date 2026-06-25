@@ -5,12 +5,11 @@ import { EVENTS, SEASON_WEEKS, ACTIVITIES, COACHES, FACILITIES, isSalaryWeek, we
 import { playerOvr } from '../engine/player.js';
 import { rosterOf, getMapProf } from '../engine/state.js';
 import { getRankedTeams } from '../engine/player.js';
-import { SL, Banner, Locked, Intro, Pill, MiniStat } from './primitives.jsx';
+import { SL, Banner, Locked, Intro, Pill, MiniStat, Stat, FormArrow } from './primitives.jsx';
 
 export function CalendarView({season,myTeam,onAdvance,onTransfer,onSim,onHireCoach,onFireCoach,onInitAcademy,onPromoteProspect,onSellProspect,onAcceptSponsor,onDeclineSponsor}){
   const [act,setAct]=useState(null);
   const [mapChoice,setMapChoice]=useState(MAPS[0]);
-  const [showTransfer,setShowTransfer]=useState(false);
   const roster=rosterOf(season.simState,myTeam);
   const avgFatigue=roster.length?Math.round(roster.reduce((s,p)=>s+p.fatigue,0)/roster.length):0;
   const nextEvent=EVENTS.find(e=>e.week>=season.week);
@@ -262,12 +261,10 @@ export function CalendarView({season,myTeam,onAdvance,onTransfer,onSim,onHireCoa
       })}
     </div>
 
-    {/* Transfer access */}
-    <button onClick={()=>setShowTransfer(!showTransfer)}
-      style={{background:C.panel,border:`1px solid ${C.line}`,borderRadius:8,padding:"10px 16px",fontFamily:mono,fontSize:12,color:C.dim,marginBottom:16}}>
-      {showTransfer?"▾ HIDE":"▸ SHOW"} TRANSFER MARKET (roster {roster.length}/5, salary ${totalSalary}K)
-    </button>
-    {showTransfer&&<TransferPanel season={season} myTeam={myTeam} onTransfer={onTransfer}/>}
+    {/* Transfer market lives in the MARKET tab */}
+    <div style={{background:C.panel2,border:`1px solid ${C.line}`,borderRadius:8,padding:"10px 16px",fontFamily:mono,fontSize:11,color:C.faint,marginBottom:16}}>
+      Roster {roster.length}/5 · Salary ${totalSalary}K/mo — use the <span style={{color:C.acc}}>MARKET</span> tab to sign, buy, trade or sell players.
+    </div>
 
     {/* Academy */}
     <SL n="ACD" t="ACADEMY"/>
@@ -325,55 +322,3 @@ export function CalendarView({season,myTeam,onAdvance,onTransfer,onSim,onHireCoa
   </div>);
 }
 
-export function TransferPanel({season,myTeam,onTransfer}){
-  const [scoutTeam,setScoutTeam]=useState(null);
-  const roster=rosterOf(season.simState,myTeam);
-  const fas=freeAgents(season.simState).sort((a,b)=>playerOvr(b)-playerOvr(a));
-  const rosterFull=roster.length>=5;
-  return(<div style={{marginBottom:24}}>
-    <SL n="FA" t="FREE AGENTS"/>
-    {fas.length===0?<Empty text="No free agents available."/>:(
-    <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:16}}>
-      {fas.slice(0,10).map(p=>(
-        <div key={p.name} style={{background:C.panel2,border:`1px solid ${C.line}`,borderRadius:8,padding:"9px 13px",display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
-          <div style={{minWidth:80}}><span style={{fontWeight:600,fontSize:13}}>{p.name}</span><span style={{fontFamily:mono,fontSize:9,color:C.faint,marginLeft:4}}>age {p.age}</span></div>
-          <Pill c={C.dim}>{p.role}</Pill>
-          <Stat l="OVR" v={playerOvr(p)}/>
-          <span style={{fontFamily:mono,fontSize:11,color:C.gold}}>${p.salary}K</span>
-          <button onClick={()=>onTransfer("sign",p.name)} disabled={rosterFull||season.budget<p.salary}
-            style={{marginLeft:"auto",background:C.win,color:"#0a0c10",border:"none",borderRadius:6,padding:"5px 12px",fontFamily:mono,fontSize:10,fontWeight:700}}>SIGN</button>
-        </div>))}
-    </div>)}
-    <SL n="SCT" t="SCOUT TEAMS"/>
-    <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}}>
-      {AI_TEAMS.map(team=>(
-        <button key={team} onClick={()=>setScoutTeam(scoutTeam===team?null:team)}
-          style={{background:scoutTeam===team?C.acc:C.panel,color:scoutTeam===team?"#0a0c10":C.dim,border:`1px solid ${scoutTeam===team?C.acc:C.line}`,borderRadius:5,padding:"4px 10px",fontFamily:mono,fontSize:10,fontWeight:700}}>{team}</button>
-      ))}
-    </div>
-    {scoutTeam&&(
-      <div style={{background:C.panel,border:`1px solid ${C.line}`,borderRadius:9,padding:"12px"}}>
-        {rosterOf(season.simState,scoutTeam).map(p=>{const buyout=Math.round(marketValue(p)*2);return(
-          <div key={p.name} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 0",borderTop:`1px solid ${C.line}`,flexWrap:"wrap"}}>
-            <span style={{fontWeight:600,fontSize:12,minWidth:80}}>{p.name}</span><Pill c={C.dim}>{p.role}</Pill>
-            <Stat l="OVR" v={playerOvr(p)}/>
-            <span style={{fontFamily:mono,fontSize:10,color:C.gold}}>${buyout}K</span>
-            <button onClick={()=>onTransfer("buy",p.name)} disabled={rosterFull||season.budget<buyout}
-              style={{marginLeft:"auto",background:C.live,color:"#0a0c10",border:"none",borderRadius:5,padding:"4px 10px",fontFamily:mono,fontSize:10,fontWeight:700}}>BUY</button>
-          </div>);})}
-      </div>)}
-    {/* Release from roster */}
-    {roster.length>0&&(<>
-      <SL n="RLS" t="RELEASE PLAYER"/>
-      <div style={{display:"flex",flexDirection:"column",gap:4}}>
-        {roster.map(p=>(
-          <div key={p.name} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 0"}}>
-            <span style={{fontWeight:600,fontSize:12,minWidth:80}}>{p.name}</span><Pill c={C.dim}>{p.role}</Pill>
-            <Stat l="OVR" v={playerOvr(p)}/>
-            <button onClick={()=>onTransfer("release",p.name)} disabled={roster.length<=4}
-              style={{marginLeft:"auto",background:"transparent",border:`1px solid ${C.red}`,color:C.red,borderRadius:5,padding:"4px 10px",fontFamily:mono,fontSize:10,fontWeight:700}}>RELEASE</button>
-          </div>))}
-      </div>
-    </>)}
-  </div>);
-}
