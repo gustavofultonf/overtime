@@ -1,5 +1,5 @@
 import { MAPS, AI_TEAMS, PLAYERS_INIT } from '../constants/data.js';
-import { SEASON_WEEKS } from '../constants/events.js';
+import { SEASON_WEEKS, TUNING } from '../constants/events.js';
 import { playerOvr } from './utils.js';
 
 export function initState(eras){

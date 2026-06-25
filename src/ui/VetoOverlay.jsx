@@ -3,7 +3,7 @@ import { C, sans, mono } from './theme.js';
 import { MAPS } from '../constants/data.js';
 import { autoVeto, getMapProf, mapRating, isRivalMatch } from '../engine/state.js';
 import { playSeries } from '../engine/match.js';
-import { Overlay, SL } from './primitives.jsx';
+import { Overlay, SL, EdgeBar } from './primitives.jsx';
 
 export function VetoOverlay({session,myTeam,t,onClose,onResolved}){
   const opp=session.opp;

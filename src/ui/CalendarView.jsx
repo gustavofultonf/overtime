@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { C, sans, mono } from './theme.js';
 import { MAPS, AI_TEAMS } from '../constants/data.js';
-import { EVENTS, SEASON_WEEKS, ACTIVITIES, COACHES, FACILITIES, isSalaryWeek, weekToLabel, weekToMonth } from '../constants/events.js';
+import { EVENTS, SEASON_WEEKS, SALARY_WEEKS, ACTIVITIES, COACHES, FACILITIES, isSalaryWeek, weekToLabel, weekToMonth } from '../constants/events.js';
 import { playerOvr } from '../engine/player.js';
 import { rosterOf, getMapProf } from '../engine/state.js';
 import { getRankedTeams } from '../engine/player.js';
