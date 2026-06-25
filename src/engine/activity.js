@@ -1,9 +1,9 @@
-import { AI_TEAMS } from '../constants/data.js';
+import { AI_TEAMS, MAPS } from '../constants/data.js';
 import { ACTIVITIES, EVENTS } from '../constants/events.js';
 import { playerOvr } from './utils.js';
 import { rosterOf, getMapProf } from './state.js';
 import { getTeamOrder } from './player.js';
-import { applyActivity } from './match.js';
+import { applyActivity, rollRandomEvent } from './match.js';
 
 export function generateProspect(year){
   const roles=["IGL","AWP","Entry","Lurk","Support"];

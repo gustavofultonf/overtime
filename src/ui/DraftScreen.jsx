@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { C, sans, mono } from './theme.js';
-import { MAPS, AI_TEAMS } from '../constants/data.js';
-import { DRAFT_BUDGET, ACTIVITIES, COACHES, FACILITIES } from '../constants/events.js';
+import { MAPS, AI_TEAMS, PLAYERS_INIT } from '../constants/data.js';
+import { DRAFT_BUDGET, ACTIVITIES, COACHES, FACILITIES, SEASON_WEEKS } from '../constants/events.js';
 import { playerOvr, draftCost } from '../engine/player.js';
 import { initState } from '../engine/state.js';
 import { rosterOf, freeAgents, profileFor } from '../engine/state.js';
-import { Pill, TraitPill, MiniStat, Intro, SL } from './primitives.jsx';
+import { Pill, TraitPill, MiniStat, Intro, SL, Empty, Stat } from './primitives.jsx';
 import { Gstyle } from './Gstyle.jsx';
 
 export function DraftScreen({onComplete}){
