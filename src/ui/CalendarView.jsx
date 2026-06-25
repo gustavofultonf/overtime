@@ -40,7 +40,7 @@ function BudgetForecast({season,myTeam,roster}){
   );
 }
 
-export function CalendarView({season,myTeam,onAdvance,onTransfer,onSim,onHireCoach,onFireCoach,onInitAcademy,onPromoteProspect,onSellProspect,onAcceptSponsor,onDeclineSponsor,onResolveEvent}){
+export function CalendarView({season,myTeam,onAdvance,onTransfer,onSim,onHireCoach,onFireCoach,onInitAcademy,onPromoteProspect,onSellProspect,onAcceptSponsor,onDeclineSponsor,onResolveEvent,onResolveContract}){
   const [act,setAct]=useState(null);
   const [mapChoice,setMapChoice]=useState(MAPS[0]);
   const roster=rosterOf(season.simState,myTeam);
@@ -48,6 +48,8 @@ export function CalendarView({season,myTeam,onAdvance,onTransfer,onSim,onHireCoa
   const nextEvent=EVENTS.find(e=>e.week>=season.week);
   const weeksUntil=nextEvent?nextEvent.week-season.week:99;
   const totalSalary=roster.reduce((s,p)=>s+p.salary,0);
+  const pendingContracts=season.pendingContracts||[];
+  const blocked=!!(season.pendingEvent||pendingContracts.length);
 
   function confirm(){if(!act)return;onAdvance(act,act==="practice"?mapChoice:null);setAct(null);}
 
@@ -137,9 +139,44 @@ export function CalendarView({season,myTeam,onAdvance,onTransfer,onSim,onHireCoa
       </div>
     )}
 
+    {/* Contract expiry alerts */}
+    {(season.pendingContracts||[]).map(c=>{
+      const perf=Math.min(1.3,Math.max(0.9,c.avgRating));
+      const extSalary=Math.max(c.currentSalary,Math.round(c.currentSalary*perf*1.1));
+      const urgent=c.contract===0;
+      return(
+      <div key={c.playerName} style={{background:urgent?"rgba(239,68,68,.08)":"rgba(255,194,75,.06)",border:`1px solid ${urgent?C.red+"55":C.gold+"44"}`,borderRadius:12,padding:"14px 18px",marginBottom:14}}>
+        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+          <span style={{fontFamily:mono,fontWeight:700,fontSize:10,color:urgent?C.red:C.gold,letterSpacing:1}}>{urgent?"! EXPIRED":"⚠ CONTRACT"}</span>
+          <span style={{fontWeight:700,fontSize:14,color:C.ink}}>{c.playerName}</span>
+          <span style={{fontFamily:mono,fontSize:10,color:C.faint,marginLeft:"auto"}}>rating {c.avgRating} · ${c.currentSalary}K/ev</span>
+        </div>
+        <div style={{fontSize:12,color:C.dim,marginBottom:12}}>
+          {urgent?`${c.playerName}'s contract has expired. Extend or they leave.`:`${c.playerName}'s contract expires after next event.`}
+        </div>
+        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+          <button onClick={()=>onResolveContract&&onResolveContract(c.playerName,0)}
+            style={{flex:1,minWidth:120,background:C.win+"22",border:`1px solid ${C.win}44`,borderRadius:8,padding:"9px 12px",textAlign:"left",cursor:"pointer"}}>
+            <div style={{fontWeight:700,fontSize:12,color:C.win}}>Extend 3 events</div>
+            <div style={{fontFamily:mono,fontSize:10,color:C.dim}}>${extSalary}K/ev · performance raise</div>
+          </button>
+          <button onClick={()=>onResolveContract&&onResolveContract(c.playerName,1)}
+            style={{flex:1,minWidth:120,background:C.panel,border:`1px solid ${C.line}`,borderRadius:8,padding:"9px 12px",textAlign:"left",cursor:"pointer"}}>
+            <div style={{fontWeight:700,fontSize:12,color:C.dim}}>Short deal 2 events</div>
+            <div style={{fontFamily:mono,fontSize:10,color:C.faint}}>${c.currentSalary}K/ev · no raise</div>
+          </button>
+          <button onClick={()=>onResolveContract&&onResolveContract(c.playerName,2)}
+            style={{minWidth:90,background:"transparent",border:`1px solid ${C.red}44`,borderRadius:8,padding:"9px 12px",textAlign:"left",cursor:"pointer"}}>
+            <div style={{fontWeight:700,fontSize:12,color:C.red}}>Release</div>
+            <div style={{fontFamily:mono,fontSize:10,color:C.faint}}>free agent</div>
+          </button>
+        </div>
+      </div>);
+    })}
+
     {/* Activity picker */}
     <SL n="ACT" t="WEEKLY ACTIVITY"/>
-    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:10,marginBottom:16,opacity:season.pendingEvent?0.45:1,pointerEvents:season.pendingEvent?"none":"auto"}}>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:10,marginBottom:16,opacity:blocked?0.45:1,pointerEvents:blocked?"none":"auto"}}>
       {Object.entries(ACTIVITIES).map(([k,a])=>{
         const sel=act===k;
         const warn=a.fatigue>0&&avgFatigue+a.fatigue>70;
@@ -188,7 +225,7 @@ export function CalendarView({season,myTeam,onAdvance,onTransfer,onSim,onHireCoa
       </div>
     )}
 
-    {act&&(
+    {act&&!blocked&&(
       <div style={{display:"flex",gap:12,alignItems:"center",marginBottom:24}}>
         <button onClick={confirm} disabled={act==="scout"&&!mapChoice} style={{background:(act==="scout"&&!mapChoice)?"#333":C.acc,color:(act==="scout"&&!mapChoice)?C.faint:"#0a0c10",border:"none",borderRadius:9,padding:"13px 26px",fontWeight:800,fontSize:15}}>
           ADVANCE WEEK →
@@ -198,7 +235,7 @@ export function CalendarView({season,myTeam,onAdvance,onTransfer,onSim,onHireCoa
     )}
 
     {/* Sim to next event */}
-    {!act&&weeksUntil>1&&(
+    {!act&&!blocked&&weeksUntil>1&&(
       <div style={{marginBottom:20}}>
         <button onClick={onSim} style={{background:C.panel2,border:`1px solid ${C.live}`,borderRadius:9,padding:"11px 22px",fontFamily:mono,fontSize:12,color:C.live,fontWeight:700}}>
           ⏩ SIM TO NEXT EVENT ({weeksUntil} weeks)
