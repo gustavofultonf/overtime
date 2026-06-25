@@ -36,6 +36,7 @@ import { RivalryView } from './ui/RivalryView.jsx';
 import { VetoOverlay } from './ui/VetoOverlay.jsx';
 import { MatchModal } from './ui/MatchModal.jsx';
 import { MatchReveal } from './ui/MatchReveal.jsx';
+import { EventDebrief } from './ui/EventDebrief.jsx';
 
 export default function App(){
   const [phase,setPhase]=useState("loading"); // loading | saves | draft | season
@@ -136,7 +137,7 @@ export default function App(){
     simState.chemistry[teamName]=55;
     if(!simState.mapProf[teamName]) simState.mapProf[teamName]=profileFor(teamName);
     simState.rankings[teamName]=200;
-    const s={simState,budget:remaining,eventNum:1,week:1,year:2026,history:[],weekLog:[],phase:"calendar",facilities:{},yearHistory:[],pendingEvent:null};
+    const s={simState,budget:remaining,eventNum:1,week:1,year:2026,history:[],weekLog:[],phase:"calendar",facilities:{},yearHistory:[],pendingEvent:null,pendingDebrief:null,pendingContracts:[]};
     setSeason(s);setPhase("season");setTab("calendar");
     // Auto-save after draft
     setTimeout(()=>{const data=buildSaveData();if(data){const cur=[...saves];cur[0]={...data,season:s,simState};writeSaves(cur);}},100);
@@ -248,8 +249,31 @@ export default function App(){
     const isMajor=t.isMajor;
     const place=isMajor?placementOf(t):miniPlacement(t);
     const prize=isMajor?prizeMoney(place):miniPrizeMoney(t,place);
+
+    // Capture per-player event stats before snapshot + reset
+    const roster=rosterOf(season.simState,myTeam);
+    const chemBefore=season.simState.chemistry[myTeam]||70;
+    const playerStats=roster.map(p=>{
+      const s=season.simState.stats[p.name]||{};
+      return{name:p.name,role:p.role,age:p.age,
+        maps:s.maps||0,rating:+(s.rating||0).toFixed(3),
+        mvps:s.mvps||0,clutches:s.clutches||0};
+    });
+    snapshotEventStats(season.simState,season.eventNum);
+    season.simState.players.forEach(p=>{
+      if(season.simState.stats[p.name])season.simState.stats[p.name]={maps:0,rating:0,mvps:0,clutches:0};
+    });
+
+    // Win bonus
+    const winBonus=place===1;
+    if(winBonus){
+      roster.forEach(p=>{p.form=Math.min(12,p.form+5);});
+      season.simState.chemistry[myTeam]=Math.min(100,chemBefore+10);
+    }
+
     season.budget+=prize;
     season.history.push({eventNum:season.eventNum,place,champion:t.champion,prize,salary:0,budgetAfter:season.budget,tier:ev.tier,label:ev.label||"Major"});
+
     // Update world rankings
     const placements={};
     if(t.bracket){
@@ -262,16 +286,54 @@ export default function App(){
       t.swiss.eliminated.forEach(tm=>{if(!placements[tm])placements[tm]=t.teams?.length||16;});
     }
     updateRankings(season.simState,placements,ev.tier||"B");
+
+    // Check expiring contracts before ticking
+    const expiring=roster.filter(p=>p.contract<=1);
+
+    // Tick contracts every event (not just Majors)
+    decayFormBetweenEvents(season.simState);
+    tickContracts(season.simState,myTeam);
+
     if(isMajor){
-      decayFormBetweenEvents(season.simState);tickContracts(season.simState,myTeam);
       season.simState.players.forEach(p=>{if(Math.random()<0.33)p.age++;});
       const moves=aiRosterMoves(season.simState,myTeam);
       moves.forEach(m=>season.weekLog.push({week:season.week,activity:"news",event:m}));
     }
+
+    const chemAfter=season.simState.chemistry[myTeam]||70;
+    const mvp=[...playerStats].sort((a,b)=>b.rating-a.rating).find(p=>p.maps>=2)||playerStats[0];
+
     if(!season.simState.rankings[myTeam])season.simState.rankings[myTeam]=0;
-    season.eventNum++;season.week++;season.phase="calendar";season.currentEvent=null;
+    season.eventNum++;season.week++;
+    season.pendingDebrief={label:ev.label||"Tournament",tier:ev.tier||"B",place,prize,
+      champion:t.champion,playerStats,mvp,chemBefore,chemAfter,winBonus};
+    season.pendingContracts=expiring.map(p=>({
+      playerName:p.name,contract:p.contract,currentSalary:p.salary,
+      avgRating:+(season.simState.career?.[p.name]?.avgRating||0.9).toFixed(2)}));
+    season.phase="calendar";season.currentEvent=null;
     setSeason({...season});setT(null);setTab("calendar");
     autoSave();
+  }
+
+  function dismissDebrief(){
+    season.pendingDebrief=null;
+    setSeason({...season});
+  }
+
+  function resolveContract(playerName,choice){
+    const p=season.simState.players.find(x=>x.name===playerName);
+    if(!p) return;
+    if(choice===0){
+      const perf=Math.min(1.3,Math.max(0.9,(season.simState.career?.[playerName]?.avgRating||0.95)));
+      p.salary=Math.max(p.salary,Math.round(p.salary*perf*1.1));
+      p.contract=3;
+    } else if(choice===1){
+      p.contract=2;
+    } else {
+      p.team="FA";p.contract=0;
+    }
+    season.pendingContracts=(season.pendingContracts||[]).filter(c=>c.playerName!==playerName);
+    setSeason({...season});redraw();
   }
 
   function paySalary(week){
@@ -819,7 +881,7 @@ export default function App(){
       <Gstyle/><Header season={season} myTeam={myTeam} onReset={resetAll} onSave={saveToSlot} stageLabel={`${weekToLabel(season.week,season.year)} ${season.year||2026} · W${season.week}`}/>
       <Tabs tab={tab} setTab={setTab} calMode/>
       <main style={{maxWidth:1100,margin:"0 auto",padding:"22px 18px 80px"}}>
-        {tab==="calendar"&&<CalendarView season={season} myTeam={myTeam} onAdvance={advanceWeek} onTransfer={doTransfer} onSim={simToNextEvent} onHireCoach={hireCoach} onFireCoach={fireCoach} onInitAcademy={initAcademy} onPromoteProspect={promoteProspect} onSellProspect={sellProspect} onAcceptSponsor={acceptSponsorship} onDeclineSponsor={declineSponsorship} onResolveEvent={resolveChoiceEvent}/>}
+        {tab==="calendar"&&<CalendarView season={season} myTeam={myTeam} onAdvance={advanceWeek} onTransfer={doTransfer} onSim={simToNextEvent} onHireCoach={hireCoach} onFireCoach={fireCoach} onInitAcademy={initAcademy} onPromoteProspect={promoteProspect} onSellProspect={sellProspect} onAcceptSponsor={acceptSponsorship} onDeclineSponsor={declineSponsorship} onResolveEvent={resolveChoiceEvent} onResolveContract={resolveContract}/>}
         {tab==="roster"&&<RosterView2 state={season.simState} myTeam={myTeam} onNegotiate={negotiateContract} onChangeRole={changeRole}/>}
         {tab==="market"&&<TransferMarket season={season} myTeam={myTeam} onNegotiateFA={doNegotiateFA} onBuyoutOffer={doBuyoutOffer} onTradeOffer={doTradeOffer} onSellPlayer={doSellPlayer} onRelease={p=>doTransfer("release",p)}/>}
         {tab==="maps"&&<MapProfView state={season.simState} myTeam={myTeam}/>}
@@ -828,6 +890,7 @@ export default function App(){
         {tab==="rivals"&&<RivalryView state={season.simState} myTeam={myTeam}/>}
         {tab==="season"&&<SeasonHistory season={season} myTeam={myTeam}/>}
       </main>
+      {season.pendingDebrief&&<EventDebrief debrief={season.pendingDebrief} onDismiss={dismissDebrief}/>}
     </div>);
 
   // Season done
