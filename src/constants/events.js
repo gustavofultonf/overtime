@@ -123,6 +123,12 @@ export const CHOICE_EVENTS = [
       {label:"Rest week",        desc:"-15 fatigue · +2 form"},
       {label:"Keep grinding",    desc:"+10 fatigue · -2 form"},
     ]},
+  {id:"morale_crisis",weight:0,title:"Locker Room Unrest",text:"{player} is visibly unhappy — the mood in the team house is toxic.",
+    choices:[
+      {label:"Emergency team meeting",desc:"$10K · +8 chemistry · +15 morale (all)"},
+      {label:"1-on-1 with player",    desc:"$5K · +20 morale (player) · +3 chem"},
+      {label:"Ignore it",             desc:"-8 chemistry · -5 morale (all)"},
+    ]},
   {id:"media_storm",weight:2,title:"Media Storm",text:"{player}'s social post sparks online controversy.",
     choices:[
       {label:"Public apology", desc:"-3 form · +3 chemistry"},

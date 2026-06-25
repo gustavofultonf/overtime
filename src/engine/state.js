@@ -1,6 +1,6 @@
 import { MAPS, AI_TEAMS, PLAYERS_INIT } from '../constants/data.js';
 import { SEASON_WEEKS, TUNING } from '../constants/events.js';
-import { playerOvr } from './utils.js';
+import { playerOvr, marketValue } from './utils.js';
 
 export function initState(eras){
   const activeEras=eras||["current"];
@@ -44,6 +44,13 @@ export function initState(eras){
       experience: clamp(Math.min(99, 30+p.age*2+(p.traits.includes("leader")?10:0)+rng())),
     };
   });
+  // Second pass: initialize morale (needs derived stats for marketValue)
+  players.forEach(p=>{
+    const mv=marketValue(p);
+    const payFactor=p.salary>=mv*0.90?3:p.salary>=mv*0.70?0:-5;
+    p.morale=Math.max(30,Math.min(90,Math.round(65+(p.mentality-70)*0.3+payFactor+(Math.random()*16-8))));
+  });
+
   const chemistry={};
   AI_TEAMS.forEach(t=>{chemistry[t]=70;});
   const stats={};
@@ -145,6 +152,33 @@ export function nervesModifier(state,A,B,ctx){
   mod+=(expA-expB)*pressure*0.3;
   if(isRivalMatch(state,A,B)) mod+=(Math.random()-0.5)*3;
   return mod;
+}
+
+// ── Team Dynamics ────────────────────────────────────────────────────
+export function hierarchyTier(p,roster){
+  const isLeader=p.mentality>=88&&(p.experience||50)>=65&&(p.traits.includes("leader")||p.igl>=88);
+  const maxOvr=roster.length?Math.max(...roster.map(x=>playerOvr(x))):0;
+  const isStar=playerOvr(p)>=maxOvr-4;
+  const isProspect=p.age<=21;
+  if(isLeader) return "Leader";
+  if(isStar)   return "Star";
+  if(isProspect) return "Prospect";
+  return "Player";
+}
+
+export function updateMorale(state,myTeam,place){
+  const roster=rosterOf(state,myTeam);
+  const resultBonus=place===1?12:place===2?7:place<=4?3:place<=8?0:-5;
+  const chem=state.chemistry[myTeam]||70;
+  const chemFactor=chem>=80?2:chem>=60?0:-3;
+  roster.forEach(p=>{
+    const mv=marketValue(p);
+    const payFactor=p.salary>=mv*0.90?2:p.salary>=mv*0.70?-2:-5;
+    // High mentality = smaller swings (mental resilience)
+    const mentMod=0.5+(100-(p.mentality||70))/100*0.5;
+    const delta=(resultBonus+payFactor+chemFactor)*mentMod;
+    p.morale=Math.max(5,Math.min(100,Math.round((p.morale||60)+delta)));
+  });
 }
 
 export function autoVeto(state,A,B,bo){

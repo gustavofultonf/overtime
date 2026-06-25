@@ -14,7 +14,7 @@ export function generateProspect(year){
   const age=16+Math.floor(Math.random()*2);
   return{team:"ACADEMY",name,role,aim:talent+Math.floor(Math.random()*15),gameSense:talent+Math.floor(Math.random()*10),util:talent+Math.floor(Math.random()*10),igl:role==="IGL"?talent+15:talent-10,mentality:40+Math.floor(Math.random()*25),consistency:35+Math.floor(Math.random()*25),traits:Math.random()<0.15?["boom"]:Math.random()<0.08?["clutch"]:[],salary:5+Math.floor(Math.random()*3),contract:0,age,era:"current",form:0,fatigue:5,
     rifle:talent+Math.floor(Math.random()*12),pistol:talent+Math.floor(Math.random()*10),awp:role==="AWP"?talent+12:talent-8,clutch:35+Math.floor(Math.random()*20),entry:role==="Entry"?talent+12:talent,stamina:55+Math.floor(Math.random()*20),composure:35+Math.floor(Math.random()*20),experience:25+Math.floor(Math.random()*10),
-    weeksInAcademy:0};
+    morale:72,weeksInAcademy:0};
 }
 
 export function developProspect(p){
