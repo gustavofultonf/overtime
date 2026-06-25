@@ -141,8 +141,10 @@ export const PLAYERS_INIT = [
   {team:"FA",name:"blameF★",role:"IGL",aim:88,gameSense:94,util:88,igl:95,mentality:90,consistency:82,traits:["leader"],salary:17,contract:0,age:24,era:"2018"},
   {team:"FA",name:"ropz★",role:"Lurk",aim:97,gameSense:95,util:85,igl:48,mentality:90,consistency:96,traits:[],salary:18,contract:0,age:21,era:"2018"},
   // ── 2015-2017 ERA ─────────────────────────────────────────────────────
-  {team:"FA",name:"olofmeister★",role:"Lurk",aim:96,gameSense:98,util:90,igl:70,mentality:99,consistency:80,traits:["clutch","leader"],salary:21,contract:0,age:24,era:"2015"},
-  {team:"FA",name:"flusha★",role:"Support",aim:89,gameSense:99,util:95,igl:82,mentality:96,consistency:85,traits:["clutch"],salary:19,contract:0,age:23,era:"2015"},
+  // olofmeister★ — fnatic's star entry/playmaker (the "olofboost", Overpass clutch)
+  {team:"FA",name:"olofmeister★",role:"Entry",aim:96,gameSense:98,util:90,igl:70,mentality:99,consistency:80,traits:["clutch","leader"],salary:21,contract:0,age:24,era:"2015"},
+  // flusha★ — fnatic's lurker with elite game sense (not a support)
+  {team:"FA",name:"flusha★",role:"Lurk",aim:89,gameSense:99,util:95,igl:82,mentality:96,consistency:85,traits:["clutch"],salary:19,contract:0,age:23,era:"2015"},
   {team:"FA",name:"KRiMZ★",role:"Support",aim:90,gameSense:95,util:94,igl:55,mentality:96,consistency:92,traits:[],salary:18,contract:0,age:22,era:"2015"},
   // kennyS★ — peak: the most mechanical AWP ever, legendary flicks
   {team:"FA",name:"kennyS★",role:"AWP",aim:99,gameSense:90,util:72,igl:45,mentality:88,consistency:62,traits:["boom","clutch"],salary:20,contract:0,age:22,era:"2015"},
