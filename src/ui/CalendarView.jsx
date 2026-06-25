@@ -7,7 +7,40 @@ import { rosterOf, getMapProf } from '../engine/state.js';
 import { getRankedTeams } from '../engine/player.js';
 import { SL, Banner, Locked, Intro, Pill, MiniStat, Stat, FormArrow } from './primitives.jsx';
 
-export function CalendarView({season,myTeam,onAdvance,onTransfer,onSim,onHireCoach,onFireCoach,onInitAcademy,onPromoteProspect,onSellProspect,onAcceptSponsor,onDeclineSponsor}){
+function BudgetForecast({season,myTeam,roster}){
+  const {EVENTS:EVS,isSalaryWeek:isPayWeek}=arguments[0]&&{}||{};
+  // Compute weekly net: monthly income and salary, averaged per week
+  const rank=(()=>{const r=getRankedTeams(season.simState,myTeam);return r.findIndex(x=>x.team===myTeam)+1;})();
+  const coachPay=season.simState.coach?season.simState.coach.salary:0;
+  const totalSalary=roster.reduce((s,p)=>s+p.salary,0)+coachPay;
+  const contentTier=season.facilities?.content||0;
+  const contentIncome=[0,15,30][contentTier]||0;
+  const merchIncome=rank<=3?40:rank<=6?25:rank<=10?15:rank<=16?8:3;
+  const stipendIncome=rank<=5?30:rank<=10?20:rank<=16?12:5;
+  const streamIncome=Math.round(roster.reduce((s,p)=>{const pop=playerOvr(p)/20+(season.simState.career?.[p.name]?.totalMvps||0)*0.5;return s+pop;},0));
+  const sponsorIncome=(season.sponsorships||[]).reduce((s,sp)=>s+(sp.active?sp.monthly:0),0);
+  const monthlyNet=(contentIncome+merchIncome+stipendIncome+streamIncome+sponsorIncome)-totalSalary;
+  const weeklyNet=monthlyNet/4;
+  const nextEv=EVENTS.find(e=>e.week>=season.week);
+  const weeksUntil=nextEv?nextEv.week-season.week:0;
+  const projectedBudget=Math.round(season.budget+weeklyNet*weeksUntil);
+  const tight=projectedBudget<totalSalary*2;
+  const inDebt=projectedBudget<0;
+  return(
+    <div style={{background:inDebt?"rgba(239,68,68,.08)":tight?"rgba(255,194,75,.06)":C.panel2,border:`1px solid ${inDebt?C.red:tight?C.gold+"55":C.line}`,borderRadius:8,padding:"10px 16px",marginBottom:16,fontFamily:mono,fontSize:11}}>
+      <div style={{display:"flex",gap:16,flexWrap:"wrap",alignItems:"center"}}>
+        <span style={{color:C.faint,fontWeight:700,letterSpacing:1}}>FORECAST</span>
+        <span style={{color:monthlyNet>=0?C.win:C.red}}>Monthly net: {monthlyNet>=0?"+":""}{monthlyNet}K</span>
+        <span style={{color:C.dim}}>Weekly: {weeklyNet>=0?"+":""}{Math.round(weeklyNet)}K</span>
+        {nextEv&&<span style={{color:inDebt?C.red:tight?C.gold:C.dim}}>At {nextEv.label.split(" ")[0]}: {projectedBudget>=0?"$":"-$"}{Math.abs(projectedBudget)}K</span>}
+        {inDebt&&<span style={{color:C.red,fontWeight:700}}>! DEFICIT WARNING</span>}
+        {!inDebt&&tight&&<span style={{color:C.gold}}>! Budget getting tight</span>}
+      </div>
+    </div>
+  );
+}
+
+export function CalendarView({season,myTeam,onAdvance,onTransfer,onSim,onHireCoach,onFireCoach,onInitAcademy,onPromoteProspect,onSellProspect,onAcceptSponsor,onDeclineSponsor,onResolveEvent}){
   const [act,setAct]=useState(null);
   const [mapChoice,setMapChoice]=useState(MAPS[0]);
   const roster=rosterOf(season.simState,myTeam);
@@ -80,9 +113,33 @@ export function CalendarView({season,myTeam,onAdvance,onTransfer,onSim,onHireCoa
         </span>
       </Banner>
     ):(<>
+    {/* Pending choice event */}
+    {season.pendingEvent&&(
+      <div style={{background:"rgba(99,102,241,.10)",border:`1px solid #6366f155`,borderRadius:12,padding:"16px 18px",marginBottom:20}}>
+        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+          <span style={{fontFamily:mono,fontWeight:700,fontSize:10,color:"#a5b4fc",letterSpacing:1}}>! EVENT</span>
+          <span style={{fontWeight:700,fontSize:15,color:C.ink}}>{season.pendingEvent.title}</span>
+        </div>
+        <div style={{fontSize:13,color:C.dim,marginBottom:14}}>{season.pendingEvent.text}</div>
+        <div style={{display:"flex",flexDirection:"column",gap:8}}>
+          {season.pendingEvent.choices.map((c,i)=>(
+            <button key={i} onClick={()=>onResolveEvent&&onResolveEvent(i)}
+              style={{background:C.panel,border:`1px solid #6366f144`,borderRadius:8,padding:"10px 14px",textAlign:"left",display:"flex",gap:10,alignItems:"flex-start",cursor:"pointer"}}>
+              <span style={{fontFamily:mono,fontSize:11,color:"#818cf8",minWidth:14}}>{i+1}.</span>
+              <span>
+                <span style={{fontWeight:700,fontSize:13,color:C.ink,display:"block"}}>{c.label}</span>
+                <span style={{fontFamily:mono,fontSize:10,color:C.dim}}>{c.desc}</span>
+              </span>
+            </button>
+          ))}
+        </div>
+        <div style={{fontFamily:mono,fontSize:9,color:C.faint,marginTop:10}}>Resolve this event before advancing the week.</div>
+      </div>
+    )}
+
     {/* Activity picker */}
     <SL n="ACT" t="WEEKLY ACTIVITY"/>
-    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:10,marginBottom:16}}>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:10,marginBottom:16,opacity:season.pendingEvent?0.45:1,pointerEvents:season.pendingEvent?"none":"auto"}}>
       {Object.entries(ACTIVITIES).map(([k,a])=>{
         const sel=act===k;
         const warn=a.fatigue>0&&avgFatigue+a.fatigue>70;
@@ -206,6 +263,8 @@ export function CalendarView({season,myTeam,onAdvance,onTransfer,onSim,onHireCoa
         <span style={{color:totalIncome>=totalSalary?C.win:C.red,fontWeight:700}}>Net {totalIncome>=totalSalary?"+":""}{totalIncome-totalSalary}</span>
       </div>);
     })()}
+
+    <BudgetForecast season={season} myTeam={myTeam} roster={roster}/>
 
     {/* Coach */}
     <SL n="CCH" t="COACH"/>

@@ -4,6 +4,25 @@ import { playerOvr } from '../engine/player.js';
 import { rosterOf, teamBase } from '../engine/state.js';
 import { Overlay, SL, Intro, Pill, TraitPill, Stat, MiniStat, FormArrow } from './primitives.jsx';
 
+function Sparkline({history}){
+  if(!history||history.length<2) return null;
+  const pts=history.slice(-5);
+  const min=0.7,max=1.4,w=54,h=18;
+  const coords=pts.map((e,i)=>{
+    const x=pts.length===1?w/2:(i/(pts.length-1))*w;
+    const y=h-Math.max(0,Math.min(1,(e.rating-min)/(max-min)))*h;
+    return[x,y];
+  });
+  const lastR=pts[pts.length-1].rating;
+  const col=lastR>=1.1?C.win:lastR>=0.9?C.dim:C.red;
+  return(
+    <svg width={w} height={h} style={{overflow:"visible"}}>
+      <polyline points={coords.map(([x,y])=>`${x},${y}`).join(" ")} fill="none" stroke={col} strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round"/>
+      {coords.map(([x,y],i)=>(<circle key={i} cx={x} cy={y} r="2" fill={col} opacity={i===coords.length-1?1:0.5}/>))}
+    </svg>
+  );
+}
+
 export function RosterView2({state,myTeam,onNegotiate,onChangeRole}){
   const [profilePlayer,setProfilePlayer]=useState(null);
   const [negotiating,setNegotiating]=useState(null);
@@ -73,24 +92,22 @@ export function RosterView2({state,myTeam,onNegotiate,onChangeRole}){
               ${p.salary}K/mo · {p.contract<=1?<span style={{color:C.red}}>!{p.contract}ev</span>:<span>{p.contract}ev</span>}
             </div>
             {/* Age + traits */}
-            <div style={{display:"flex",gap:3,justifyContent:"center",marginTop:4}}>
-              <span style={{fontFamily:mono,fontSize:8,color:p.age>=29?C.gold:p.age<=22?C.win:C.faint}}>age {p.age}</span>
+            <div style={{display:"flex",gap:3,justifyContent:"center",marginTop:4,flexWrap:"wrap",alignItems:"center"}}>
+              <span style={{fontFamily:mono,fontSize:8,color:p.age>=32?C.red:p.age>=29?C.gold:p.age>=23&&p.age<=26?C.win:p.age<=21?C.live:C.faint}}>
+                age {p.age}{p.age>=23&&p.age<=26?" ★":p.age>=32?" ↓":""}
+              </span>
               {p.traits.map(tr=><TraitPill key={tr} t={tr}/>)}
             </div>
           </div>
-          {/* Event stats footer */}
-          {st&&st.maps>0&&(
-            <div style={{background:C.panel2,padding:"6px 8px",borderTop:`1px solid ${C.line}`,display:"flex",justifyContent:"center",gap:10}}>
-              <span style={{fontFamily:mono,fontSize:10,color:st.rating>=1.1?C.win:st.rating>=0.9?C.ink:C.red,fontWeight:700}}>{st.rating.toFixed(2)} RTG</span>
-              <span style={{fontFamily:mono,fontSize:10,color:C.gold}}>{st.mvps} MVP</span>
+          {/* Sparkline + stats footer */}
+          <div style={{background:C.panel2,padding:"6px 8px",borderTop:`1px solid ${C.line}`,display:"flex",justifyContent:"space-between",alignItems:"center",gap:6}}>
+            <div style={{display:"flex",gap:8,alignItems:"center"}}>
+              {st&&st.maps>0&&<span style={{fontFamily:mono,fontSize:10,color:st.rating>=1.1?C.win:st.rating>=0.9?C.ink:C.red,fontWeight:700}}>{st.rating.toFixed(2)}</span>}
+              {(!st||st.maps===0)&&career&&career.totalMaps>0&&<span style={{fontFamily:mono,fontSize:10,color:career.avgRating>=1.1?C.win:career.avgRating>=0.9?C.ink:C.red}}>{career.avgRating.toFixed(2)}</span>}
+              {st&&st.maps>0&&<span style={{fontFamily:mono,fontSize:9,color:C.gold}}>{st.mvps}MVP</span>}
             </div>
-          )}
-          {career&&career.totalMaps>0&&!(st&&st.maps>0)&&(
-            <div style={{background:C.panel2,padding:"6px 8px",borderTop:`1px solid ${C.line}`,display:"flex",justifyContent:"center",gap:10}}>
-              <span style={{fontFamily:mono,fontSize:10,color:career.avgRating>=1.1?C.win:career.avgRating>=0.9?C.ink:C.red}}>{career.avgRating.toFixed(2)} career</span>
-              <span style={{fontFamily:mono,fontSize:10,color:C.gold}}>{career.totalMvps} MVPs</span>
-            </div>
-          )}
+            {career&&<Sparkline history={career.eventHistory}/>}
+          </div>
         </button>);
       })}
     </div>
@@ -171,7 +188,7 @@ export function PlayerProfile({p,state,onClose}){
         <div style={{display:"flex",gap:6,marginTop:4}}>
           <Pill c={C.dim}>{p.role}</Pill>
           {p.traits.map(tr=><TraitPill key={tr} t={tr}/>)}
-          <span style={{fontFamily:mono,fontSize:10,color:p.age>=29?C.gold:p.age<=22?C.win:C.faint}}>age {p.age}</span>
+          <span style={{fontFamily:mono,fontSize:10,color:p.age>=32?C.red:p.age>=29?C.gold:p.age>=23&&p.age<=26?C.win:p.age<=21?C.live:C.faint}}>age {p.age}{p.age>=23&&p.age<=26?" ★":p.age>=32?" ↓":""}</span>
         </div>
       </div>
       <div style={{marginLeft:"auto",display:"flex",gap:14,flexWrap:"wrap"}}>

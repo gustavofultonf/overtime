@@ -10,6 +10,17 @@ export function resolveMap(state,map,A,B,ctx,rng){
   const strB=mapRating(state,B,map)-nervesModifier(state,A,B,ctx)+(ctx.decider?(rng()-0.5)*3:0);
   const rival=isRivalMatch(state,A,B);
 
+  // ── IGL tactical influence ──
+  const iglOf=(t)=>{const r=rosterOf(state,t);return r.length?r.reduce((b,p)=>p.igl>b.igl?p:b,r[0]):null;};
+  const iglA=iglOf(A),iglB=iglOf(B);
+  const iglModA=iglA?(iglA.igl-65)/900:0; // ±0.037 for elite vs poor IGL
+  const iglModB=iglB?(iglB.igl-65)/900:0;
+
+  // ── Tilt tracking (composure stat counters tilt) ──
+  const tilt={[A]:0,[B]:0};
+  const avgComp=(t)=>{const r=rosterOf(state,t);return r.length?r.reduce((s,p)=>s+(p.composure||p.mentality||60),0)/r.length:60;};
+  const compA=avgComp(A),compB=avgComp(B);
+
   // Economy state per team
   const econ={[A]:{money:800,lossStreak:0,roundsWon:0},[B]:{money:800,lossStreak:0,roundsWon:0}};
   const LOSS_BONUS=[1400,1900,2400,2900,3400];
@@ -107,9 +118,22 @@ export function resolveMap(state,map,A,B,ctx,rng){
     if(econ[B].lossStreak===0&&scoreB>0) pA-=0.02;
     if(rival) pA+=(rng()-0.5)*0.06;
 
+    // IGL influence + tilt penalty + star carry
+    pA+=iglModA-iglModB;
+    const tiltPenA=tilt[A]>=3?(tilt[A]-2)*0.018*Math.max(0.3,1-compA/120):0;
+    const tiltPenB=tilt[B]>=3?(tilt[B]-2)*0.018*Math.max(0.3,1-compB/120):0;
+    pA=pA-tiltPenA+tiltPenB;
+    if(perfA[0].perf>=82&&rng()<(perfA[0].perf-75)/120) pA=Math.min(0.95,pA+0.08);
+    if(perfB[0].perf>=82&&rng()<(perfB[0].perf-75)/120) pA=Math.max(0.05,pA-0.08);
+    if(btA==="awp_buy"){const aw=awperOf(A);if(aw.awp>=85)pA=Math.min(0.95,pA+(aw.awp-75)/400);}
+    if(btB==="awp_buy"){const aw=awperOf(B);if(aw.awp>=85)pA=Math.max(0.05,pA-(aw.awp-75)/400);}
+    pA=Math.max(0.05,Math.min(0.95,pA));
+
     const aWins=rng()<pA;
     const winner=aWins?A:B, loser=aWins?B:A;
     prevWinner=winner;
+    tilt[loser]=Math.min(5,tilt[loser]+1);
+    tilt[winner]=Math.max(0,tilt[winner]-1);
 
     econ[winner].money+=WIN_BONUS;
     econ[winner].lossStreak=0;
@@ -159,6 +183,8 @@ export function resolveMap(state,map,A,B,ctx,rng){
       ];
       narrative=descs[Math.floor(rng()*descs.length)];
     }
+    if(!narrative&&tilt[loser]>=4) narrative=`${loser} look tilted — ${lStar.name} can't find their footing`;
+    if(!narrative&&rng()<0.22&&(aWins?iglModA>iglModB:iglModB>iglModA)){const wi=aWins?iglA:iglB;if(wi)narrative=`Tactical masterclass from ${wi.name} (${wi.igl} IGL) — ${winner} execute perfectly`;}
 
     rounds.push({
       round:roundNum,winner,loser,scoreA,scoreB,
@@ -328,12 +354,25 @@ export function applyActivity(state,team,activity,mapChoice,facilities){
     state.chemistry[team]=Math.min(100,(state.chemistry[team]||70)+3);
     roster.forEach(p=>{p.form=p.form*0.7;});
   }
-  // age-based development/decline per week (subtle)
+  // age-based career peaks and decline per week
   roster.forEach(p=>{
-    if(p.age<=22){
-      if(Math.random()<0.15){const sk=["aim","gameSense","util","mentality"][Math.random()*4|0];p[sk]=Math.min(99,p[sk]+1);}
-    } else if(p.age>=29){
-      if(Math.random()<0.10){const sk=["aim","consistency","mentality"][Math.random()*3|0];p[sk]=Math.max(40,p[sk]-1);}
+    const age=p.age;
+    if(age<=21){
+      if(Math.random()<0.22){const sk=["aim","gameSense","util","mentality"][Math.random()*4|0];p[sk]=Math.min(99,p[sk]+1);}
+      if(Math.random()<0.04){const sk=["consistency","composure"][Math.random()*2|0];p[sk]=Math.max(30,(p[sk]||60)-1);}
+    } else if(age<=26){
+      if(Math.random()<0.10){const sk=["gameSense","util","mentality","experience"][Math.random()*4|0];p[sk]=Math.min(99,(p[sk]||50)+1);}
+      if(Math.random()<0.04){p.aim=Math.min(99,p.aim+1);}
+    } else if(age<=29){
+      if(Math.random()<0.05){p.experience=Math.min(99,(p.experience||50)+1);}
+      if(Math.random()<0.08){p.aim=Math.max(40,p.aim-1);}
+    } else if(age<=32){
+      if(Math.random()<0.13){p.aim=Math.max(40,p.aim-1);}
+      if(Math.random()<0.08){p.stamina=Math.max(30,(p.stamina||60)-1);}
+      if(Math.random()<0.05){p.experience=Math.min(99,(p.experience||50)+1);}
+    } else {
+      if(Math.random()<0.20){const sk=["aim","stamina"][Math.random()*2|0];p[sk]=Math.max(25,(p[sk]||50)-1);}
+      if(Math.random()<0.10){p.consistency=Math.max(25,p.consistency-1);}
     }
   });
 }
