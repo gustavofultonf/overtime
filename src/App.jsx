@@ -9,7 +9,7 @@ import { EVENTS, SEASON_WEEKS, SALARY_WEEKS, ACTIVITIES, COACHES, FACILITIES,
 import { playerOvr, draftCost, marketValue, getTeamOrder, getSeed,
          getRankedTeams, updateRankings, aiRosterMoves } from './engine/player.js';
 import { initState, rosterOf, freeAgents, teamBase, profileFor,
-         getMapProf, isRivalMatch } from './engine/state.js';
+         getMapProf, isRivalMatch, updateMorale, hierarchyTier } from './engine/state.js';
 import { playSeries, applyActivity, rollRandomEvent } from './engine/match.js';
 import { generateProspect, developProspect, autoSimWeeks, aiWeekActivity,
          snapshotEventStats } from './engine/activity.js';
@@ -37,6 +37,7 @@ import { VetoOverlay } from './ui/VetoOverlay.jsx';
 import { MatchModal } from './ui/MatchModal.jsx';
 import { MatchReveal } from './ui/MatchReveal.jsx';
 import { EventDebrief } from './ui/EventDebrief.jsx';
+import { DynamicsView } from './ui/DynamicsView.jsx';
 
 export default function App(){
   const [phase,setPhase]=useState("loading"); // loading | saves | draft | season
@@ -271,6 +272,9 @@ export default function App(){
       season.simState.chemistry[myTeam]=Math.min(100,chemBefore+10);
     }
 
+    // Update per-player morale based on result
+    updateMorale(season.simState,myTeam,place);
+
     season.budget+=prize;
     season.history.push({eventNum:season.eventNum,place,champion:t.champion,prize,salary:0,budgetAfter:season.budget,tier:ev.tier,label:ev.label||"Major"});
 
@@ -310,6 +314,19 @@ export default function App(){
     season.pendingContracts=expiring.map(p=>({
       playerName:p.name,contract:p.contract,currentSalary:p.salary,
       avgRating:+(season.simState.career?.[p.name]?.avgRating||0.9).toFixed(2)}));
+
+    // Morale crisis: unhappy leader → pending choice event
+    const unhappyLeader=roster.find(p=>(p.morale||60)<40&&(p.traits.includes("leader")||p.igl>=88));
+    if(unhappyLeader&&!season.pendingEvent){
+      season.pendingEvent={id:"morale_crisis",title:"Locker Room Unrest",playerName:unhappyLeader.name,
+        text:`${unhappyLeader.name} is visibly unhappy — the mood in the team house is toxic.`,
+        choices:[
+          {label:"Emergency team meeting",desc:"$10K · +8 chemistry · +15 morale (all)"},
+          {label:"1-on-1 with player",    desc:"$5K · +20 morale (player) · +3 chem"},
+          {label:"Ignore it",             desc:"-8 chemistry · -5 morale (all)"},
+        ]};
+    }
+
     season.phase="calendar";season.currentEvent=null;
     setSeason({...season});setT(null);setTab("calendar");
     autoSave();
@@ -819,6 +836,12 @@ export default function App(){
         else if(choiceIdx===1){if(player)player.form=Math.min(12,player.form+4);season.simState.chemistry[myTeam]=Math.max(40,(season.simState.chemistry[myTeam]||70)-7);}
         else{season.simState.chemistry[myTeam]=Math.max(40,(season.simState.chemistry[myTeam]||70)-2);}
         break;
+      case "morale_crisis":{
+        const roster2=rosterOf(season.simState,myTeam);
+        if(choiceIdx===0){season.budget-=10;season.simState.chemistry[myTeam]=Math.min(100,(season.simState.chemistry[myTeam]||70)+8);roster2.forEach(p=>{p.morale=Math.min(100,(p.morale||60)+15);});}
+        else if(choiceIdx===1){season.budget-=5;if(player)player.morale=Math.min(100,(player.morale||60)+20);season.simState.chemistry[myTeam]=Math.min(100,(season.simState.chemistry[myTeam]||70)+3);}
+        else{season.simState.chemistry[myTeam]=Math.max(30,(season.simState.chemistry[myTeam]||70)-8);roster2.forEach(p=>{p.morale=Math.max(5,(p.morale||60)-5);});}
+        break;}
       default:break;
     }
     const choice=ev.choices[choiceIdx];
@@ -888,6 +911,7 @@ export default function App(){
         {tab==="facility"&&<FacilitiesView season={season} onUpgrade={upgradeFacility}/>}
         {tab==="rankings"&&<RankingsView state={season.simState} myTeam={myTeam}/>}
         {tab==="rivals"&&<RivalryView state={season.simState} myTeam={myTeam}/>}
+        {tab==="dynamics"&&<DynamicsView season={season} myTeam={myTeam}/>}
         {tab==="season"&&<SeasonHistory season={season} myTeam={myTeam}/>}
       </main>
       {season.pendingDebrief&&<EventDebrief debrief={season.pendingDebrief} onDismiss={dismissDebrief}/>}

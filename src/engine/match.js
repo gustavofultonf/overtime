@@ -47,7 +47,8 @@ export function resolveMap(state,map,A,B,ctx,rng,startFrom=null){
     const fatigueNoise=p.fatigue>70?(p.fatigue-70)*0.15*(1-staminaMod*0.5):0;
     const spread=30*(1-p.consistency/100)+fatigueNoise;
     const noise=(rng()-0.5)*2*spread;
-    const base=(p.aim+p.gameSense)/2+p.form;
+    const moraleMod=((p.morale??60)-60)/40; // ±1 at extremes (20 or 100 morale)
+    const base=(p.aim+p.gameSense)/2+p.form+moraleMod;
     return {name:p.name,perf:base+noise,traits:p.traits,team,aim:p.aim,role:p.role,
       rifle:p.rifle||p.aim,pistol:p.pistol||60,awp:p.awp||50,clutch:p.clutch||50,
       entry:p.entry||60,composure:p.composure||p.mentality,experience:p.experience||50,stamina:p.stamina||60};
@@ -385,6 +386,20 @@ export function applyActivity(state,team,activity,mapChoice,facilities){
       if(Math.random()<0.10){p.consistency=Math.max(25,p.consistency-1);}
     }
   });
+  // Morale drift: slow regression toward 60, boosted by rest/scrim
+  roster.forEach(p=>{
+    const cur=p.morale??60;
+    let delta=(60-cur)*0.05;
+    if(activity==="rest"||activity==="vacation") delta+=3;
+    else if(activity==="scrim") delta+=1;
+    else if(activity==="bootcamp") delta-=1;
+    p.morale=Math.max(5,Math.min(100,Math.round(cur+delta)));
+  });
+  // Low-morale leaders erode team chemistry
+  const lowMoraleLeaders=roster.filter(p=>(p.morale??60)<45&&(p.traits.includes("leader")||p.igl>=88));
+  if(lowMoraleLeaders.length>0){
+    state.chemistry[team]=Math.max(30,(state.chemistry[team]||70)-lowMoraleLeaders.length);
+  }
 }
 
 export function rollRandomEvent(state,team){
