@@ -27,6 +27,7 @@ import { DraftScreen } from './ui/DraftScreen.jsx';
 import { CalendarView } from './ui/CalendarView.jsx';
 import { EventHLTV } from './ui/EventHLTV.jsx';
 import { RosterView2 } from './ui/RosterView.jsx';
+import { TransferMarket } from './ui/TransferMarket.jsx';
 import { SeasonHistory } from './ui/SeasonHistory.jsx';
 import { MapProfView } from './ui/MapProfView.jsx';
 import { FacilitiesView } from './ui/FacilitiesView.jsx';
@@ -453,6 +454,113 @@ export default function App(){
     setSeason({...season});redraw();
   }
 
+  function initCareer(p){
+    if(!season.simState.stats[p.name]) season.simState.stats[p.name]={maps:0,rating:0,mvps:0,clutches:0};
+    if(!season.simState.career[p.name]) season.simState.career[p.name]={totalMaps:0,totalMvps:0,totalClutches:0,avgRating:0,bestRating:0,eventHistory:[],mapStats:{},origStats:{aim:p.aim,gameSense:p.gameSense,util:p.util,igl:p.igl,mentality:p.mentality,consistency:p.consistency,rifle:p.rifle,pistol:p.pistol,awp:p.awp,clutch:p.clutch,entry:p.entry,stamina:p.stamina,composure:p.composure,experience:p.experience},kills:0};
+  }
+
+  function doNegotiateFA(playerName,offeredSalary){
+    const p=season.simState.players.find(x=>x.name===playerName);
+    if(!p||p.team!=="FA") return{success:false,msg:"Player not available"};
+    const roster=rosterOf(season.simState,myTeam);
+    if(roster.length>=5) return{success:false,msg:"Roster is full"};
+    const mv=marketValue(p);
+    if(season.budget<mv) return{success:false,msg:`Need $${mv-season.budget}K more for signing fee`};
+    const career=season.simState.career?.[p.name];
+    const r=career?.avgRating||0.95;
+    const mult=r>=1.15?1.5:r>=1.1?1.3:r>=1.0?1.1:r>=0.9?1.0:0.85;
+    const desired=Math.max(5,Math.round(p.salary*mult));
+    if(offeredSalary>=desired){
+      p.team=myTeam;p.salary=offeredSalary;p.contract=3;
+      season.budget-=mv;
+      season.simState.chemistry[myTeam]=Math.max(40,(season.simState.chemistry[myTeam]||70)-5);
+      initCareer(p);
+      season.weekLog.push({week:season.week,activity:"news",event:`[+] ${p.name} signed for $${offeredSalary}K/mo (fee: $${mv}K)`});
+      setSeason({...season});redraw();
+      return{success:true,signed:true,msg:`${p.name} signed at $${offeredSalary}K/mo!`};
+    }
+    if(offeredSalary>=desired*0.80){
+      const counter=Math.round((offeredSalary+desired)/2);
+      return{success:false,counter:true,counterSalary:counter,msg:`${p.name} counters at $${counter}K/mo (wanted $${desired}K)`};
+    }
+    return{success:false,msg:`${p.name} rejects $${offeredSalary}K — wants at least $${Math.round(desired*0.80)}K/mo`};
+  }
+
+  function doBuyoutOffer(playerName,offerAmount){
+    const p=season.simState.players.find(x=>x.name===playerName);
+    if(!p||p.team==="FA"||p.team===myTeam) return{success:false,msg:"Invalid player"};
+    const roster=rosterOf(season.simState,myTeam);
+    if(roster.length>=5) return{success:false,msg:"Roster is full"};
+    if(season.budget<offerAmount) return{success:false,msg:"Insufficient budget"};
+    const mv=marketValue(p);
+    const holdTeam=p.team;
+    const ranked=getRankedTeams(season.simState,myTeam);
+    const teamRank=ranked.findIndex(r=>r.team===holdTeam);
+    const minMult=teamRank<5?1.8:teamRank<10?1.6:1.4;
+    const ctrMult=teamRank<5?2.2:teamRank<10?1.95:1.75;
+    const minAccept=Math.round(mv*minMult);
+    const counterPrice=Math.round(mv*ctrMult);
+    if(offerAmount>=minAccept){
+      const oldTeam=p.team;
+      season.budget-=offerAmount;
+      p.team=myTeam;p.contract=2;
+      season.simState.chemistry[myTeam]=Math.max(40,(season.simState.chemistry[myTeam]||70)-5);
+      season.simState.chemistry[oldTeam]=Math.max(40,(season.simState.chemistry[oldTeam]||70)-5);
+      const fas=freeAgents(season.simState);
+      if(fas.length>0){const best=fas.sort((a,b)=>playerOvr(b)-playerOvr(a))[0];best.team=oldTeam;best.contract=2;}
+      initCareer(p);
+      season.weekLog.push({week:season.week,activity:"news",event:`[+] ${playerName} bought from ${holdTeam} for $${offerAmount}K`});
+      setSeason({...season});redraw();
+      return{success:true,accepted:true,msg:`${holdTeam} accepts $${offerAmount}K for ${playerName}!`};
+    }
+    if(offerAmount>=mv*1.2){
+      return{success:false,accepted:false,counter:true,counterAmount:counterPrice,msg:`${holdTeam} counters at $${counterPrice}K`};
+    }
+    return{success:false,accepted:false,msg:`${holdTeam} rejects. They value ${playerName} at ~$${minAccept}K+`};
+  }
+
+  function doTradeOffer(myPlayerName,theirPlayerName,cashBonus){
+    const myP=season.simState.players.find(x=>x.name===myPlayerName&&x.team===myTeam);
+    const theirP=season.simState.players.find(x=>x.name===theirPlayerName&&x.team!==myTeam&&x.team!=="FA");
+    if(!myP||!theirP) return{success:false,msg:"Invalid players"};
+    if(season.budget<cashBonus) return{success:false,msg:"Insufficient budget"};
+    const myMv=marketValue(myP),theirMv=marketValue(theirP);
+    const myOvr=playerOvr(myP),theirOvr=playerOvr(theirP);
+    const offerVal=myMv+cashBonus;
+    const theirTeam=theirP.team;
+    const theirRoster=rosterOf(season.simState,theirTeam);
+    const needsRole=theirRoster.filter(p=>p.role===myP.role).length<2;
+    if(offerVal>=theirMv*0.90&&(needsRole||myOvr>=theirOvr-5)){
+      season.budget-=cashBonus;
+      const oldTheirTeam=theirP.team;
+      myP.team=oldTheirTeam;myP.contract=2;
+      theirP.team=myTeam;theirP.contract=2;
+      season.simState.chemistry[myTeam]=Math.max(40,(season.simState.chemistry[myTeam]||70)-5);
+      season.simState.chemistry[oldTheirTeam]=Math.max(40,(season.simState.chemistry[oldTheirTeam]||70)-5);
+      initCareer(theirP);
+      season.weekLog.push({week:season.week,activity:"news",event:`[=] TRADE: ${myPlayerName} → ${oldTheirTeam}, ${theirPlayerName} → ${myTeam}${cashBonus>0?` (+$${cashBonus}K)`:""}`});
+      setSeason({...season});redraw();
+      return{success:true,accepted:true,msg:`Trade done! ${theirPlayerName} joins your roster.`};
+    }
+    if(offerVal>=theirMv*0.70){
+      const neededCash=Math.max(0,Math.round(theirMv*0.95-myMv));
+      if(neededCash>cashBonus) return{success:false,accepted:false,counter:true,counterCash:neededCash,msg:`${theirTeam} wants $${neededCash}K cash to close the deal.`};
+    }
+    const reason=!needsRole?"They have that role covered.":offerVal<theirMv*0.70?"Offer too low.":"OVR gap is too large.";
+    return{success:false,accepted:false,msg:`${theirTeam} declined: ${reason}`};
+  }
+
+  function doSellPlayer(playerName,buyingTeam,amount){
+    const p=season.simState.players.find(x=>x.name===playerName&&x.team===myTeam);
+    if(!p) return;
+    season.budget+=amount;
+    p.team=buyingTeam;p.contract=2;
+    season.simState.chemistry[myTeam]=Math.max(40,(season.simState.chemistry[myTeam]||70)-8);
+    season.simState.chemistry[buyingTeam]=Math.max(40,(season.simState.chemistry[buyingTeam]||70)-3);
+    season.weekLog.push({week:season.week,activity:"news",event:`[$$] ${playerName} sold to ${buyingTeam} for $${amount}K`});
+    setSeason({...season});redraw();
+  }
+
   function upgradeFacility(facId){
     const fac=FACILITIES[facId];if(!fac)return;
     const curTier=season.facilities[facId]||0;
@@ -657,6 +765,7 @@ export default function App(){
       <main style={{maxWidth:1100,margin:"0 auto",padding:"22px 18px 80px"}}>
         {tab==="calendar"&&<CalendarView season={season} myTeam={myTeam} onAdvance={advanceWeek} onTransfer={doTransfer} onSim={simToNextEvent} onHireCoach={hireCoach} onFireCoach={fireCoach} onInitAcademy={initAcademy} onPromoteProspect={promoteProspect} onSellProspect={sellProspect} onAcceptSponsor={acceptSponsorship} onDeclineSponsor={declineSponsorship}/>}
         {tab==="roster"&&<RosterView2 state={season.simState} myTeam={myTeam} onNegotiate={negotiateContract} onChangeRole={changeRole}/>}
+        {tab==="market"&&<TransferMarket season={season} myTeam={myTeam} onNegotiateFA={doNegotiateFA} onBuyoutOffer={doBuyoutOffer} onTradeOffer={doTradeOffer} onSellPlayer={doSellPlayer} onRelease={p=>doTransfer("release",p)}/>}
         {tab==="maps"&&<MapProfView state={season.simState} myTeam={myTeam}/>}
         {tab==="facility"&&<FacilitiesView season={season} onUpgrade={upgradeFacility}/>}
         {tab==="rankings"&&<RankingsView state={season.simState} myTeam={myTeam}/>}
