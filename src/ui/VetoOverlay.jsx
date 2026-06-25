@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { C, sans, mono } from './theme.js';
 import { MAPS } from '../constants/data.js';
-import { autoVeto, getMapProf } from '../engine/state.js';
+import { autoVeto, getMapProf, mapRating, isRivalMatch } from '../engine/state.js';
+import { playSeries } from '../engine/match.js';
 import { Overlay, SL } from './primitives.jsx';
 
 export function VetoOverlay({session,myTeam,t,onClose,onResolved}){

@@ -1,13 +1,15 @@
 import { MAPS } from '../constants/data.js';
 import { ACTIVITIES, RANDOM_EVENTS } from '../constants/events.js';
 import { playerOvr } from './utils.js';
-import { rosterOf, getMapProf, nervesModifier, isRivalMatch, recordMatch, autoVeto } from './state.js';
+import { rosterOf, getMapProf, nervesModifier, isRivalMatch, recordMatch, autoVeto, mapRating } from './state.js';
 
-export function resolveMap(state,map,A,B,ctx,rng){
+export function resolveMap(state,map,A,B,ctx,rng,startFrom=null){
   // ── Round-by-round CS economy engine ──
+  // startFrom: {scoreA,scoreB,moneyA,moneyB,lossStreakA,lossStreakB,tiltA,tiltB,side,startRound,strModA,strModB}
+  // When provided, re-simulates from that mid-match state without updating stats (for interactive halftime/timeout)
   const rA=rosterOf(state,A), rB=rosterOf(state,B);
-  const strA=mapRating(state,A,map)+nervesModifier(state,A,B,ctx)+(ctx.decider?(rng()-0.5)*3:0);
-  const strB=mapRating(state,B,map)-nervesModifier(state,A,B,ctx)+(ctx.decider?(rng()-0.5)*3:0);
+  const strA=mapRating(state,A,map)+nervesModifier(state,A,B,ctx)+(ctx.decider&&!startFrom?(rng()-0.5)*3:0)+(startFrom?.strModA||0);
+  const strB=mapRating(state,B,map)-nervesModifier(state,A,B,ctx)+(ctx.decider&&!startFrom?(rng()-0.5)*3:0)+(startFrom?.strModB||0);
   const rival=isRivalMatch(state,A,B);
 
   // ── IGL tactical influence ──
@@ -17,12 +19,15 @@ export function resolveMap(state,map,A,B,ctx,rng){
   const iglModB=iglB?(iglB.igl-65)/900:0;
 
   // ── Tilt tracking (composure stat counters tilt) ──
-  const tilt={[A]:0,[B]:0};
+  const tilt={[A]:startFrom?.tiltA??0,[B]:startFrom?.tiltB??0};
   const avgComp=(t)=>{const r=rosterOf(state,t);return r.length?r.reduce((s,p)=>s+(p.composure||p.mentality||60),0)/r.length:60;};
   const compA=avgComp(A),compB=avgComp(B);
 
-  // Economy state per team
-  const econ={[A]:{money:800,lossStreak:0,roundsWon:0},[B]:{money:800,lossStreak:0,roundsWon:0}};
+  // Economy state per team (seeded from startFrom for re-simulations)
+  const econ={
+    [A]:{money:startFrom?.moneyA??800,lossStreak:startFrom?.lossStreakA??0,roundsWon:0},
+    [B]:{money:startFrom?.moneyB??800,lossStreak:startFrom?.lossStreakB??0,roundsWon:0}
+  };
   const LOSS_BONUS=[1400,1900,2400,2900,3400];
   const WIN_BONUS=3250;
   const FULL_BUY=4100;const FORCE_BUY=2000;
@@ -65,8 +70,9 @@ export function resolveMap(state,map,A,B,ctx,rng){
   const BUYMATCH={awp_buy:{awp_buy:.50,full:.55,force:.70,eco:.88},full:{awp_buy:.45,full:.50,force:.65,eco:.85},force:{awp_buy:.30,full:.35,force:.50,eco:.65},eco:{awp_buy:.12,full:.15,force:.35,eco:.50}};
 
   const rounds=[];
-  let scoreA=0,scoreB=0;
-  let side=0;
+  let scoreA=startFrom?.scoreA??0;
+  let scoreB=startFrom?.scoreB??0;
+  let side=startFrom?.side??0;
   let prevWinner=null;
 
   // Track if team is choosing to save (eco to build up for full buy)
@@ -189,18 +195,22 @@ export function resolveMap(state,map,A,B,ctx,rng){
     rounds.push({
       round:roundNum,winner,loser,scoreA,scoreB,
       buyA:btA,buyB:btB,moneyA:econ[A].money,moneyB:econ[B].money,
+      lossStreakA:econ[A].lossStreak,lossStreakB:econ[B].lossStreak,
+      tiltA:tilt[A],tiltB:tilt[B],
       narrative,isClutch,isEcoUpset,isAce,
       side:side===0?"first":"second"
     });
   }
 
   // Regulation: first to 13, switch sides at 12 rounds
-  let roundNum=0;
+  let roundNum=startFrom?.startRound??0;
   while(scoreA<13&&scoreB<13){
     roundNum++;
-    if(roundNum===13){side=1;} // half-time: switch sides
-    // Half-time economy reset
-    if(roundNum===13){econ[A].money=800;econ[B].money=800;econ[A].lossStreak=0;econ[B].lossStreak=0;}
+    if(roundNum===13){
+      side=1; // half-time: switch sides
+      // Only reset economy for full simulations (startFrom handles this for re-sims)
+      if(!startFrom){econ[A].money=800;econ[B].money=800;econ[A].lossStreak=0;econ[B].lossStreak=0;}
+    }
     playRound(roundNum);
   }
 
@@ -221,35 +231,35 @@ export function resolveMap(state,map,A,B,ctx,rng){
   const aWon=scoreA>scoreB;
   const finalScore=aWon?[scoreA,scoreB]:[scoreB,scoreA];
 
-  // Stats tracking
   const allPerf=[...perfA,...perfB];
-  allPerf.forEach(pp=>{
-    const st=state.stats[pp.name];if(!st)return;
-    st.maps++;st.rating=(st.rating*(st.maps-1)+pp.perf/90)/st.maps;
-    // Career map stats
-    const c=state.career?.[pp.name];
-    if(c){
-      if(!c.mapStats[map])c.mapStats[map]={maps:0,wins:0,avgRating:0};
-      const ms=c.mapStats[map];
-      const r=pp.perf/90;
-      ms.avgRating=(ms.avgRating*ms.maps+r)/(ms.maps+1);
-      ms.maps++;
-      if((aWon&&pp.team===A)||(!aWon&&pp.team===B)) ms.wins++;
-      c.kills+=Math.round(10+pp.perf/15); // approximate kill count
-    }
-  });
   const carry=aWon?perfA[0]:perfB[0];
   const anchor=aWon?perfB[perfB.length-1]:perfA[perfA.length-1];
-  if(carry.traits.includes("clutch")&&Math.min(scoreA,scoreB)>=9){const s=state.stats[carry.name];if(s)s.clutches++;}
-  if(state.stats[carry.name])state.stats[carry.name].mvps++;
-
   const triggers=[];
-  if(carry.traits.includes("clutch")&&Math.min(scoreA,scoreB)>=9)triggers.push({who:carry.name,what:"clutch_carry"});
-  if(carry.traits.includes("boom"))triggers.push({who:carry.name,what:"supernova"});
-  if(anchor.traits.includes("boom"))triggers.push({who:anchor.name,what:"boom_bust_low"});
-  if(rival)triggers.push({who:aWon?A:B,what:"rivalry_win"});
-  const ecoUpsets=rounds.filter(r=>r.isEcoUpset).length;
-  if(ecoUpsets>=2)triggers.push({who:aWon?A:B,what:"eco_heroes"});
+  // Stats only updated for full simulations (not interactive re-sims via startFrom)
+  if(!startFrom){
+    allPerf.forEach(pp=>{
+      const st=state.stats[pp.name];if(!st)return;
+      st.maps++;st.rating=(st.rating*(st.maps-1)+pp.perf/90)/st.maps;
+      const c=state.career?.[pp.name];
+      if(c){
+        if(!c.mapStats[map])c.mapStats[map]={maps:0,wins:0,avgRating:0};
+        const ms=c.mapStats[map];
+        const r=pp.perf/90;
+        ms.avgRating=(ms.avgRating*ms.maps+r)/(ms.maps+1);
+        ms.maps++;
+        if((aWon&&pp.team===A)||(!aWon&&pp.team===B)) ms.wins++;
+        c.kills+=Math.round(10+pp.perf/15);
+      }
+    });
+    if(carry.traits.includes("clutch")&&Math.min(scoreA,scoreB)>=9){const s=state.stats[carry.name];if(s)s.clutches++;}
+    if(state.stats[carry.name])state.stats[carry.name].mvps++;
+    if(carry.traits.includes("clutch")&&Math.min(scoreA,scoreB)>=9)triggers.push({who:carry.name,what:"clutch_carry"});
+    if(carry.traits.includes("boom"))triggers.push({who:carry.name,what:"supernova"});
+    if(anchor.traits.includes("boom"))triggers.push({who:anchor.name,what:"boom_bust_low"});
+    if(rival)triggers.push({who:aWon?A:B,what:"rivalry_win"});
+    const ecoUpsets=rounds.filter(r=>r.isEcoUpset).length;
+    if(ecoUpsets>=2)triggers.push({who:aWon?A:B,what:"eco_heroes"});
+  }
 
   return {map,winnerName:aWon?A:B,loserName:aWon?B:A,score:finalScore,pA:strA/(strA+strB),carry:carry.name,anchor:anchor.name,carryTeam:aWon?A:B,triggers,wPerf:aWon?perfA:perfB,lPerf:aWon?perfB:perfA,rival,rounds,teamA:A,teamB:B};
 }

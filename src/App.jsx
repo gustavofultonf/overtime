@@ -884,7 +884,7 @@ export default function App(){
       {veto&&<VetoOverlay session={veto} myTeam={myTeam} t={t} onClose={()=>setVeto(null)} onResolved={(res,fx)=>{
         setVeto(null);setReveal({res,fx});
       }}/>}
-      {reveal&&<MatchReveal reveal={reveal} myTeam={myTeam} onDone={()=>{
+      {reveal&&<MatchReveal reveal={reveal} myTeam={myTeam} t={t} onDone={()=>{
         const{res,fx}=reveal;
         fx.res=res;fx.done=true;
         // Swiss: update records
