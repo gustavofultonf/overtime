@@ -3,7 +3,7 @@ import React, { useState, useCallback } from "react";
 // Constants
 import { MAPS, AI_TEAMS } from './constants/data.js';
 import { EVENTS, SEASON_WEEKS, SALARY_WEEKS, ACTIVITIES, COACHES, FACILITIES,
-         isSalaryWeek, weekToLabel, weekToMonth } from './constants/events.js';
+         CHOICE_EVENTS, isSalaryWeek, weekToLabel, weekToMonth } from './constants/events.js';
 
 // Engine
 import { playerOvr, draftCost, marketValue, getTeamOrder, getSeed,
@@ -136,7 +136,7 @@ export default function App(){
     simState.chemistry[teamName]=55;
     if(!simState.mapProf[teamName]) simState.mapProf[teamName]=profileFor(teamName);
     simState.rankings[teamName]=200;
-    const s={simState,budget:remaining,eventNum:1,week:1,year:2026,history:[],weekLog:[],phase:"calendar",facilities:{},yearHistory:[]};
+    const s={simState,budget:remaining,eventNum:1,week:1,year:2026,history:[],weekLog:[],phase:"calendar",facilities:{},yearHistory:[],pendingEvent:null};
     setSeason(s);setPhase("season");setTab("calendar");
     // Auto-save after draft
     setTimeout(()=>{const data=buildSaveData();if(data){const cur=[...saves];cur[0]={...data,season:s,simState};writeSaves(cur);}},100);
@@ -316,6 +316,7 @@ export default function App(){
     applyActivity(season.simState,myTeam,activity,activity==="scout"?null:mapChoice,season.facilities);
     aiWeekActivity(season.simState);
     const evMsg=rollRandomEvent(season.simState,myTeam);
+    rollChoiceEvent();
     // Academy: develop prospects each week
     if(season.academy){
       season.academy.weeksActive++;
@@ -709,6 +710,61 @@ export default function App(){
     setSeason({...season});redraw();
   }
 
+  function rollChoiceEvent(){
+    if(season.pendingEvent) return;
+    if(Math.random()>0.25) return;
+    const roster=rosterOf(season.simState,myTeam);
+    if(!roster.length) return;
+    const totalWeight=CHOICE_EVENTS.reduce((s,e)=>s+e.weight,0);
+    let roll=Math.random()*totalWeight,ev=null;
+    for(const e of CHOICE_EVENTS){roll-=e.weight;if(roll<=0){ev=e;break;}}
+    if(!ev) return;
+    const player=roster[Math.floor(Math.random()*roster.length)];
+    season.pendingEvent={...ev,playerName:player.name,text:ev.text.replace("{player}",player.name)};
+  }
+
+  function resolveChoiceEvent(choiceIdx){
+    const ev=season.pendingEvent;if(!ev)return;
+    const roster=rosterOf(season.simState,myTeam);
+    const player=roster.find(p=>p.name===ev.playerName)||roster[0];
+    switch(ev.id){
+      case "team_friction":
+        if(choiceIdx===0){season.budget-=10;season.simState.chemistry[myTeam]=Math.min(100,(season.simState.chemistry[myTeam]||70)+8);}
+        else if(choiceIdx===1){season.simState.chemistry[myTeam]=Math.max(40,(season.simState.chemistry[myTeam]||70)-5);}
+        else{if(player)player.form=Math.max(-12,player.form-2);season.simState.chemistry[myTeam]=Math.max(40,(season.simState.chemistry[myTeam]||70)-2);season.budget+=5;}
+        break;
+      case "player_demand":
+        if(choiceIdx===0){if(player){player.salary+=5;player.form=Math.min(12,player.form+5);}}
+        else if(choiceIdx===1){if(player)player.form=Math.max(-12,player.form-4);}
+        else{season.simState.chemistry[myTeam]=Math.max(40,(season.simState.chemistry[myTeam]||70)-2);}
+        break;
+      case "rival_interest":
+        if(choiceIdx===0){season.budget-=20;if(player)player.form=Math.min(12,player.form+3);}
+        else if(choiceIdx===1){if(player){player.salary+=4;player.contract=Math.max(player.contract,2);}}
+        else{if(player)player.form=Math.max(-12,player.form-3);season.simState.chemistry[myTeam]=Math.max(40,(season.simState.chemistry[myTeam]||70)-5);}
+        break;
+      case "bootcamp_invite":
+        if(choiceIdx===0){season.budget-=30;roster.forEach(p=>{p.gameSense=Math.min(99,p.gameSense+2);p.fatigue=Math.min(100,p.fatigue+10);});}
+        else if(choiceIdx===1){season.budget-=10;roster.forEach(p=>{p.gameSense=Math.min(99,p.gameSense+1);p.fatigue=Math.min(100,p.fatigue+5);});}
+        break;
+      case "slump":
+        if(choiceIdx===0){season.budget-=15;if(player){player.form=Math.min(12,player.form+4);player.gameSense=Math.min(99,player.gameSense+1);}}
+        else if(choiceIdx===1){if(player){player.fatigue=Math.max(0,player.fatigue-15);player.form=Math.min(12,player.form+2);}}
+        else{if(player){player.fatigue=Math.min(100,player.fatigue+10);player.form=Math.max(-12,player.form-2);}}
+        break;
+      case "media_storm":
+        if(choiceIdx===0){if(player)player.form=Math.max(-12,player.form-3);season.simState.chemistry[myTeam]=Math.min(100,(season.simState.chemistry[myTeam]||70)+3);}
+        else if(choiceIdx===1){if(player)player.form=Math.min(12,player.form+4);season.simState.chemistry[myTeam]=Math.max(40,(season.simState.chemistry[myTeam]||70)-7);}
+        else{season.simState.chemistry[myTeam]=Math.max(40,(season.simState.chemistry[myTeam]||70)-2);}
+        break;
+      default:break;
+    }
+    const choice=ev.choices[choiceIdx];
+    season.weekLog.push({week:season.week,activity:"news",event:`[!] ${ev.title}: "${choice?.label}" — ${choice?.desc||""}`});
+    season.pendingEvent=null;
+    setSeason({...season});redraw();
+  }
+
   function resetAll(){setPhase("saves");setMyTeam(null);setSeason(null);setT(null);setTab("hub");loadSaves();}
 
   if(phase==="loading") return(
@@ -763,7 +819,7 @@ export default function App(){
       <Gstyle/><Header season={season} myTeam={myTeam} onReset={resetAll} onSave={saveToSlot} stageLabel={`${weekToLabel(season.week,season.year)} ${season.year||2026} · W${season.week}`}/>
       <Tabs tab={tab} setTab={setTab} calMode/>
       <main style={{maxWidth:1100,margin:"0 auto",padding:"22px 18px 80px"}}>
-        {tab==="calendar"&&<CalendarView season={season} myTeam={myTeam} onAdvance={advanceWeek} onTransfer={doTransfer} onSim={simToNextEvent} onHireCoach={hireCoach} onFireCoach={fireCoach} onInitAcademy={initAcademy} onPromoteProspect={promoteProspect} onSellProspect={sellProspect} onAcceptSponsor={acceptSponsorship} onDeclineSponsor={declineSponsorship}/>}
+        {tab==="calendar"&&<CalendarView season={season} myTeam={myTeam} onAdvance={advanceWeek} onTransfer={doTransfer} onSim={simToNextEvent} onHireCoach={hireCoach} onFireCoach={fireCoach} onInitAcademy={initAcademy} onPromoteProspect={promoteProspect} onSellProspect={sellProspect} onAcceptSponsor={acceptSponsorship} onDeclineSponsor={declineSponsorship} onResolveEvent={resolveChoiceEvent}/>}
         {tab==="roster"&&<RosterView2 state={season.simState} myTeam={myTeam} onNegotiate={negotiateContract} onChangeRole={changeRole}/>}
         {tab==="market"&&<TransferMarket season={season} myTeam={myTeam} onNegotiateFA={doNegotiateFA} onBuyoutOffer={doBuyoutOffer} onTradeOffer={doTradeOffer} onSellPlayer={doSellPlayer} onRelease={p=>doTransfer("release",p)}/>}
         {tab==="maps"&&<MapProfView state={season.simState} myTeam={myTeam}/>}

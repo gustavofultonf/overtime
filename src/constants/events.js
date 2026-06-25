@@ -91,3 +91,42 @@ export const RANDOM_EVENTS = [
   {id:"bootcamp_invite",text:"Bootcamp invite from another org.",weight:3,apply:(s,t)=>{rosterOf(s,t).forEach(p=>{p.gameSense=Math.min(99,p.gameSense+1);p.fatigue=Math.min(100,p.fatigue+5);});return"[>>] Guest bootcamp with a top team — +1 game sense (all), +5 fatigue";}},
   {id:"nothing",text:"Quiet week.",weight:20,apply:()=>null},
 ];
+
+export const CHOICE_EVENTS = [
+  {id:"team_friction",weight:4,title:"Team Tension",text:"{player} is clashing with teammates after a rough run.",
+    choices:[
+      {label:"Team meeting",    desc:"$10K · +8 chemistry"},
+      {label:"Let it blow over",desc:"-5 chemistry"},
+      {label:"Fine the player", desc:"-2 form · -2 chem · +$5K"},
+    ]},
+  {id:"player_demand",weight:3,title:"Salary Demand",text:"{player} is angling for a pay raise before the next event.",
+    choices:[
+      {label:"Agree to raise",      desc:"+$5K/mo salary · +5 form"},
+      {label:"Decline",             desc:"-4 form"},
+      {label:"Promise next season", desc:"-2 chemistry"},
+    ]},
+  {id:"rival_interest",weight:2,title:"Rival Poaching",text:"A top org is reportedly making offers to {player}.",
+    choices:[
+      {label:"Reassure + bonus",  desc:"-$20K · +3 form · secured"},
+      {label:"Extend contract",   desc:"+$4K/mo · +1 event"},
+      {label:"Call their bluff",  desc:"-3 form · -5 chemistry"},
+    ]},
+  {id:"bootcamp_invite",weight:3,title:"Bootcamp Invitation",text:"A European org invites your team to a joint bootcamp.",
+    choices:[
+      {label:"Full bootcamp",  desc:"-$30K · +2 gameSense all · +10 fatigue"},
+      {label:"Day visit",      desc:"-$10K · +1 gameSense all · +5 fatigue"},
+      {label:"Decline",        desc:"No cost, miss opportunity"},
+    ]},
+  {id:"slump",weight:3,title:"Player Slump",text:"{player} is going through a rough patch — low confidence.",
+    choices:[
+      {label:"Private coaching", desc:"-$15K · +4 form · +1 gameSense"},
+      {label:"Rest week",        desc:"-15 fatigue · +2 form"},
+      {label:"Keep grinding",    desc:"+10 fatigue · -2 form"},
+    ]},
+  {id:"media_storm",weight:2,title:"Media Storm",text:"{player}'s social post sparks online controversy.",
+    choices:[
+      {label:"Public apology", desc:"-3 form · +3 chemistry"},
+      {label:"Double down",    desc:"+4 form · -7 chemistry"},
+      {label:"Silent mode",    desc:"-2 chemistry"},
+    ]},
+];
