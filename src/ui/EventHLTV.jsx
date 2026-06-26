@@ -52,7 +52,7 @@ export function EventHLTV({t,myTeam,nf,onPlay,alive,onOpen,onEndEvent,season,SEE
       ))}
     </div>
 
-    {evTab==="results"&&<SwissResults t={t} myTeam={myTeam} onOpen={onOpen}/>}
+    {evTab==="results"&&<SwissResults t={t} myTeam={myTeam} onOpen={onOpen} SEED={SEED}/>}
     {evTab==="standings"&&<SwissStandings t={t} myTeam={myTeam} SEED={SEED}/>}
     {evTab==="bracket"&&(t.bracket?<PlayoffBracket bracket={t.bracket} champion={t.champion} myTeam={myTeam} onOpen={onOpen} SEED={SEED}/>:<Locked text="Bracket unlocks when all group matches are complete."/>)}
   </div>);
@@ -66,12 +66,24 @@ export function NextMatchHLTV({nf,myTeam,onPlay,t,SEED}){
   const oppRec=t.swiss?.records[opp];
   const rival=isRivalMatch(t.simState,myTeam,opp);
   const stageStr=isSwiss?`SWISS — Bo${bo}`:`${nf.kind.toUpperCase()} — Bo${bo}`;
+
+  // Bubble stakes detection
+  const adv=t.swiss?._advanceAt||3, eli=t.swiss?._elimAt||3;
+  const myAdv=myRec&&myRec.w>=adv-1, myEli=myRec&&myRec.l>=eli-1;
+  const oppAdv=oppRec&&oppRec.w>=adv-1, oppEli=oppRec&&oppRec.l>=eli-1;
+  const isDecider=myAdv&&myEli&&oppAdv&&oppEli;
+  const isElimination=(myEli||oppEli)&&!isDecider;
+  const isAdvancement=(myAdv||oppAdv)&&!isElimination&&!isDecider;
+  const stakes=isSwiss&&myRec?(isDecider?"DECIDER":isElimination?"ELIMINATION MATCH":isAdvancement?"ADVANCEMENT MATCH":null):null;
+  const stakesColor=isDecider?C.gold:isElimination?C.red:C.live;
+
   return(
-  <div style={{background:`linear-gradient(135deg,#13171f,#1a1f29)`,border:`2px solid ${rival?C.rival:C.acc}`,borderRadius:10,padding:"16px 20px",marginBottom:12}}>
+  <div style={{background:`linear-gradient(135deg,#13171f,#1a1f29)`,border:`2px solid ${rival?C.rival:stakes?stakesColor:C.acc}`,borderRadius:10,padding:"16px 20px",marginBottom:12}}>
     <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
       <span style={{width:7,height:7,borderRadius:7,background:C.acc,animation:"pulse 1.4s infinite"}}/>
       <span style={{fontFamily:mono,fontSize:10,color:C.acc,letterSpacing:1.5}}>▸ UP NEXT · {stageStr}</span>
       {rival&&<span style={{fontFamily:mono,fontSize:9,color:C.rival,border:`1px solid ${C.rival}`,borderRadius:4,padding:"2px 6px"}}>[!] RIVALRY</span>}
+      {stakes&&<span style={{fontFamily:mono,fontSize:9,color:stakesColor,border:`1px solid ${stakesColor}`,borderRadius:4,padding:"2px 6px",fontWeight:700}}>{stakes}</span>}
       {isSwiss&&myRec&&<span style={{fontFamily:mono,fontSize:10,color:C.faint,marginLeft:"auto"}}>{myRec.w}-{myRec.l} vs {oppRec?.w||0}-{oppRec?.l||0}</span>}
     </div>
     <div style={{display:"grid",gridTemplateColumns:"1fr auto 1fr",gap:16,alignItems:"center"}}>
@@ -94,10 +106,30 @@ export function NextMatchHLTV({nf,myTeam,onPlay,t,SEED}){
   </div>);
 }
 
-export function SwissResults({t,myTeam,onOpen}){
+export function SwissResults({t,myTeam,onOpen,SEED}){
   const swiss=t.swiss;if(!swiss)return null;
   const allMatches=swiss.rounds.flatMap((rd,ri)=>rd.fixtures.map(f=>({...f,roundIdx:ri})));
   if(!allMatches.length)return <Empty text="No matches played yet."/>;
+  const adv=swiss._advanceAt||3, eli=swiss._elimAt||3;
+
+  function fixtureBubble(fx){
+    const ra=swiss.records[fx.a], rb=swiss.records[fx.b];
+    if(!ra||!rb) return null;
+    const aAdv=ra.w>=adv-1, aEli=ra.l>=eli-1;
+    const bAdv=rb.w>=adv-1, bEli=rb.l>=eli-1;
+    if(aAdv&&aEli&&bAdv&&bEli) return {label:"DECIDER",color:C.gold};
+    if(aEli||bEli) return {label:"ELIMINATION",color:C.red};
+    if(aAdv||bAdv) return {label:"ADVANCEMENT",color:C.live};
+    return null;
+  }
+
+  function upsetBadge(fx){
+    if(!fx.done||!SEED) return null;
+    const ws=SEED[fx.res.winnerName]??99, ls=SEED[fx.res.loserName]??1;
+    if(ws>=ls+4) return true;
+    return false;
+  }
+
   return(<div style={{display:"flex",flexDirection:"column",gap:12}}>
     {swiss.rounds.map((rd,ri)=>{
       const done=rd.fixtures.every(f=>f.done);
@@ -107,16 +139,19 @@ export function SwissResults({t,myTeam,onOpen}){
           {rd.fixtures.map((fx,fi)=>{
             const isMe=fx.a===myTeam||fx.b===myTeam;
             const myTeamIsA=fx.a===myTeam;
+            const bubble=fixtureBubble(fx);
             if(!fx.done)return(
-              <div key={fi} style={{background:isMe?C.acc+"22":C.panel,border:`1px solid ${isMe?C.acc:C.line}`,borderRadius:8,padding:"10px 14px",display:"flex",alignItems:"center",gap:10}}>
+              <div key={fi} style={{background:isMe?C.acc+"22":C.panel,border:`1px solid ${isMe?C.acc:bubble?bubble.color+"55":C.line}`,borderRadius:8,padding:"10px 14px",display:"flex",alignItems:"center",gap:10}}>
                 <span style={{fontFamily:mono,fontSize:10,color:C.faint,width:28}}>Bo{fx.bo}</span>
                 <span style={{flex:1,fontWeight:isMe?700:500,color:isMe?C.acc:C.ink}}>{fx.a}</span>
                 <span style={{fontFamily:mono,fontSize:10,color:C.faint}}>vs</span>
                 <span style={{flex:1,textAlign:"right",fontWeight:isMe?700:500,color:isMe?C.acc:C.ink}}>{fx.b}</span>
-                {isMe&&<span style={{fontFamily:mono,fontSize:9,color:C.acc,border:`1px solid ${C.acc}`,borderRadius:4,padding:"2px 6px"}}>YOUR MATCH</span>}
+                {bubble&&<span style={{fontFamily:mono,fontSize:9,color:bubble.color,border:`1px solid ${bubble.color}`,borderRadius:4,padding:"2px 6px",fontWeight:700}}>{bubble.label}</span>}
+                {isMe&&!bubble&&<span style={{fontFamily:mono,fontSize:9,color:C.acc,border:`1px solid ${C.acc}`,borderRadius:4,padding:"2px 6px"}}>YOUR MATCH</span>}
               </div>
             );
             const wA=fx.res.winnerName===fx.a;
+            const upset=upsetBadge(fx);
             return(
             <button key={fi} onClick={()=>onOpen({...fx.res,title:`Swiss R${ri+1} · Bo${fx.bo}`,a:fx.a,b:fx.b})}
               style={{background:isMe?(wA===myTeamIsA?"rgba(61,220,132,.06)":"rgba(255,76,76,.06)"):C.panel,border:`1px solid ${isMe?(wA===myTeamIsA?C.win+"44":C.red+"44"):C.line}`,borderRadius:8,padding:"10px 14px",textAlign:"left",display:"flex",alignItems:"center",gap:10}}>
@@ -124,6 +159,7 @@ export function SwissResults({t,myTeam,onOpen}){
               <span style={{flex:1,fontWeight:700,color:wA?C.win:C.dim}}>{fx.a}</span>
               <span style={{fontFamily:mono,fontWeight:700,fontSize:13,color:C.ink}}>{fx.res.bo>=3?fx.res.seriesScore.join("–"):fx.res.scoreLine}</span>
               <span style={{flex:1,textAlign:"right",fontWeight:700,color:!wA?C.win:C.dim}}>{fx.b}</span>
+              {upset&&<span style={{fontFamily:mono,fontSize:9,color:C.gold,fontWeight:700}}>[UPSET]</span>}
               {isMe&&<span style={{fontFamily:mono,fontSize:9,color:wA===myTeamIsA?C.win:C.red,fontWeight:700,width:28}}>{wA===myTeamIsA?"W":"L"}</span>}
             </button>);
           })}
@@ -132,7 +168,7 @@ export function SwissResults({t,myTeam,onOpen}){
     })}
     {t.stage==="playoffs"&&t.bracket&&<div style={{marginTop:8}}>
       <div style={{fontFamily:mono,fontSize:10,color:C.gold,letterSpacing:1.5,marginBottom:6}}>PLAYOFFS</div>
-      <PlayoffMatchList bracket={t.bracket} myTeam={myTeam} onOpen={onOpen}/>
+      <PlayoffMatchList bracket={t.bracket} myTeam={myTeam} onOpen={onOpen} SEED={SEED}/>
     </div>}
   </div>);
 }
