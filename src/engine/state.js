@@ -1,6 +1,6 @@
 import { MAPS, AI_TEAMS, PLAYERS_INIT } from '../constants/data.js';
 import { SEASON_WEEKS, TUNING } from '../constants/events.js';
-import { playerOvr, marketValue } from './utils.js';
+import { playerOvr, marketValue, recomputeRankings } from './utils.js';
 
 export function initState(eras){
   const activeEras=eras||["current"];
@@ -69,7 +69,11 @@ export function initState(eras){
   [...AI_TEAMS,"FA"].forEach(t=>{mapProf[t]=profileFor(t);});
   const rivalries={};
   const rankings={};
-  AI_TEAMS.forEach((t,i)=>{rankings[t]=1000-i*50;});
+  // Seed AI teams with fictional prior-season results (2025 Major, decays to 50% by 2026/w1)
+  const rankLog=AI_TEAMS.map((t,i)=>({
+    team:t, rawPts:2000-i*100, week:1, year:2025, tier:"Major", label:"Prior Season"
+  }));
+  recomputeRankings({rankings,rankLog},1,2026);
 
   // If current era is not active, AI teams have no players — auto-assign from FA pool
   if(!activeEras.includes("current")){
@@ -101,7 +105,7 @@ export function initState(eras){
     else tactics[team]="Utility";
   });
 
-  return {players,chemistry,stats,career,mapProf,rivalries,rankings,coach:null,pendingBonus:null,tactics};
+  return {players,chemistry,stats,career,mapProf,rivalries,rankings,rankLog,coach:null,pendingBonus:null,tactics};
 }
 
 export function rosterOf(state,team){return state.players.filter(p=>p.team===team);}

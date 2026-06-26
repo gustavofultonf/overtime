@@ -7,7 +7,7 @@ import { EVENTS, SEASON_WEEKS, SALARY_WEEKS, ACTIVITIES, COACHES, FACILITIES,
 
 // Engine
 import { playerOvr, draftCost, marketValue, getTeamOrder, getSeed,
-         getRankedTeams, updateRankings, aiRosterMoves } from './engine/player.js';
+         getRankedTeams, updateRankings, recomputeRankings, aiRosterMoves } from './engine/player.js';
 import { initState, rosterOf, freeAgents, teamBase, profileFor,
          getMapProf, isRivalMatch, updateMorale, hierarchyTier } from './engine/state.js';
 import { playSeries, applyActivity, rollRandomEvent } from './engine/match.js';
@@ -331,7 +331,7 @@ export default function App(){
     if(t.swiss){
       t.swiss.eliminated.forEach(tm=>{if(!placements[tm])placements[tm]=t.teams?.length||16;});
     }
-    updateRankings(season.simState,placements,ev.tier||"B");
+    updateRankings(season.simState,placements,ev.tier||"B",season.week,season.year||2026,ev.label||ev.tier||"B");
 
     // Check expiring contracts before ticking
     const expiring=roster.filter(p=>p.contract<=1);
@@ -539,7 +539,7 @@ export default function App(){
           (majorT.bracket.sf||[]).forEach(s=>{if(s.done&&s.res)placements[s.res.loserName]=4;});
           (majorT.bracket.qf||[]).forEach(q=>{if(q.done&&q.res)placements[q.res.loserName]=9;});
           majorT.swiss.eliminated.forEach(tm=>{if(!placements[tm])placements[tm]=16;});
-          updateRankings(season.simState,placements,"Major");
+          updateRankings(season.simState,placements,"Major",season.week,season.year||2026,ev.label||"Major");
           decayFormBetweenEvents(season.simState);tickContracts(season.simState,myTeam);
           const moves=aiRosterMoves(season.simState,myTeam);
           moves.forEach(m=>season.weekLog.push({week:season.week,activity:"news",event:m}));
@@ -752,8 +752,8 @@ export default function App(){
       season.simState.stats[p.name]={maps:0,rating:0,mvps:0,clutches:0};
       season.simState.career[p.name]={totalMaps:0,totalMvps:0,totalClutches:0,avgRating:0,bestRating:0,eventHistory:[],mapStats:{},origStats:{aim:p.aim,gameSense:p.gameSense,util:p.util,igl:p.igl,mentality:p.mentality,consistency:p.consistency,rifle:p.rifle,pistol:p.pistol,awp:p.awp,clutch:p.clutch,entry:p.entry,stamina:p.stamina,composure:p.composure,experience:p.experience},kills:0};
     }
-    // Decay rankings (off-season)
-    Object.keys(season.simState.rankings).forEach(t=>{season.simState.rankings[t]=Math.round((season.simState.rankings[t]||0)*0.7);});
+    // Recompute rankings with Valve time-decay (off-season: prior season now 52+ weeks older)
+    recomputeRankings(season.simState, 1, newYear);
     // Expire more contracts
     tickContracts(season.simState,myTeam);
     // AI roster moves in off-season
@@ -985,7 +985,7 @@ export default function App(){
         {tab==="market"&&<TransferMarket season={season} myTeam={myTeam} onNegotiateFA={doNegotiateFA} onBuyoutOffer={doBuyoutOffer} onTradeOffer={doTradeOffer} onSellPlayer={doSellPlayer} onRelease={p=>doTransfer("release",p)}/>}
         {tab==="maps"&&<MapProfView state={season.simState} myTeam={myTeam}/>}
         {tab==="facility"&&<FacilitiesView season={season} onUpgrade={upgradeFacility}/>}
-        {tab==="rankings"&&<RankingsView state={season.simState} myTeam={myTeam}/>}
+        {tab==="rankings"&&<RankingsView state={season.simState} myTeam={myTeam} week={season.week} year={season.year||2026}/>}
         {tab==="rivals"&&<RivalryView state={season.simState} myTeam={myTeam}/>}
         {tab==="dynamics"&&<DynamicsView season={season} myTeam={myTeam}/>}
         {tab==="tactics"&&<TacticsView season={season} myTeam={myTeam} onSetStyle={setTactic}/>}
