@@ -135,6 +135,15 @@ export function MatchReveal({ reveal, myTeam, t, onDone }) {
   const curScore = visibleRounds.length > 0 ? visibleRounds[visibleRounds.length - 1] : { scoreA: 0, scoreB: 0 };
   const mapDone = roundIdx >= (mp?.rounds?.length || 0);
   const momentum = computeMomentum(visibleRounds, myTeamInMap || myTeam);
+  const inOT = visibleRounds.length > 0 && visibleRounds[visibleRounds.length - 1].round > 24;
+  const matchPoint = !mapDone && !inOT && (
+    (curScore.scoreA === 12 && curScore.scoreB < 12) ||
+    (curScore.scoreB === 12 && curScore.scoreA < 12)
+  );
+  const myMatchPoint = matchPoint && (
+    (curScore.scoreA === 12 && tA === myTeamInMap) ||
+    (curScore.scoreB === 12 && tB === myTeamInMap)
+  );
 
   // ── Interactive: halftime team talk ─────────────────────────────────
   function applyHalftimeChoice(choiceIdx) {
@@ -249,6 +258,7 @@ export function MatchReveal({ reveal, myTeam, t, onDone }) {
   function isNotable(rd, idx, rounds) {
     if (rd.isClutch || rd.isEcoUpset || rd.isAce) return true;
     if (rd.round === 1) return true;
+    if (rd.round > 24) return true;  // all OT rounds are notable
     if (idx > 0 && rounds[idx - 1]?.side !== rd.side) return true;
     if (rd.scoreA === 12 || rd.scoreB === 12) return true;
     if (Math.abs(rd.scoreA - rd.scoreB) <= 1 && rd.scoreA >= 8) return true;
@@ -378,6 +388,32 @@ export function MatchReveal({ reveal, myTeam, t, onDone }) {
           </div>
         </div>
 
+        {/* OT / match point banners */}
+        {inOT && (
+          <div style={{
+            textAlign: 'center', marginBottom: 10,
+            fontFamily: mono, fontSize: 13, fontWeight: 800,
+            color: C.gold, letterSpacing: 3,
+            background: `${C.gold}18`,
+            border: `1px solid ${C.gold}66`,
+            borderRadius: 6, padding: '6px 16px',
+          }}>
+            ⚡ OVERTIME ⚡
+          </div>
+        )}
+        {matchPoint && (
+          <div style={{
+            textAlign: 'center', marginBottom: 10,
+            fontFamily: mono, fontSize: 11, fontWeight: 700,
+            color: myMatchPoint ? C.win : C.red, letterSpacing: 2,
+            background: myMatchPoint ? `${C.win}15` : `${C.red}15`,
+            border: `1px solid ${myMatchPoint ? C.win : C.red}55`,
+            borderRadius: 6, padding: '5px 14px',
+          }}>
+            {myMatchPoint ? '▲ MATCH POINT' : '▼ MATCH POINT'}
+          </div>
+        )}
+
         {/* Momentum bar */}
         {isMyMap && <MomentumBar momentum={momentum} myTeam={myTeamInMap} />}
 
@@ -411,7 +447,10 @@ export function MatchReveal({ reveal, myTeam, t, onDone }) {
           {/* Round blocks: teamA buy | result arrow | teamB buy */}
           <div style={{ display: 'flex', gap: 2, flexWrap: 'wrap', justifyContent: 'center' }}>
             {visibleRounds.map((rd, i) => {
-              const halfBreak = i > 0 && visibleRounds[i - 1]?.side !== rd.side;
+              const prevRd = i > 0 ? visibleRounds[i - 1] : null;
+              const halfBreak = prevRd && prevRd.side !== rd.side && rd.round <= 24;
+              const isOTBreak = prevRd && prevRd.scoreA === 12 && prevRd.scoreB === 12;
+              const isOTRound = rd.round > 24;
               const myWin = rd.winner === myTeamInMap;
               const hasNarrative = rd.isClutch || rd.isEcoUpset || rd.isAce;
               return (
@@ -419,9 +458,20 @@ export function MatchReveal({ reveal, myTeam, t, onDone }) {
                   {halfBreak && (
                     <div style={{ width: 2, alignSelf: 'stretch', background: C.gold, margin: '0 3px', borderRadius: 1 }} />
                   )}
+                  {isOTBreak && (
+                    <div style={{
+                      display: 'flex', flexDirection: 'column', alignItems: 'center',
+                      margin: '0 4px', gap: 1, justifyContent: 'center',
+                    }}>
+                      <div style={{ width: 2, height: 14, background: C.gold, borderRadius: 1 }} />
+                      <div style={{ fontFamily: mono, fontSize: 7, color: C.gold, fontWeight: 800, letterSpacing: 1 }}>OT</div>
+                      <div style={{ width: 2, height: 14, background: C.gold, borderRadius: 1 }} />
+                    </div>
+                  )}
                   <div style={{
                     display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1,
-                    border: hasNarrative ? `1px solid ${C.gold}44` : 'none',
+                    border: isOTRound ? `1px solid ${C.gold}88` : hasNarrative ? `1px solid ${C.gold}44` : 'none',
+                    background: isOTRound ? `${C.gold}0a` : 'transparent',
                     borderRadius: 3, padding: '1px',
                   }}>
                     {/* Team A buy */}
@@ -456,17 +506,22 @@ export function MatchReveal({ reveal, myTeam, t, onDone }) {
         </div>
 
         {/* Notable events feed */}
-        <div style={{ maxHeight: 130, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 3, marginBottom: 4 }}>
-          {visibleRounds.filter((rd, i) => isNotable(rd, i, visibleRounds)).slice(-5).map((rd, i) => (
-            <div key={i} style={{
-              fontFamily: mono, fontSize: 11, padding: '4px 8px', borderRadius: 4,
-              background: rd.isEcoUpset ? 'rgba(255,92,46,.1)' : rd.isClutch ? 'rgba(61,220,132,.1)' : rd.isAce ? 'rgba(255,194,75,.1)' : 'transparent',
-              color: rd.isEcoUpset ? C.acc : rd.isClutch ? C.win : rd.isAce ? C.gold : C.dim,
-            }}>
-              <span style={{ color: C.faint, marginRight: 6 }}>R{rd.round}</span>
-              {rd.narrative}
-            </div>
-          ))}
+        <div style={{ maxHeight: 160, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 3, marginBottom: 4 }}>
+          {visibleRounds.filter((rd, i) => isNotable(rd, i, visibleRounds)).slice(-8).map((rd, i) => {
+            const isOT = rd.round > 24;
+            return (
+              <div key={i} style={{
+                fontFamily: mono, fontSize: 11, padding: '4px 8px', borderRadius: 4,
+                background: isOT ? `${C.gold}18` : rd.isEcoUpset ? 'rgba(255,92,46,.1)' : rd.isClutch ? 'rgba(61,220,132,.1)' : rd.isAce ? 'rgba(255,194,75,.1)' : 'transparent',
+                color: isOT ? C.gold : rd.isEcoUpset ? C.acc : rd.isClutch ? C.win : rd.isAce ? C.gold : C.dim,
+                border: isOT ? `1px solid ${C.gold}33` : 'none',
+              }}>
+                <span style={{ color: isOT ? C.gold : C.faint, marginRight: 6 }}>R{rd.round}</span>
+                {isOT && <span style={{ fontWeight: 800, marginRight: 5 }}>[OT]</span>}
+                {rd.narrative}
+              </div>
+            );
+          })}
         </div>
       </>)}
 

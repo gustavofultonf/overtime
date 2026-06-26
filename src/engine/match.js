@@ -292,7 +292,7 @@ export function driftForm(state,teamA,teamB,results){
 
 export function recapLine(r){
   const w=Math.max(...r.score),l=Math.min(...r.score);
-  const stomp=w-l>=8,close=w-l<=3,ot=l>=13;
+  const stomp=w-l>=8,close=w-l<=3,ot=w>=14; // regulation max win is 13; OT produces 16+
   const rivalTag=r.rival?" in a heated rivalry clash":"";
   const ecoTag=r.rounds?.filter(x=>x.isEcoUpset).length>=2?" with multiple eco upsets":"";
   const flow=ot?`${r.map} went to overtime${rivalTag}`:stomp?`${r.winnerName} dominated ${r.map}${rivalTag}`:close?`${r.map} was razor-thin${rivalTag}${ecoTag}`:`${r.winnerName} took ${r.map}${rivalTag}`;
