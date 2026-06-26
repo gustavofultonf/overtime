@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { C, sans, mono } from './theme.js';
-import { Overlay } from './primitives.jsx';
+import { Overlay, TeamCrest } from './primitives.jsx';
 import { resolveMap } from '../engine/match.js';
 
 // ── Helpers ──────────────────────────────────────────────────────────
@@ -460,15 +460,17 @@ export function MatchReveal({ reveal, myTeam, t, onDone }) {
 
         {/* Scoreboard */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 20, marginBottom: 4, padding: '14px 0 10px' }}>
-          <div style={{ textAlign: 'right', flex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10, flex: 1 }}>
             <div style={{ fontWeight: 800, fontSize: 18, color: tA === myTeam ? C.acc : C.ink }}>{tA}</div>
+            <TeamCrest name={tA} size={34} />
           </div>
           <div style={{ fontFamily: mono, fontWeight: 800, fontSize: 42, minWidth: 100, textAlign: 'center', letterSpacing: 4 }}>
             <span style={{ color: flashTeam === tA ? C.gold : C.ink, transition: 'color 0.25s ease' }}>{curScore.scoreA}</span>
             <span style={{ color: C.faint, fontSize: 24 }}> : </span>
             <span style={{ color: flashTeam === tB ? C.gold : C.ink, transition: 'color 0.25s ease' }}>{curScore.scoreB}</span>
           </div>
-          <div style={{ textAlign: 'left', flex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: 10, flex: 1 }}>
+            <TeamCrest name={tB} size={34} />
             <div style={{ fontWeight: 800, fontSize: 18, color: tB === myTeam ? C.acc : C.ink }}>{tB}</div>
           </div>
         </div>

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { C, sans, mono } from './theme.js';
 import { weekToLabel } from '../constants/events.js';
 import { isRivalMatch } from '../engine/state.js';
-import { SL, Locked, Empty } from './primitives.jsx';
+import { SL, Locked, Empty, TeamCrest } from './primitives.jsx';
 
 export function EventHLTV({t,myTeam,nf,onPlay,alive,onOpen,onEndEvent,season,SEED,evLabel,tierTag,tab,setTab}){
   const [evTab,setEvTab]=useState("results");
@@ -229,7 +229,7 @@ export function SwissStandings({t,myTeam,SEED}){
         return(
         <div key={team} style={{display:"grid",gridTemplateColumns:"28px 1fr auto 90px",gap:6,padding:"9px 14px",alignItems:"center",borderTop:`1px solid ${C.line}`,borderLeft:`3px solid ${me?C.acc:st!=="active"?sc:"transparent"}`,background:me?"rgba(255,92,46,.06)":st==="advanced"?"rgba(61,220,132,.04)":st==="eliminated"?"rgba(255,76,76,.04)":"transparent"}}>
           <span style={{fontFamily:mono,fontSize:12,color:C.faint}}>{i+1}</span>
-          <span style={{fontWeight:me?700:600,fontSize:13,color:me?C.acc:C.ink}}>{team}{me?" ◂":""}</span>
+          <span style={{display:"flex",alignItems:"center",gap:7,fontWeight:me?700:600,fontSize:13,color:me?C.acc:C.ink}}><TeamCrest name={team} size={22}/>{team}{me?" ◂":""}</span>
           <WLSquares w={r.w} l={r.l}/>
           <span style={{fontFamily:mono,fontSize:9,textAlign:"right",color:sc||C.faint}}>{statusLabel[st]||`${r.w}–${r.l}`}</span>
         </div>);
@@ -267,8 +267,9 @@ export function PlayoffBracket({bracket,champion,myTeam,onOpen,SEED}){
                   const won=done&&res?.winnerName===team;
                   const lost=done&&res?.loserName===team;
                   const sc=done?res.seriesScore[side]:null;
-                  return(<div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",background:won?"rgba(61,220,132,.06)":"transparent",borderRadius:4}}>
+                  return(<div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",background:won?"rgba(61,220,132,.06)":"transparent",borderRadius:4,opacity:lost?0.6:1}}>
                     {SEED&&team&&<span style={{fontFamily:mono,fontSize:9,color:C.faint,width:16}}>{SEED[team]||"?"}</span>}
+                    {team&&<TeamCrest name={team} size={20}/>}
                     <span style={{flex:1,fontWeight:won?700:500,fontSize:13,color:!team?C.faint:team===myTeam?C.acc:won?C.ink:C.dim}}>{team||"TBD"}</span>
                     {sc!=null&&<span style={{fontFamily:mono,fontWeight:700,fontSize:14,color:won?C.win:C.faint}}>{sc}</span>}
                   </div>);

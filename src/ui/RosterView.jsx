@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { C, sans, mono } from './theme.js';
 import { playerOvr } from '../engine/player.js';
 import { rosterOf, teamBase } from '../engine/state.js';
-import { Overlay, SL, Intro, Pill, TraitPill, Stat, MiniStat, FormArrow } from './primitives.jsx';
+import { Overlay, SL, Intro, Pill, TraitPill, Stat, MiniStat, FormArrow, TeamCrest } from './primitives.jsx';
 
 function StatRadar({ p }) {
   const CX = 70, CY = 70, R = 54;
@@ -69,7 +69,10 @@ export function RosterView2({state,myTeam,onNegotiate,onChangeRole}){
   return(<div>
     {/* Team overview header */}
     <div style={{background:`linear-gradient(180deg,${C.panel2},${C.panel})`,border:`1px solid ${C.line}`,borderRadius:12,padding:"20px 18px 14px",marginBottom:16,textAlign:"center"}}>
-      <div style={{fontWeight:800,fontSize:20,color:C.acc,letterSpacing:1}}>{myTeam}</div>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:12}}>
+        <TeamCrest name={myTeam} size={44}/>
+        <div style={{fontWeight:800,fontSize:20,color:C.acc,letterSpacing:1}}>{myTeam}</div>
+      </div>
       <div style={{fontFamily:mono,fontSize:11,color:C.dim,marginTop:4}}>Team overview</div>
       <div style={{display:"flex",gap:16,justifyContent:"center",marginTop:12}}>
         <MiniStat label="RATING" value={base.toFixed(1)} color={C.acc}/>
