@@ -209,21 +209,29 @@ export function SwissStandings({t,myTeam,SEED}){
   };
   const statusColor={advanced:C.win,eliminated:C.red,match_adv:C.live,match_eli:C.gold,active:C.dim};
   const statusLabel={advanced:"ADVANCED",eliminated:"ELIMINATED",match_adv:"ADV MATCH",match_eli:"ELI MATCH",active:""};
+  const maxRounds=adv+eli-1;
+  function WLSquares({w,l}){
+    return(
+      <div style={{display:"flex",gap:2,alignItems:"center",justifyContent:"center"}}>
+        {Array.from({length:w},(_,j)=><div key={"w"+j} style={{width:9,height:9,borderRadius:2,background:C.win}}/>)}
+        {Array.from({length:l},(_,j)=><div key={"l"+j} style={{width:9,height:9,borderRadius:2,background:C.red}}/>)}
+        {Array.from({length:Math.max(0,maxRounds-w-l)},(_,j)=><div key={"p"+j} style={{width:9,height:9,borderRadius:2,background:C.panel2,border:`1px solid ${C.line}`}}/>)}
+      </div>
+    );
+  }
   return(<div>
     <div style={{background:C.panel,border:`1px solid ${C.line}`,borderRadius:10,overflow:"hidden"}}>
-      <div style={{display:"grid",gridTemplateColumns:"28px 1fr 60px 40px 40px 90px",gap:6,padding:"8px 14px",fontFamily:mono,fontSize:10,color:C.faint,letterSpacing:1}}>
-        <span>#</span><span>TEAM</span><span style={{textAlign:"center"}}>W–L</span><span style={{textAlign:"center"}}>W</span><span style={{textAlign:"center"}}>L</span><span style={{textAlign:"right"}}>STATUS</span>
+      <div style={{display:"grid",gridTemplateColumns:"28px 1fr auto 90px",gap:6,padding:"8px 14px",fontFamily:mono,fontSize:10,color:C.faint,letterSpacing:1}}>
+        <span>#</span><span>TEAM</span><span style={{textAlign:"center"}}>RECORD</span><span style={{textAlign:"right"}}>STATUS</span>
       </div>
       {teams.map((team,i)=>{
         const r=swiss.records[team];const me=team===myTeam;const st=statusOf(team);const sc=statusColor[st];
         return(
-        <div key={team} style={{display:"grid",gridTemplateColumns:"28px 1fr 60px 40px 40px 90px",gap:6,padding:"9px 14px",alignItems:"center",borderTop:`1px solid ${C.line}`,borderLeft:`3px solid ${me?C.acc:st!=="active"?sc:"transparent"}`,background:me?"rgba(255,92,46,.06)":st==="advanced"?"rgba(61,220,132,.04)":st==="eliminated"?"rgba(255,76,76,.04)":"transparent"}}>
+        <div key={team} style={{display:"grid",gridTemplateColumns:"28px 1fr auto 90px",gap:6,padding:"9px 14px",alignItems:"center",borderTop:`1px solid ${C.line}`,borderLeft:`3px solid ${me?C.acc:st!=="active"?sc:"transparent"}`,background:me?"rgba(255,92,46,.06)":st==="advanced"?"rgba(61,220,132,.04)":st==="eliminated"?"rgba(255,76,76,.04)":"transparent"}}>
           <span style={{fontFamily:mono,fontSize:12,color:C.faint}}>{i+1}</span>
           <span style={{fontWeight:me?700:600,fontSize:13,color:me?C.acc:C.ink}}>{team}{me?" ◂":""}</span>
-          <span style={{fontFamily:mono,fontWeight:700,fontSize:14,textAlign:"center",color:sc||C.ink}}>{r.w}–{r.l}</span>
-          <span style={{fontFamily:mono,fontSize:12,textAlign:"center",color:C.win}}>{r.w}</span>
-          <span style={{fontFamily:mono,fontSize:12,textAlign:"center",color:C.red}}>{r.l}</span>
-          <span style={{fontFamily:mono,fontSize:9,textAlign:"right",color:sc||C.faint}}>{statusLabel[st]}</span>
+          <WLSquares w={r.w} l={r.l}/>
+          <span style={{fontFamily:mono,fontSize:9,textAlign:"right",color:sc||C.faint}}>{statusLabel[st]||`${r.w}–${r.l}`}</span>
         </div>);
       })}
     </div>
