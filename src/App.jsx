@@ -38,6 +38,8 @@ import { MatchModal } from './ui/MatchModal.jsx';
 import { MatchReveal } from './ui/MatchReveal.jsx';
 import { EventDebrief } from './ui/EventDebrief.jsx';
 import { DynamicsView } from './ui/DynamicsView.jsx';
+import { TacticsView } from './ui/TacticsView.jsx';
+import { BoardReview } from './ui/BoardReview.jsx';
 
 export default function App(){
   const [phase,setPhase]=useState("loading"); // loading | saves | draft | season
@@ -133,12 +135,38 @@ export default function App(){
     });
   },[]);
 
+  function genBoardObjectives(rank){
+    const base=[{id:"stay_solvent",label:"Maintain positive budget",met:false,reward:50}];
+    if(rank<=3) return[...base,
+      {id:"win_major",label:"Win a Major championship",met:false,reward:400},
+      {id:"stay_top5",label:"Finish ranked top 5",met:false,reward:200}];
+    if(rank<=8) return[...base,
+      {id:"major_playoffs",label:"Reach a Major playoff stage",met:false,reward:250},
+      {id:"stay_top10",label:"Finish ranked top 10",met:false,reward:150}];
+    if(rank<=16) return[...base,
+      {id:"major_qualify",label:"Qualify for a Major",met:false,reward:200},
+      {id:"stay_top16",label:"Maintain top 16 ranking",met:false,reward:100}];
+    return[...base,
+      {id:"win_event",label:"Win any tournament",met:false,reward:150},
+      {id:"break_top16",label:"Break into top 16",met:false,reward:100}];
+  }
+
+  function setTactic(style){
+    if(!season.simState.tactics) season.simState.tactics={};
+    season.simState.tactics[myTeam]=style;
+    season.weekLog.push({week:season.week,activity:"news",event:`[>] Tactical style set to: ${style}`});
+    setSeason({...season});redraw();
+  }
+
   function onDraftComplete(teamName,simState,remaining){
     setMyTeam(teamName);
     simState.chemistry[teamName]=55;
     if(!simState.mapProf[teamName]) simState.mapProf[teamName]=profileFor(teamName);
     simState.rankings[teamName]=200;
-    const s={simState,budget:remaining,eventNum:1,week:1,year:2026,history:[],weekLog:[],phase:"calendar",facilities:{},yearHistory:[],pendingEvent:null,pendingDebrief:null,pendingContracts:[]};
+    if(!simState.tactics) simState.tactics={};
+    simState.tactics[teamName]=null;
+    const boardObjectives=genBoardObjectives(30); // new team starts unranked
+    const s={simState,budget:remaining,boardObjectives,boardSummary:null,eventNum:1,week:1,year:2026,history:[],weekLog:[],phase:"calendar",facilities:{},yearHistory:[],pendingEvent:null,pendingDebrief:null,pendingContracts:[],sponsorships:[],scoutedTeams:{}};
     setSeason(s);setPhase("season");setTab("calendar");
     // Auto-save after draft
     setTimeout(()=>{const data=buildSaveData();if(data){const cur=[...saves];cur[0]={...data,season:s,simState};writeSaves(cur);}},100);
@@ -327,6 +355,19 @@ export default function App(){
         ]};
     }
 
+    // Evaluate event-based board objectives
+    if(season.boardObjectives){
+      const isWin=place===1;
+      const isMajorEv=t.isMajor;
+      season.boardObjectives.forEach(o=>{
+        if(o.met)return;
+        if(o.id==="win_event"&&isWin) o.met=true;
+        if(o.id==="win_major"&&isWin&&isMajorEv) o.met=true;
+        if(o.id==="major_playoffs"&&isMajorEv&&place<=8) o.met=true;
+        if(o.id==="major_qualify"&&isMajorEv) o.met=true;
+      });
+    }
+
     season.phase="calendar";season.currentEvent=null;
     setSeason({...season});setT(null);setTab("calendar");
     autoSave();
@@ -511,6 +552,20 @@ export default function App(){
         setTab("hub");
       }
     } else if(season.week>SEASON_WEEKS){
+      const finalRank=(()=>{const r=getRankedTeams(season.simState,myTeam);return r.findIndex(x=>x.team===myTeam)+1;})();
+      if(season.boardObjectives){
+        season.boardObjectives.forEach(o=>{
+          if(o.met)return;
+          if(o.id==="stay_solvent"&&season.budget>0) o.met=true;
+          if(o.id==="stay_top5"&&finalRank<=5) o.met=true;
+          if(o.id==="stay_top10"&&finalRank<=10) o.met=true;
+          if(o.id==="stay_top16"&&finalRank<=16) o.met=true;
+          if(o.id==="break_top16"&&finalRank<=16) o.met=true;
+        });
+      }
+      const totalReward=(season.boardObjectives||[]).filter(o=>o.met).reduce((s,o)=>s+(o.reward||0),0);
+      const carryover=Math.max(0,Math.round(season.budget*0.5));
+      season.boardSummary={finalRank,totalReward,carryover,oldBudget:season.budget,newBudget:400+totalReward+carryover};
       season.phase="done";setSeason({...season});setTab("season");
     } else {
       setSeason({...season});redraw();
@@ -655,14 +710,17 @@ export default function App(){
   function startNewYear(){
     // Year-end: save year summary, reset calendar, age players, generate rookies, decay rankings
     const yr=season.year||2026;
+    const endRank=season.boardSummary?.finalRank||(()=>{const r=getRankedTeams(season.simState,myTeam);return r.findIndex(x=>x.team===myTeam)+1;})();
     season.yearHistory.push({
       year:yr,
       events:season.history.length,
       budgetEnd:season.budget,
-      rank:(()=>{const r=getRankedTeams(season.simState,myTeam);return r.findIndex(x=>x.team===myTeam)+1;})(),
+      rank:endRank,
       trophies:season.history.filter(h=>h.place===1).length,
       roster:rosterOf(season.simState,myTeam).map(p=>p.name),
     });
+    // Apply board budget (carryover + rewards + base allocation)
+    season.budget=season.boardSummary?.newBudget??Math.max(400,400+Math.max(0,Math.round(season.budget*0.5)));
     // Age all players +1
     season.simState.players.forEach(p=>{p.age++;});
     // Generate 5-8 rookies (young talents entering FA pool)
@@ -686,6 +744,10 @@ export default function App(){
     tickContracts(season.simState,myTeam);
     // AI roster moves in off-season
     const moves=aiRosterMoves(season.simState,myTeam);
+    // Generate new board objectives based on post-decay rank
+    const newRank=(()=>{const r=getRankedTeams(season.simState,myTeam);return r.findIndex(x=>x.team===myTeam)+1;})();
+    season.boardObjectives=genBoardObjectives(newRank);
+    season.boardSummary=null;
     // Reset season but keep everything else
     const newYear=yr+1;
     season.year=newYear;season.week=1;season.eventNum=1;season.history=[];
@@ -912,41 +974,18 @@ export default function App(){
         {tab==="rankings"&&<RankingsView state={season.simState} myTeam={myTeam}/>}
         {tab==="rivals"&&<RivalryView state={season.simState} myTeam={myTeam}/>}
         {tab==="dynamics"&&<DynamicsView season={season} myTeam={myTeam}/>}
+        {tab==="tactics"&&<TacticsView season={season} myTeam={myTeam} onSetStyle={setTactic}/>}
         {tab==="season"&&<SeasonHistory season={season} myTeam={myTeam}/>}
       </main>
       {season.pendingDebrief&&<EventDebrief debrief={season.pendingDebrief} onDismiss={dismissDebrief}/>}
     </div>);
 
-  // Season done
+  // Season done — board review
   if(season?.phase==="done") return(
     <div style={{minHeight:"100vh",background:C.bg,color:C.ink,fontFamily:sans}}>
       <Gstyle/><Header season={season} myTeam={myTeam} onReset={resetAll} onSave={saveToSlot} stageLabel={`${season.year||2026} SEASON COMPLETE`}/>
-      <main style={{maxWidth:1100,margin:"0 auto",padding:"40px 18px 80px",textAlign:"center"}}>
-        <div style={{fontSize:28,fontWeight:800,color:C.gold,marginBottom:4}}>{season.year||2026} SEASON COMPLETE</div>
-        <p style={{color:C.dim,fontSize:14,marginBottom:20}}>You managed {myTeam} through {season.history.length} events.</p>
-        <div style={{display:"flex",gap:16,justifyContent:"center",flexWrap:"wrap",marginBottom:24}}>
-          <MiniStat label="TROPHIES" value={season.history.filter(h=>h.place===1).length} color={C.gold}/>
-          <MiniStat label="WORLD RANK" value={`#${(()=>{const r=getRankedTeams(season.simState,myTeam);return r.findIndex(x=>x.team===myTeam)+1;})()}`} color={C.acc}/>
-          <MiniStat label="BUDGET" value={`$${season.budget}K`} color={season.budget>0?C.gold:C.red}/>
-          <MiniStat label="BEST FINISH" value={Math.min(...season.history.map(h=>h.place))||"—"} color={C.win}/>
-        </div>
-        <SeasonHistory season={season} myTeam={myTeam}/>
-        {season.yearHistory?.length>0&&(<>
-          <div style={{fontFamily:mono,fontSize:11,color:C.dim,letterSpacing:1.5,marginTop:24,marginBottom:8}}>PREVIOUS YEARS</div>
-          <div style={{display:"flex",gap:8,justifyContent:"center",flexWrap:"wrap",marginBottom:16}}>
-            {season.yearHistory.map((yh,i)=>(
-              <div key={i} style={{background:C.panel,border:`1px solid ${C.line}`,borderRadius:8,padding:"10px 14px",textAlign:"center",minWidth:100}}>
-                <div style={{fontWeight:700,fontSize:15,color:C.acc}}>{yh.year}</div>
-                <div style={{fontFamily:mono,fontSize:10,color:C.dim}}>#{yh.rank} ranked · {yh.trophies}[W]</div>
-                <div style={{fontFamily:mono,fontSize:10,color:C.gold}}>${yh.budgetEnd}K</div>
-              </div>
-            ))}
-          </div>
-        </>)}
-        <div style={{display:"flex",gap:12,justifyContent:"center",marginTop:24}}>
-          <button onClick={startNewYear} style={{background:C.acc,color:"#0a0c10",border:"none",borderRadius:10,padding:"16px 36px",fontWeight:800,fontSize:17}}>CONTINUE TO {(season.year||2026)+1} →</button>
-          <button onClick={resetAll} style={{background:C.panel,color:C.dim,border:`1px solid ${C.line}`,borderRadius:10,padding:"16px 24px",fontWeight:700,fontSize:14}}>MAIN MENU</button>
-        </div>
+      <main style={{maxWidth:900,margin:"0 auto",padding:"32px 18px 80px"}}>
+        <BoardReview season={season} myTeam={myTeam} onBeginNewYear={startNewYear} onMenu={resetAll}/>
       </main>
     </div>);
 
