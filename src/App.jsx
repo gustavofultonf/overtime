@@ -222,15 +222,29 @@ export default function App(){
         return;
       }
 
-      const allDone=t.swiss.teams.every(tm=>t.swiss.records[tm].w>=(t.swiss._advanceAt||3)||t.swiss.records[tm].l>=(t.swiss._elimAt||3));
-      if(allDone){
+      const swissComplete=()=>t.swiss.teams.every(tm=>t.swiss.records[tm].w>=(t.swiss._advanceAt||3)||t.swiss.records[tm].l>=(t.swiss._elimAt||3));
+      if(swissComplete()){
         t.stage="playoffs";
         const advancers=t.swiss.advanced.slice(0,t.advanceCount||8);
         t.bracket=seedPlayoff(advancers,3,t.isMajor);
         resolvePlayoffAI(t.bracket,myTeam,t.simState,t.rng);
       } else {
-        if(t.isMajor) swissRound(t.swiss);
-        else swissRoundMini(t.swiss);
+        // Advance the group stage. If the user has already advanced/been knocked out and
+        // has no remaining match, keep simming rounds until the stage resolves — otherwise
+        // the swiss never completes (afterResult only fires when the user plays) and the
+        // bracket never seeds, soft-locking the event.
+        let guard=0;
+        do{
+          if(t.isMajor) swissRound(t.swiss);
+          else swissRoundMini(t.swiss);
+          guard++;
+        }while(guard<30&&!swissComplete()&&!nextSwissFix(t.swiss));
+        if(swissComplete()){
+          t.stage="playoffs";
+          const advancers=t.swiss.advanced.slice(0,t.advanceCount||8);
+          t.bracket=seedPlayoff(advancers,3,t.isMajor);
+          resolvePlayoffAI(t.bracket,myTeam,t.simState,t.rng);
+        }
       }
     } else if(t.stage==="playoffs"&&t.bracket){
       // Check if user was just eliminated from playoffs

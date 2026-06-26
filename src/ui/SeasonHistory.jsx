@@ -14,7 +14,7 @@ export function SeasonHistory({season,myTeam}){
     <Intro text="Your results across all events this season."/>
     <div style={{background:C.panel2,border:`1px solid ${C.line}`,borderRadius:8,padding:"10px 14px",marginBottom:12,display:"flex",gap:16,flexWrap:"wrap"}}>
       <MiniStat label="TOTAL SALARY PAID" value={`${totalSalaryPaid}K`} color={C.red}/>
-      <MiniStat label="TOTAL PRIZE WON" value={`$season.history.reduce((s,h)=>s+h.prize,0)K`} color={C.win}/>
+      <MiniStat label="TOTAL PRIZE WON" value={`$${season.history.reduce((s,h)=>s+h.prize,0)}K`} color={C.win}/>
       <MiniStat label="CURRENT BUDGET" value={`$${season.budget}K`} color={season.budget>0?C.gold:C.red}/>
     </div>
     <div style={{background:C.panel,border:`1px solid ${C.line}`,borderRadius:10,overflow:"hidden"}}>
