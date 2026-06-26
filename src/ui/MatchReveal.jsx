@@ -13,6 +13,56 @@ function computeMomentum(rounds, myTeam) {
   });
 }
 
+function ScoreGraph({ rounds, tA, tB, myTeam }) {
+  if (!rounds || rounds.length === 0) return null;
+  const W = 340, H = 110, PL = 24, PR = 50, PT = 12, PB = 22;
+  const plotW = W - PL - PR, plotH = H - PT - PB;
+  const total = rounds.length;
+  const last = rounds[total - 1];
+  const maxR = Math.max(24, total);
+  const maxScore = Math.max(13, last.scoreA, last.scoreB) + 0.5;
+  const xOf = r => PL + (r / maxR) * plotW;
+  const yOf = s => PT + (1 - s / maxScore) * plotH;
+  const colA = tA === myTeam ? C.win : C.red;
+  const colB = tB === myTeam ? C.win : C.red;
+  const ptsA = [`${xOf(0)},${yOf(0)}`, ...rounds.map((rd, i) => `${xOf(i + 1)},${yOf(rd.scoreA)}`)].join(' ');
+  const ptsB = [`${xOf(0)},${yOf(0)}`, ...rounds.map((rd, i) => `${xOf(i + 1)},${yOf(rd.scoreB)}`)].join(' ');
+  const keyRds = rounds.filter(rd => rd.isAce || rd.isClutch || rd.isEcoUpset);
+  return (
+    <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ display: 'block', overflow: 'visible' }}>
+      {[0, 5, 10, 13].map(s => (
+        <g key={s}>
+          <line x1={PL} x2={W - PR} y1={yOf(s)} y2={yOf(s)} stroke={C.line} strokeWidth={s === 13 ? 1 : 0.5} strokeDasharray={s > 0 ? '3,3' : 'none'} opacity={s === 13 ? 0.7 : 0.4} />
+          <text x={PL - 3} y={yOf(s) + 3} fontSize="7" fill={s === 13 ? C.gold : C.faint} textAnchor="end">{s}</text>
+        </g>
+      ))}
+      <line x1={xOf(12)} x2={xOf(12)} y1={PT} y2={PT + plotH} stroke={C.gold} strokeWidth={0.8} strokeDasharray="2,3" opacity={0.5} />
+      <text x={xOf(12)} y={H - 4} fontSize="7" fill={C.gold + 'aa'} textAnchor="middle">HT</text>
+      {total > 24 && <>
+        <line x1={xOf(24)} x2={xOf(24)} y1={PT} y2={PT + plotH} stroke={C.gold} strokeWidth={1} strokeDasharray="2,3" opacity={0.8} />
+        <text x={xOf(24)} y={H - 4} fontSize="7" fill={C.gold} textAnchor="middle">OT</text>
+      </>}
+      {[5, 10, 15, 20, 24].filter(r => r <= maxR).map(r => (
+        <text key={r} x={xOf(r)} y={H - 4} fontSize="6.5" fill={C.faint + '88'} textAnchor="middle">{r}</text>
+      ))}
+      <polyline points={ptsA} fill="none" stroke={colA} strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round" />
+      <polyline points={ptsB} fill="none" stroke={colB} strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round" />
+      {keyRds.map((rd, i) => {
+        const col = rd.isAce ? C.gold : rd.isClutch ? C.win : C.acc;
+        const winIsA = rd.winner === tA;
+        const [cx, cy] = [xOf(rd.round), yOf(winIsA ? rd.scoreA : rd.scoreB)];
+        return <circle key={i} cx={cx} cy={cy} r={3.5} fill={col} opacity={0.9} />;
+      })}
+      <circle cx={xOf(total)} cy={yOf(last.scoreA)} r={4} fill={colA} />
+      <circle cx={xOf(total)} cy={yOf(last.scoreB)} r={4} fill={colB} />
+      <text x={W - PR + 6} y={yOf(last.scoreA) + 4} fontSize="12" fontWeight="700" fill={colA}>{last.scoreA}</text>
+      <text x={W - PR + 6} y={yOf(last.scoreB) + 4} fontSize="12" fontWeight="700" fill={colB}>{last.scoreB}</text>
+      <text x={W - PR + 6} y={yOf(last.scoreA) - 7} fontSize="7" fill={colA + 'cc'}>{tA.slice(0, 5)}</text>
+      <text x={W - PR + 6} y={yOf(last.scoreB) - 7} fontSize="7" fill={colB + 'cc'}>{tB.slice(0, 5)}</text>
+    </svg>
+  );
+}
+
 const BUY_COLOR = { awp_buy: C.live, full: C.win, force: C.gold, eco: C.red };
 const BUY_LABEL = { awp_buy: 'AWP', full: 'FULL', force: 'FRCE', eco: 'ECO' };
 
@@ -80,6 +130,7 @@ export function MatchReveal({ reveal, myTeam, t, onDone }) {
   const [toast, setToast] = useState(null);
   const [toastVisible, setToastVisible] = useState(false);
   const [flashTeam, setFlashTeam] = useState(null);
+  const [tickerView, setTickerView] = useState('rounds'); // 'rounds' | 'graph'
 
   // mp is a ref to the *current* map result — mutated by re-sims in place
   const mpRef = useRef(null);
@@ -100,6 +151,7 @@ export function MatchReveal({ reveal, myTeam, t, onDone }) {
     setShowTimeout(false);
     setLastInteraction(null);
     setPaused(false);
+    setTickerView('rounds');
   }, [mapIdx]);
 
   // Auto-advance rounds
@@ -498,8 +550,29 @@ export function MatchReveal({ reveal, myTeam, t, onDone }) {
           </div>
         )}
 
-        {/* Economy + round ticker */}
+        {/* Economy + round ticker / score graph */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'center', marginBottom: 10 }}>
+          {/* Tab row */}
+          <div style={{ display: 'flex', gap: 6, marginBottom: 6, alignSelf: 'stretch', justifyContent: 'center' }}>
+            {[['rounds', 'ROUNDS'], ['graph', 'SCORE GRAPH']].map(([v, label]) => (
+              <button key={v} onClick={() => setTickerView(v)} style={{
+                fontFamily: mono, fontSize: 9, letterSpacing: 1, fontWeight: tickerView === v ? 700 : 400,
+                color: tickerView === v ? C.acc : C.faint,
+                background: tickerView === v ? C.acc + '15' : 'transparent',
+                border: `1px solid ${tickerView === v ? C.acc : C.line}`,
+                borderRadius: 5, padding: '3px 10px', cursor: 'pointer',
+              }}>{label}</button>
+            ))}
+          </div>
+
+          {tickerView === 'graph' ? (
+            <div style={{ width: '100%', background: C.panel2, borderRadius: 8, padding: '10px 8px' }}>
+              <ScoreGraph rounds={visibleRounds} tA={tA} tB={tB} myTeam={myTeam} />
+              <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 4, fontFamily: mono, fontSize: 8, color: C.faint }}>
+                <span>● ACE</span><span style={{ color: C.win }}>● CLUTCH</span><span style={{ color: C.acc }}>● ECO UPSET</span>
+              </div>
+            </div>
+          ) : (<>
           {/* Economy legend */}
           <div style={{ display: 'flex', gap: 10, marginBottom: 4 }}>
             {Object.entries(BUY_COLOR).map(([k, col]) => (
@@ -576,6 +649,7 @@ export function MatchReveal({ reveal, myTeam, t, onDone }) {
               </div>
             )}
           </div>
+          </>)}
         </div>
 
         {/* Notable events feed */}
