@@ -1,6 +1,7 @@
 import { MAPS, AI_TEAMS, PLAYERS_INIT } from '../constants/data.js';
 import { SEASON_WEEKS, TUNING } from '../constants/events.js';
-import { playerOvr, marketValue, recomputeRankings } from './utils.js';
+import { playerOvr, marketValue } from './utils.js';
+import { computeValveRankings, prizeForPlace } from './valveRanking.js';
 
 export function initState(eras){
   const activeEras=eras||["current"];
@@ -69,11 +70,25 @@ export function initState(eras){
   [...AI_TEAMS,"FA"].forEach(t=>{mapProf[t]=profileFor(t);});
   const rivalries={};
   const rankings={};
-  // Seed AI teams with fictional prior-season results (2025 Major, decays to 50% by 2026/w1)
-  const rankLog=AI_TEAMS.map((t,i)=>({
-    team:t, rawPts:2000-i*100, week:1, year:2025, tier:"Major", label:"Prior Season"
-  }));
-  recomputeRankings({rankings,rankLog},1,2026);
+
+  // Seed with fictional 2025 Major results so AI teams start differentiated.
+  // Placements roughly follow initial ranking order: top teams placed higher.
+  const priorPrizeTable={1:500,2:300,4:180,8:100,9:50,16:30};
+  const priorPlaces=[1,2,4,4,8,8,8,8,9,9,9,16,16,16,16];
+  const matchLog=[];
+  const prizeLog=[];
+  AI_TEAMS.forEach((t,i)=>{
+    const place=priorPlaces[Math.min(i,priorPlaces.length-1)];
+    prizeLog.push({team:t,amount:prizeForPlace(priorPrizeTable,place),week:41,year:2025,prizePool:500});
+  });
+  // Also seed a prior A-tier for more granularity among mid-tier teams
+  const priorATable={1:200,2:100,4:50,8:30};
+  const priorAPlaces=[1,2,2,4,4,4,4,8,8,8,8,8,8,8,8];
+  AI_TEAMS.forEach((t,i)=>{
+    const place=priorAPlaces[Math.min(i,priorAPlaces.length-1)];
+    prizeLog.push({team:t,amount:prizeForPlace(priorATable,place),week:30,year:2025,prizePool:200});
+  });
+  computeValveRankings({rankings,matchLog,prizeLog,valveBounty:{}},1,2026);
 
   // If current era is not active, AI teams have no players — auto-assign from FA pool
   if(!activeEras.includes("current")){
@@ -105,7 +120,7 @@ export function initState(eras){
     else tactics[team]="Utility";
   });
 
-  return {players,chemistry,stats,career,mapProf,rivalries,rankings,rankLog,coach:null,pendingBonus:null,tactics};
+  return {players,chemistry,stats,career,mapProf,rivalries,rankings,matchLog,prizeLog,valveBounty:{},coach:null,pendingBonus:null,tactics};
 }
 
 export function rosterOf(state,team){return state.players.filter(p=>p.team===team);}

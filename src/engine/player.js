@@ -1,8 +1,9 @@
 import { AI_TEAMS } from '../constants/data.js';
-import { playerOvr, recomputeRankings } from './utils.js';
+import { playerOvr } from './utils.js';
 import { rosterOf, freeAgents } from './state.js';
 
-export { playerOvr, marketValue, draftCost, recomputeRankings } from './utils.js';
+export { playerOvr, marketValue, draftCost } from './utils.js';
+export { addEventToLog, computeValveRankings } from './valveRanking.js';
 
 export function getTeamOrder(myTeam,state){
   const all=[...AI_TEAMS,myTeam];
@@ -14,27 +15,6 @@ export function getTeamOrder(myTeam,state){
   return active;
 }
 export function getSeed(myTeam,state){return Object.fromEntries(getTeamOrder(myTeam,state).map((t,i)=>[t,i+1]));}
-
-// Valve CS2 ranking points by placement (Major = 1.0×, A-tier = 0.5×, B-tier = 0.25×)
-export const VALVE_POINTS={
-  1:3000, 2:2400,
-  3:1800, 4:1800,
-  5:1200, 6:1200, 7:1200, 8:1200,
-  9:700, 10:700, 11:700, 12:700,
-  13:400, 14:400, 15:400, 16:400
-};
-export const VALVE_TIER={Major:1.0, A:0.5, B:0.25};
-
-export function updateRankings(state, placements, tier, currentWeek, currentYear, label){
-  const tierMult=VALVE_TIER[tier]||0.25;
-  if(!state.rankLog) state.rankLog=[];
-  Object.entries(placements).forEach(([team,place])=>{
-    const basePts=VALVE_POINTS[Math.min(place,16)]||200;
-    const rawPts=Math.round(basePts*tierMult);
-    if(rawPts>0) state.rankLog.push({team,rawPts,week:currentWeek||1,year:currentYear||2026,tier,label:label||tier});
-  });
-  recomputeRankings(state, currentWeek||1, currentYear||2026);
-}
 
 export function getRankedTeams(state,myTeam){
   const all=[...AI_TEAMS,myTeam];
