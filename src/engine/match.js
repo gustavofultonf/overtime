@@ -1,22 +1,29 @@
 import { MAPS } from '../constants/data.js';
 import { ACTIVITIES, RANDOM_EVENTS } from '../constants/events.js';
 import { playerOvr } from './utils.js';
-import { rosterOf, getMapProf, nervesModifier, isRivalMatch, recordMatch, autoVeto, mapRating } from './state.js';
+import { rosterOf, getMapProf, nervesModifier, isRivalMatch, recordMatch, autoVeto, mapRating, styleModifier } from './state.js';
 
 export function resolveMap(state,map,A,B,ctx,rng,startFrom=null){
   // ── Round-by-round CS economy engine ──
   // startFrom: {scoreA,scoreB,moneyA,moneyB,lossStreakA,lossStreakB,tiltA,tiltB,side,startRound,strModA,strModB}
   // When provided, re-simulates from that mid-match state without updating stats (for interactive halftime/timeout)
   const rA=rosterOf(state,A), rB=rosterOf(state,B);
-  const strA=mapRating(state,A,map)+nervesModifier(state,A,B,ctx)+(ctx.decider&&!startFrom?(rng()-0.5)*3:0)+(startFrom?.strModA||0);
-  const strB=mapRating(state,B,map)-nervesModifier(state,A,B,ctx)+(ctx.decider&&!startFrom?(rng()-0.5)*3:0)+(startFrom?.strModB||0);
   const rival=isRivalMatch(state,A,B);
 
   // ── IGL tactical influence ──
   const iglOf=(t)=>{const r=rosterOf(state,t);return r.length?r.reduce((b,p)=>p.igl>b.igl?p:b,r[0]):null;};
   const iglA=iglOf(A),iglB=iglOf(B);
-  const iglModA=iglA?(iglA.igl-65)/900:0; // ±0.037 for elite vs poor IGL
-  const iglModB=iglB?(iglB.igl-65)/900:0;
+  let iglModA=iglA?(iglA.igl-65)/900:0;
+  let iglModB=iglB?(iglB.igl-65)/900:0;
+
+  // ── Tactical style ──
+  const tacA=state.tactics?.[A]||null;
+  const tacB=state.tactics?.[B]||null;
+  if(tacA==="Structured") iglModA*=1.5; // Structured amplifies IGL leadership
+  if(tacB==="Structured") iglModB*=1.5;
+  const styleMod=styleModifier(state,A,B);
+  const strA=mapRating(state,A,map)+nervesModifier(state,A,B,ctx)+(ctx.decider&&!startFrom?(rng()-0.5)*3:0)+(startFrom?.strModA||0)+styleMod;
+  const strB=mapRating(state,B,map)-nervesModifier(state,A,B,ctx)+(ctx.decider&&!startFrom?(rng()-0.5)*3:0)+(startFrom?.strModB||0)-styleMod;
 
   // ── Tilt tracking (composure stat counters tilt) ──
   const tilt={[A]:startFrom?.tiltA??0,[B]:startFrom?.tiltB??0};
@@ -46,9 +53,11 @@ export function resolveMap(state,map,A,B,ctx,rng,startFrom=null){
     const staminaMod=(p.stamina||70)/100; // high stamina = less fatigue impact
     const fatigueNoise=p.fatigue>70?(p.fatigue-70)*0.15*(1-staminaMod*0.5):0;
     const spread=30*(1-p.consistency/100)+fatigueNoise;
-    const noise=(rng()-0.5)*2*spread;
-    const moraleMod=((p.morale??60)-60)/40; // ±1 at extremes (20 or 100 morale)
-    const base=(p.aim+p.gameSense)/2+p.form+moraleMod;
+    const spreadMult=state.tactics?.[team]==="Aggressive"?1.3:1; // Aggressive = higher variance
+    const noise=(rng()-0.5)*2*spread*spreadMult;
+    const moraleMod=((p.morale??60)-60)/40;
+    const profBonus=state.tactics?.[team]==="Utility"?(getMapProf(state,team)[map]||50)/250:0; // Utility amplifies map knowledge
+    const base=(p.aim+p.gameSense)/2+p.form+moraleMod+profBonus;
     return {name:p.name,perf:base+noise,traits:p.traits,team,aim:p.aim,role:p.role,
       rifle:p.rifle||p.aim,pistol:p.pistol||60,awp:p.awp||50,clutch:p.clutch||50,
       entry:p.entry||60,composure:p.composure||p.mentality,experience:p.experience||50,stamina:p.stamina||60};
@@ -132,8 +141,8 @@ export function resolveMap(state,map,A,B,ctx,rng,startFrom=null){
     pA=pA-tiltPenA+tiltPenB;
     if(perfA[0].perf>=82&&rng()<(perfA[0].perf-75)/120) pA=Math.min(0.95,pA+0.08);
     if(perfB[0].perf>=82&&rng()<(perfB[0].perf-75)/120) pA=Math.max(0.05,pA-0.08);
-    if(btA==="awp_buy"){const aw=awperOf(A);if(aw.awp>=85)pA=Math.min(0.95,pA+(aw.awp-75)/400);}
-    if(btB==="awp_buy"){const aw=awperOf(B);if(aw.awp>=85)pA=Math.max(0.05,pA-(aw.awp-75)/400);}
+    if(btA==="awp_buy"){const aw=awperOf(A);const th=tacA==="AWP-Dependent"?80:85;const m=tacA==="AWP-Dependent"?1.6:1;if(aw.awp>=th)pA=Math.min(0.95,pA+(aw.awp-75)/400*m);}
+    if(btB==="awp_buy"){const aw=awperOf(B);const th=tacB==="AWP-Dependent"?80:85;const m=tacB==="AWP-Dependent"?1.6:1;if(aw.awp>=th)pA=Math.max(0.05,pA-(aw.awp-75)/400*m);}
     pA=Math.max(0.05,Math.min(0.95,pA));
 
     const aWins=rng()<pA;

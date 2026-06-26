@@ -88,7 +88,20 @@ export function initState(eras){
     }
   }
 
-  return {players,chemistry,stats,career,mapProf,rivalries,rankings,coach:null,pendingBonus:null};
+  // Auto-assign AI team tactical styles from roster composition
+  const tactics={};
+  AI_TEAMS.forEach(team=>{
+    const r=players.filter(p=>p.team===team);
+    const hasEliteAWP=r.some(p=>p.role==="AWP"&&(p.awp||50)>=85);
+    const hasEliteIGL=r.some(p=>p.igl>=88);
+    const highAimEntries=r.filter(p=>p.role==="Entry"&&p.aim>=88).length;
+    if(hasEliteAWP&&!hasEliteIGL) tactics[team]="AWP-Dependent";
+    else if(hasEliteIGL) tactics[team]="Structured";
+    else if(highAimEntries>=2) tactics[team]="Aggressive";
+    else tactics[team]="Utility";
+  });
+
+  return {players,chemistry,stats,career,mapProf,rivalries,rankings,coach:null,pendingBonus:null,tactics};
 }
 
 export function rosterOf(state,team){return state.players.filter(p=>p.team===team);}
@@ -152,6 +165,17 @@ export function nervesModifier(state,A,B,ctx){
   mod+=(expA-expB)*pressure*0.3;
   if(isRivalMatch(state,A,B)) mod+=(Math.random()-0.5)*3;
   return mod;
+}
+
+// ── Tactical styles ──────────────────────────────────────────────────
+// Matchup cycle: Aggressive → beats Utility → AWP-Dependent → Structured → Aggressive
+const STYLE_BEATS={"Aggressive":"Utility","Utility":"AWP-Dependent","AWP-Dependent":"Structured","Structured":"Aggressive"};
+export function styleModifier(state,A,B){
+  const tA=state.tactics?.[A]||null,tB=state.tactics?.[B]||null;
+  if(!tA||!tB||tA===tB) return 0;
+  if(STYLE_BEATS[tA]===tB) return 4;  // ~3% win-rate swing via skillEdge
+  if(STYLE_BEATS[tB]===tA) return -4;
+  return 0;
 }
 
 // ── Team Dynamics ────────────────────────────────────────────────────
