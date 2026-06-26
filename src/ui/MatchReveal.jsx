@@ -76,6 +76,11 @@ export function MatchReveal({ reveal, myTeam, t, onDone }) {
   const [lastInteraction, setLastInteraction] = useState(null);
   const [paused, setPaused] = useState(false);
 
+  // Visual feedback state
+  const [toast, setToast] = useState(null);
+  const [toastVisible, setToastVisible] = useState(false);
+  const [flashTeam, setFlashTeam] = useState(null);
+
   // mp is a ref to the *current* map result — mutated by re-sims in place
   const mpRef = useRef(null);
   mpRef.current = res.maps[mapIdx];
@@ -130,6 +135,32 @@ export function MatchReveal({ reveal, myTeam, t, onDone }) {
     const timer = setTimeout(() => setRoundIdx(i => i + 1), speed);
     return () => clearTimeout(timer);
   }, [roundIdx, mapIdx, done, mp, speed, paused, showHalftime, showTimeout, halftimeDone, timeoutUsed, t, isMyMap, myTeamInMap]);
+
+  // Toast: trigger on notable rounds
+  useEffect(() => {
+    if (roundIdx < 1 || !mp) return;
+    const rd = mp.rounds[roundIdx - 1];
+    if (!rd) return;
+    let t = null;
+    if (rd.isAce)      t = { icon: '★', label: 'ACE!',       sub: rd.narrative, color: C.gold };
+    else if (rd.isClutch)    t = { icon: '⚡', label: 'CLUTCH!',    sub: rd.narrative, color: C.win };
+    else if (rd.isEcoUpset) t = { icon: '$', label: 'ECO UPSET!', sub: rd.narrative, color: C.acc };
+    if (t) {
+      setToast(t); setToastVisible(true);
+      const timer = setTimeout(() => setToastVisible(false), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [roundIdx, mp]);
+
+  // Flash: briefly highlight the team that just scored
+  useEffect(() => {
+    if (roundIdx < 1 || !mp) return;
+    const rd = mp.rounds[roundIdx - 1];
+    if (!rd) return;
+    setFlashTeam(rd.winner);
+    const timer = setTimeout(() => setFlashTeam(null), 500);
+    return () => clearTimeout(timer);
+  }, [roundIdx, mp]);
 
   const visibleRounds = mp ? mp.rounds.slice(0, roundIdx) : [];
   const curScore = visibleRounds.length > 0 ? visibleRounds[visibleRounds.length - 1] : { scoreA: 0, scoreB: 0 };
@@ -376,17 +407,51 @@ export function MatchReveal({ reveal, myTeam, t, onDone }) {
         </div>
 
         {/* Scoreboard */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 20, marginBottom: 14, padding: '14px 0' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 20, marginBottom: 4, padding: '14px 0 10px' }}>
           <div style={{ textAlign: 'right', flex: 1 }}>
             <div style={{ fontWeight: 800, fontSize: 18, color: tA === myTeam ? C.acc : C.ink }}>{tA}</div>
           </div>
-          <div style={{ fontFamily: mono, fontWeight: 800, fontSize: 42, color: C.ink, minWidth: 100, textAlign: 'center', letterSpacing: 4 }}>
-            {curScore.scoreA} <span style={{ color: C.faint, fontSize: 24 }}>:</span> {curScore.scoreB}
+          <div style={{ fontFamily: mono, fontWeight: 800, fontSize: 42, minWidth: 100, textAlign: 'center', letterSpacing: 4 }}>
+            <span style={{ color: flashTeam === tA ? C.gold : C.ink, transition: 'color 0.25s ease' }}>{curScore.scoreA}</span>
+            <span style={{ color: C.faint, fontSize: 24 }}> : </span>
+            <span style={{ color: flashTeam === tB ? C.gold : C.ink, transition: 'color 0.25s ease' }}>{curScore.scoreB}</span>
           </div>
           <div style={{ textAlign: 'left', flex: 1 }}>
             <div style={{ fontWeight: 800, fontSize: 18, color: tB === myTeam ? C.acc : C.ink }}>{tB}</div>
           </div>
         </div>
+        {/* Score split bar */}
+        {(() => {
+          const total = curScore.scoreA + curScore.scoreB;
+          const pct = total > 0 ? (curScore.scoreA / total) * 100 : 50;
+          const colA = tA === myTeam ? C.win : C.red;
+          const colB = tB === myTeam ? C.win : C.red;
+          return (
+            <div style={{ height: 5, borderRadius: 3, overflow: 'hidden', marginBottom: 12, display: 'flex', background: C.panel2 }}>
+              <div style={{ width: pct + '%', background: colA, transition: 'width 0.4s ease', borderRadius: '3px 0 0 3px' }} />
+              <div style={{ flex: 1, background: colB, borderRadius: '0 3px 3px 0' }} />
+            </div>
+          );
+        })()}
+
+        {/* Event toast */}
+        {toast && (
+          <div style={{
+            opacity: toastVisible ? 1 : 0,
+            transition: 'opacity 0.35s ease',
+            background: `${toast.color}22`,
+            border: `2px solid ${toast.color}`,
+            borderRadius: 10, padding: '10px 18px', marginBottom: 10,
+            display: 'flex', alignItems: 'center', gap: 12,
+            pointerEvents: 'none',
+          }}>
+            <span style={{ fontSize: 22, lineHeight: 1 }}>{toast.icon}</span>
+            <div>
+              <div style={{ fontFamily: mono, fontWeight: 800, fontSize: 15, color: toast.color, letterSpacing: 2 }}>{toast.label}</div>
+              <div style={{ fontFamily: mono, fontSize: 10, color: C.dim, marginTop: 2 }}>{toast.sub}</div>
+            </div>
+          </div>
+        )}
 
         {/* OT / match point banners */}
         {inOT && (
@@ -474,6 +539,14 @@ export function MatchReveal({ reveal, myTeam, t, onDone }) {
                     background: isOTRound ? `${C.gold}0a` : 'transparent',
                     borderRadius: 3, padding: '1px',
                   }}>
+                    {/* Pistol / special badge (top) */}
+                    {(rd.round === 1 || rd.round === 13) ? (
+                      <div style={{ width: 34, height: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: mono, fontSize: 7, fontWeight: 800, color: C.gold }}>P</div>
+                    ) : (rd.isAce || rd.isClutch || rd.isEcoUpset) ? (
+                      <div style={{ width: 34, height: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9 }}>
+                        {rd.isAce ? <span style={{ color: C.gold }}>★</span> : rd.isClutch ? <span style={{ color: C.win }}>⚡</span> : <span style={{ color: C.acc }}>$</span>}
+                      </div>
+                    ) : null}
                     {/* Team A buy */}
                     <EconBar buy={rd.buyA} />
                     {/* Result arrow */}
