@@ -4,6 +4,42 @@ import { playerOvr } from '../engine/player.js';
 import { rosterOf, teamBase } from '../engine/state.js';
 import { Overlay, SL, Intro, Pill, TraitPill, Stat, MiniStat, FormArrow } from './primitives.jsx';
 
+function StatRadar({ p }) {
+  const CX = 70, CY = 70, R = 54;
+  const stats = [
+    { label: 'AIM',    v: p.aim || 0 },
+    { label: 'RIFLE',  v: p.rifle || 0 },
+    { label: 'CLUTCH', v: p.clutch || 0 },
+    { label: 'EXP',    v: p.experience || 50 },
+    { label: 'COMP',   v: p.composure || p.mentality || 60 },
+    { label: 'SENSE',  v: p.gameSense || 0 },
+  ];
+  const n = stats.length;
+  const angle = i => (i / n) * 2 * Math.PI - Math.PI / 2;
+  const pt = (i, r) => [CX + Math.cos(angle(i)) * r, CY + Math.sin(angle(i)) * r];
+  const ringPts = r => Array.from({ length: n }, (_, i) => pt(i, r * R).join(',')).join(' ');
+  const dataPts = stats.map((s, i) => pt(i, (s.v / 100) * R).join(',')).join(' ');
+  return (
+    <svg width={CX * 2} height={CY * 2} style={{ overflow: 'visible', display: 'block' }}>
+      {[0.25, 0.5, 0.75, 1.0].map(r => (
+        <polygon key={r} points={ringPts(r)} fill={r === 1 ? C.acc + '08' : 'none'} stroke={r === 1 ? C.line : C.line + '88'} strokeWidth={r === 1 ? 1 : 0.5} />
+      ))}
+      {stats.map((_, i) => { const [x, y] = pt(i, R); return <line key={i} x1={CX} y1={CY} x2={x} y2={y} stroke={C.line} strokeWidth={0.5} />; })}
+      <polygon points={dataPts} fill={C.acc + '2a'} stroke={C.acc} strokeWidth={1.5} />
+      {stats.map((s, i) => { const [x, y] = pt(i, (s.v / 100) * R); return <circle key={i} cx={x} cy={y} r={2.5} fill={C.acc} />; })}
+      {stats.map((s, i) => {
+        const [x, y] = pt(i, R + 14);
+        return (
+          <g key={i}>
+            <text x={x} y={y - 4} fontSize="7.5" fill={C.faint} textAnchor="middle" dominantBaseline="middle">{s.label}</text>
+            <text x={x} y={y + 6} fontSize="9" fontWeight="700" fill={s.v >= 90 ? C.acc : s.v >= 75 ? C.win : C.dim} textAnchor="middle" dominantBaseline="middle">{s.v}</text>
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
 function Sparkline({history}){
   if(!history||history.length<2) return null;
   const pts=history.slice(-5);
@@ -197,8 +233,17 @@ export function PlayerProfile({p,state,onClose}){
         <MiniStat label="CONTRACT" value={p.contract} color={p.contract<=1?C.red:C.dim}/>
       </div>
     </div>
-    <StatBars stats={coreStats} label="CORE"/>
-    <StatBars stats={combatStats} label="COMBAT"/>
+    {/* Radar + stat bars side by side */}
+    <div style={{display:"flex",gap:16,marginBottom:4,alignItems:"flex-start",flexWrap:"wrap"}}>
+      <div style={{flexShrink:0}}>
+        <div style={{fontFamily:mono,fontSize:9,color:C.faint,letterSpacing:1,marginBottom:4,textAlign:"center"}}>ATTRIBUTE RADAR</div>
+        <StatRadar p={p}/>
+      </div>
+      <div style={{flex:1,minWidth:180}}>
+        <StatBars stats={coreStats} label="CORE"/>
+        <StatBars stats={combatStats} label="COMBAT"/>
+      </div>
+    </div>
     <StatBars stats={mentalStats} label="MENTAL / PHYSICAL"/>
     <div style={{display:"flex",gap:16,marginBottom:20,flexWrap:"wrap"}}>
       <MiniStat label="FORM" value={p.form>0?"+"+p.form.toFixed(1):p.form.toFixed(1)} color={p.form>3?C.win:p.form<-3?C.red:C.faint}/>
