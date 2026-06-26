@@ -79,6 +79,22 @@ export function resolveMap(state,map,A,B,ctx,rng,startFrom=null){
 
   const BUYMATCH={awp_buy:{awp_buy:.50,full:.55,force:.70,eco:.88},full:{awp_buy:.45,full:.50,force:.65,eco:.85},force:{awp_buy:.30,full:.35,force:.50,eco:.65},eco:{awp_buy:.12,full:.15,force:.35,eco:.50}};
 
+  // Map-specific location flavor for narratives
+  const MAP_LOCS={
+    Mirage:{T:['A ramp','B apps','mid','van','jungle'],CT:['CT','B short','window room','connector','short']},
+    Inferno:{T:['banana','B site','apps','second mid','A main'],CT:['CT','boiler','pit','balcony','arch']},
+    Dust2:{T:['long A','B tunnels','catwalk','short','mid'],CT:['A site','B site','CT','mid doors','cross']},
+    Nuke:{T:['hut','outside','ramp','squeaky'],CT:['upper','lower','heaven','secret']},
+    Overpass:{T:['monster','toilets','B site','A main'],CT:['short','B sandbags','CT','connector']},
+    Anubis:{T:['B site','mid','palace','A site'],CT:['water','B CT','A short','pillar']},
+    Ancient:{T:['A ramp','mid','B','donut'],CT:['CT','pillar','B main','short A']},
+    Vertigo:{T:['ramp','B ramp','mid','A site'],CT:['scaffolding','B CT','A site','stairs']},
+  };
+  function pickLoc(s){
+    const locs=MAP_LOCS[map];if(!locs)return'site';
+    const arr=s==='CT'?locs.CT:locs.T;return arr[Math.floor(rng()*arr.length)];
+  }
+
   const rounds=[];
   let scoreA=startFrom?.scoreA??0;
   let scoreB=startFrom?.scoreB??0;
@@ -170,34 +186,135 @@ export function resolveMap(state,map,A,B,ctx,rng,startFrom=null){
     const isEcoUpset=(btA==="eco"&&(btB==="full"||btB==="awp_buy")&&aWins)||(btB==="eco"&&(btA==="full"||btA==="awp_buy")&&!aWins);
     const isEntryPlay=rng()<((entryPlayer.entry||60)/100)*0.20;
 
-    let narrative="";
     const wBuy=aWins?btA:btB, lBuy=aWins?btB:btA;
+    const winnerIsCT=(winner===A&&side===0)||(winner===B&&side===1);
+    const isPistolRound=roundNum===1||roundNum===13;
+    const isMatchPt=scoreA===12||scoreB===12;
+    const recentStreak=rounds.length>=3&&rounds.slice(-3).every(r=>r.winner===winner);
+    // Track comebacks: team won from 3+ down
+    const prevA=rounds.length?rounds[rounds.length-1].scoreA:0;
+    const prevB=rounds.length?rounds[rounds.length-1].scoreB:0;
+    const deficit=winner===A?prevB-prevA:prevA-prevB;
+    const isComeback=deficit>=3&&rounds.slice(-1)[0]?.winner!==winner;
 
+    let narrative="";
     if(isEcoUpset){
       const bestPistol=[...(aWins?perfA:perfB)].sort((a,b)=>(b.pistol||50)-(a.pistol||50))[0];
       const wpn=rng()<0.4?"Deagle":rng()<0.6?"P250":"USP";
-      narrative=`ECO UPSET! ${bestPistol.name} (${bestPistol.pistol} PST) leads a ${wpn} charge`;
-    } else if(isAce){
-      narrative=`${star.name} ACE! Tears through all five with a ${wBuy==="awp_buy"?"AWP":"rifle"}`;
-    } else if(isClutch){
-      const situation=["1v2","1v3","1v1"][Math.floor(rng()*3)];
-      narrative=`${clutcher.name} (${clutcher.clutch} CLT) wins a ${situation} clutch`;
-    } else if(isEntryPlay){
-      narrative=`${entryPlayer.name} (${entryPlayer.entry} ENT) opens with an entry frag, ${winner} convert`;
-    } else if(wBuy==="awp_buy"&&rng()<0.35){
-      narrative=`${awper.name} (${awper.awp} AWP) gets two picks, ${winner} clean up`;
-    } else if(lBuy==="eco"||lBuy==="force"){
-      if(rng()<0.4) narrative=`${winner} clean up the ${lBuy==="eco"?"eco":"force buy"}`;
-      else narrative=`Sloppy from ${winner} — ${lStar.name} gets two kills but can't close it`;
-    } else {
-      const descs=[
-        `${star.name} opens the round with a key frag, ${winner} trade out to win`,
-        `Textbook execute from ${winner}, ${loser} can't retake`,
-        `${winner} win a scrappy aim duel round, ${star.name} finishes with 3K`,
-        `Post-plant hold from ${winner}, ${lStar.name} falls trying to defuse`,
-        `Mid-round call from ${winner} catches ${loser} rotating late`,
+      const ecoNarr=[
+        `ECO UPSET! ${bestPistol.name} (${bestPistol.pistol} PST) leads a ${wpn} charge`,
+        `${winner} steal a round on force — ${bestPistol.name} goes 3k with the ${wpn}`,
+        `Anti-eco crumbles at ${pickLoc('T')}! ${bestPistol.name} carries the ${wpn} rush`,
       ];
-      narrative=descs[Math.floor(rng()*descs.length)];
+      narrative=ecoNarr[Math.floor(rng()*ecoNarr.length)];
+    } else if(isAce){
+      const aceWpn=wBuy==="awp_buy"?"AWP":rng()<0.5?"AK-47":"M4A4";
+      narrative=`${star.name} ACE! Tears through all five with the ${aceWpn}`;
+    } else if(isClutch){
+      const sits=[
+        `1v2 clutch at ${pickLoc(winnerIsCT?'CT':'T')}`,
+        `1v3 clutch — defies all odds`,
+        `1v2 retake on ${pickLoc('CT')}`,
+        `1v1 showdown — ${clutcher.name} nerves of steel`,
+        `1v2 off the ${pickLoc('T')} plant`,
+        `1v4 miracle — nobody expected this`,
+      ];
+      narrative=`${clutcher.name} (${clutcher.clutch} CLT) wins a ${sits[Math.floor(rng()*sits.length)]}`;
+    } else if(isPistolRound){
+      const pistolNarr=winnerIsCT?[
+        `${winner} take the R${roundNum} pistol — lock down ${pickLoc('CT')} immediately`,
+        `${star.name} wins the pistol duel at ${pickLoc('CT')}, ${winner} go up 1-0`,
+        `Aggressive pistol play from ${winner} catches ${loser} off guard at ${pickLoc('T')}`,
+        `${star.name} two-taps through smoke — ${winner} secure the pistol round`,
+        `${winner} play passive and win the ${pickLoc('CT')} hold — pistol goes their way`,
+      ]:[
+        `${winner} pop the R${roundNum} pistol — break into ${pickLoc('T')} fast`,
+        `${entryPlayer.name} (${entryPlayer.entry} ENT) opens ${pickLoc('T')}, ${winner} take the pistol`,
+        `${winner} rush ${pickLoc('T')} and overwhelm ${loser} in the pistol round`,
+        `${star.name} drops 4 with the USP — ${winner} win the pistol cleanly`,
+        `Deagle peekers from ${winner} catch ${loser} passive — pistol stolen`,
+      ];
+      narrative=pistolNarr[Math.floor(rng()*pistolNarr.length)];
+    } else if(isComeback){
+      const comNarr=[
+        `${winner} finally break through! Round win from ${deficit}-down — momentum shifts`,
+        `${star.name} refuses to let this go — ${winner} claw one back from ${deficit} down`,
+        `${loser} starting to feel the pressure — ${winner} chip away at the deficit`,
+        `${winner} live to fight! ${star.name} single-handedly keeps them in it`,
+      ];
+      narrative=comNarr[Math.floor(rng()*comNarr.length)];
+    } else if(isEntryPlay){
+      const entryNarr=[
+        `${entryPlayer.name} (${entryPlayer.entry} ENT) opens with an entry frag at ${pickLoc('T')}, ${winner} convert`,
+        `Flash into ${pickLoc('T')} — ${entryPlayer.name} makes space, ${winner} pour through`,
+        `${entryPlayer.name} reads the ${pickLoc('CT')} hold perfectly and opens the round`,
+        `${entryPlayer.name} goes in dry and comes out alive at ${pickLoc('T')}, ${winner} follow`,
+        `${entryPlayer.name} pops the first head — ${winner} momentum is unstoppable`,
+      ];
+      narrative=entryNarr[Math.floor(rng()*entryNarr.length)];
+    } else if(isMatchPt&&rng()<0.6){
+      const mpNarr=winnerIsCT?[
+        `${star.name} holds ${pickLoc('CT')} alone at match point — ${winner} one from the map`,
+        `Match point! ${winner} lock down ${pickLoc('CT')}, ${loser} can't break through`,
+        `${star.name} anchors the site on a 1v1 — lights out for ${loser}?`,
+        `Desperate execute from ${loser} at match point — ${winner} hold the line`,
+      ]:[
+        `${entryPlayer.name} forces open ${pickLoc('T')} at match point — ${winner} convert`,
+        `Match point execute from ${winner} — ${loser} have no answer`,
+        `${star.name} clutches it at ${pickLoc('T')} — ${winner} within one round of the map`,
+        `${winner} rush ${pickLoc('T')} at match point, overwhelming in the chaos`,
+      ];
+      narrative=mpNarr[Math.floor(rng()*mpNarr.length)];
+    } else if(recentStreak&&rng()<0.45){
+      const stNarr=[
+        `${winner} on a roll — three straight, ${star.name} at ${pickLoc(winnerIsCT?'CT':'T')}`,
+        `${loser} can't stop the bleed — ${winner} converting every round`,
+        `Three straight for ${winner}, the map is getting away from ${loser}`,
+        `${star.name} keeps rolling — momentum fully in ${winner}'s favour`,
+      ];
+      narrative=stNarr[Math.floor(rng()*stNarr.length)];
+    } else if(wBuy==="awp_buy"&&rng()<0.35){
+      const awpNarr=[
+        `${awper.name} (${awper.awp} AWP) gets two picks, ${winner} clean up`,
+        `${awper.name} peeks ${pickLoc(winnerIsCT?'CT':'T')} and wins the AWP duel`,
+        `${awper.name} holds the angle at ${pickLoc(winnerIsCT?'CT':'T')}, two down — round over`,
+      ];
+      narrative=awpNarr[Math.floor(rng()*awpNarr.length)];
+    } else if(lBuy==="eco"||lBuy==="force"){
+      const fNarr=[
+        `${winner} clean up the ${lBuy==="eco"?"eco":"force buy"}`,
+        `${lStar.name} gets two kills on the ${lBuy==="eco"?"pistols":"force"} but ${winner} hold`,
+        `Scattered ${lBuy==="eco"?"eco":"force buy"} attempt from ${loser} — ${winner} contain it`,
+      ];
+      narrative=fNarr[Math.floor(rng()*fNarr.length)];
+    } else {
+      const ctDescs=[
+        `${star.name} opens with a key frag at ${pickLoc('CT')}, ${winner} trade out to win`,
+        `Textbook CT hold at ${pickLoc('CT')} — ${loser} can't find a way through`,
+        `Information play from ${winner}: they read the push and set up at ${pickLoc('CT')}`,
+        `${star.name} anchors ${pickLoc('CT')}, ${loser}'s execute falls apart`,
+        `Post-plant hold from ${winner} — ${lStar.name} falls trying to defuse`,
+        `${loser} try to retake ${pickLoc('T')} but ${winner} already have it locked`,
+        `${winner} gamble on a rotate to ${pickLoc('CT')} — ${loser} don't adapt in time`,
+        `${star.name} trades the entry fragger — CT side resets and wins the duel`,
+        `${winner} collapse on ${pickLoc('T')}, ${loser} get isolated and picked off`,
+        `Lurk from ${star.name} through ${pickLoc('CT')} — timing catches ${loser} mid-rotate`,
+      ];
+      const tDescs=[
+        `${star.name} opens with a key frag at ${pickLoc('T')}, ${winner} trade out to win`,
+        `Textbook execute into ${pickLoc('T')}, ${loser} can't retake`,
+        `${winner} win a scrappy aim duel — ${star.name} finishes with 3k`,
+        `Mid-round call from ${winner} catches ${loser} rotating late`,
+        `${winner} split ${pickLoc('T')} and overwhelm the CT side`,
+        `${star.name} pops the first frag, ${winner} ride the momentum to the plant`,
+        `${loser} try to hold aggressive but ${winner} utility clears the angle at ${pickLoc('T')}`,
+        `Fake to ${pickLoc('T')} — ${loser} bite, ${winner} go the other way`,
+        `${winner} fast rush ${pickLoc('T')} and overwhelm the setup before CTs rotate`,
+        `${star.name} lurks through ${pickLoc('T')} and cuts off the rotate — ${winner} plant freely`,
+        `Ninja defuse in the chaos — ${winner} win an impossible round`,
+      ];
+      const pool=winnerIsCT?ctDescs:tDescs;
+      narrative=pool[Math.floor(rng()*pool.length)];
     }
     if(!narrative&&tilt[loser]>=4) narrative=`${loser} look tilted — ${lStar.name} can't find their footing`;
     if(!narrative&&rng()<0.22&&(aWins?iglModA>iglModB:iglModB>iglModA)){const wi=aWins?iglA:iglB;if(wi)narrative=`Tactical masterclass from ${wi.name} (${wi.igl} IGL) — ${winner} execute perfectly`;}
@@ -295,7 +412,18 @@ export function recapLine(r){
   const stomp=w-l>=8,close=w-l<=3,ot=w>=14; // regulation max win is 13; OT produces 16+
   const rivalTag=r.rival?" in a heated rivalry clash":"";
   const ecoTag=r.rounds?.filter(x=>x.isEcoUpset).length>=2?" with multiple eco upsets":"";
-  const flow=ot?`${r.map} went to overtime${rivalTag}`:stomp?`${r.winnerName} dominated ${r.map}${rivalTag}`:close?`${r.map} was razor-thin${rivalTag}${ecoTag}`:`${r.winnerName} took ${r.map}${rivalTag}`;
+  // Detect comeback: was winner losing by 4+ at halftime?
+  const winIsA=r.winnerName===r.teamA;
+  const ht=r.rounds?.find(rd=>rd.round===12);
+  const htW=ht?(winIsA?ht.scoreA:ht.scoreB):0;
+  const htL=ht?(winIsA?ht.scoreB:ht.scoreA):0;
+  const wasDown=htL-htW>=4;
+  const pistoled=r.rounds?.filter(x=>x.isEcoUpset).length>=1;
+  const flow=ot?`${r.map} went to overtime${rivalTag}`
+    :wasDown?`${r.winnerName} came back from ${htL}-${htW} down to take ${r.map}`
+    :stomp?`${r.winnerName} dominated ${r.map}${rivalTag}`
+    :close?`${r.map} was razor-thin${rivalTag}${ecoTag}`
+    :`${r.winnerName} took ${r.map}${rivalTag}`;
   const trig=r.triggers?.[0];
   const carryLine=trig?.what==="clutch_carry"?`${r.carry} hit every clutch when it mattered`
     :trig?.what==="supernova"?`${r.carry} went supernova on the server`
