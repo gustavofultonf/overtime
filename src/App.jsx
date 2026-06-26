@@ -7,7 +7,7 @@ import { EVENTS, SEASON_WEEKS, SALARY_WEEKS, ACTIVITIES, COACHES, FACILITIES,
 
 // Engine
 import { playerOvr, draftCost, marketValue, getTeamOrder, getSeed,
-         getRankedTeams, updateRankings, recomputeRankings, aiRosterMoves } from './engine/player.js';
+         getRankedTeams, addEventToLog, computeValveRankings, aiRosterMoves } from './engine/player.js';
 import { initState, rosterOf, freeAgents, teamBase, profileFor,
          getMapProf, isRivalMatch, updateMorale, hierarchyTier } from './engine/state.js';
 import { playSeries, applyActivity, rollRandomEvent } from './engine/match.js';
@@ -331,7 +331,8 @@ export default function App(){
     if(t.swiss){
       t.swiss.eliminated.forEach(tm=>{if(!placements[tm])placements[tm]=t.teams?.length||16;});
     }
-    updateRankings(season.simState,placements,ev.tier||"B",season.week,season.year||2026,ev.label||ev.tier||"B");
+    addEventToLog(season.simState,t,ev,placements,season.week,season.year||2026);
+    computeValveRankings(season.simState,season.week,season.year||2026);
 
     // Check expiring contracts before ticking
     const expiring=roster.filter(p=>p.contract<=1);
@@ -539,7 +540,8 @@ export default function App(){
           (majorT.bracket.sf||[]).forEach(s=>{if(s.done&&s.res)placements[s.res.loserName]=4;});
           (majorT.bracket.qf||[]).forEach(q=>{if(q.done&&q.res)placements[q.res.loserName]=9;});
           majorT.swiss.eliminated.forEach(tm=>{if(!placements[tm])placements[tm]=16;});
-          updateRankings(season.simState,placements,"Major",season.week,season.year||2026,ev.label||"Major");
+          addEventToLog(season.simState,majorT,ev,placements,season.week,season.year||2026);
+          computeValveRankings(season.simState,season.week,season.year||2026);
           decayFormBetweenEvents(season.simState);tickContracts(season.simState,myTeam);
           const moves=aiRosterMoves(season.simState,myTeam);
           moves.forEach(m=>season.weekLog.push({week:season.week,activity:"news",event:m}));
@@ -753,7 +755,7 @@ export default function App(){
       season.simState.career[p.name]={totalMaps:0,totalMvps:0,totalClutches:0,avgRating:0,bestRating:0,eventHistory:[],mapStats:{},origStats:{aim:p.aim,gameSense:p.gameSense,util:p.util,igl:p.igl,mentality:p.mentality,consistency:p.consistency,rifle:p.rifle,pistol:p.pistol,awp:p.awp,clutch:p.clutch,entry:p.entry,stamina:p.stamina,composure:p.composure,experience:p.experience},kills:0};
     }
     // Recompute rankings with Valve time-decay (off-season: prior season now 52+ weeks older)
-    recomputeRankings(season.simState, 1, newYear);
+    computeValveRankings(season.simState, 1, newYear);
     // Expire more contracts
     tickContracts(season.simState,myTeam);
     // AI roster moves in off-season
