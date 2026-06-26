@@ -74,7 +74,8 @@ export function initState(eras){
   // Seed with fictional 2025 Major results so AI teams start differentiated.
   // Placements roughly follow initial ranking order: top teams placed higher.
   const priorPrizeTable={1:500,2:300,4:180,8:100,9:50,16:30};
-  const priorPlaces=[1,2,4,4,8,8,8,8,9,9,9,16,16,16,16];
+  // First 15 = existing circuit teams; next 16 = new entrants that only scraped last-place finishes
+  const priorPlaces=[1,2,4,4,8,8,8,8,9,9,9,16,16,16,16, 16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16];
   const matchLog=[];
   const prizeLog=[];
   AI_TEAMS.forEach((t,i)=>{
@@ -83,7 +84,7 @@ export function initState(eras){
   });
   // Also seed a prior A-tier for more granularity among mid-tier teams
   const priorATable={1:200,2:100,4:50,8:30};
-  const priorAPlaces=[1,2,2,4,4,4,4,8,8,8,8,8,8,8,8];
+  const priorAPlaces=[1,2,2,4,4,4,4,8,8,8,8,8,8,8,8, 8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8];
   AI_TEAMS.forEach((t,i)=>{
     const place=priorAPlaces[Math.min(i,priorAPlaces.length-1)];
     prizeLog.push({team:t,amount:prizeForPlace(priorATable,place),week:30,year:2025,prizePool:200});
