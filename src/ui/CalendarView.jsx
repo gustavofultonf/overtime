@@ -7,6 +7,65 @@ import { rosterOf, getMapProf } from '../engine/state.js';
 import { getRankedTeams } from '../engine/player.js';
 import { SL, Banner, Locked, Intro, Pill, MiniStat, Stat, FormArrow } from './primitives.jsx';
 
+// ── Season activity heatmap (GitHub-contributions style) ──
+const ACT_COLOR={practice:C.live,bootcamp:C.acc,scrim:C.gold,vod:"#9d7cff",scout:"#2ee6c8",rest:C.win,vacation:"#56d364"};
+function SeasonHeatmap({season,myTeam}){
+  const logByWeek={};
+  (season.weekLog||[]).forEach(w=>{logByWeek[w.week]=w;});
+  const cell=(w)=>{
+    const ev=EVENTS.find(e=>e.week===w);
+    const entry=logByWeek[w];
+    const current=w===season.week;
+    const past=w<season.week;
+    let bg=C.panel2,bd=C.line,title=`W${w} · ${weekToLabel(w,season.year)}`;
+    if(ev){
+      bg=ev.tier==="Major"?C.gold:ev.tier==="A"?C.live:C.dim;
+      bd=bg;title+=` · ${ev.label} (${ev.tier})`;
+    } else if(entry?.activity){
+      const col=ACT_COLOR[entry.activity]||C.dim;
+      bg=col+"cc";bd=col;title+=` · ${ACTIVITIES[entry.activity]?.label||entry.activity}${entry.mapChoice?" ("+entry.mapChoice+")":""}`;
+    } else if(past){ bg=C.panel; bd=C.line; title+=" · —"; }
+    if(entry?.event) title+=` · ${entry.event}`;
+    return(
+      <div key={w} title={title} style={{
+        width:"100%",aspectRatio:"1",borderRadius:3,
+        background:current?"transparent":bg,
+        border:`1.5px solid ${current?C.acc:bd}`,
+        boxShadow:current?`0 0 0 1px ${C.acc}`:undefined,
+        display:"flex",alignItems:"center",justifyContent:"center",
+        fontFamily:mono,fontSize:8,fontWeight:700,
+        color:ev?(ev.tier==="Major"?"#0a0c10":"#0a0c10"):current?C.acc:"#0a0c10aa",
+        opacity:(!past&&!current&&!ev)?0.4:1,
+        transition:"all .2s ease",cursor:"default",
+      }}>
+        {ev?(ev.tier==="Major"?"★":ev.tier[0]):current?"▸":entry?.event?"!":""}
+      </div>
+    );
+  };
+  // 52 weeks → rows of 13 (quarters)
+  const weeks=[];for(let w=1;w<=SEASON_WEEKS;w++)weeks.push(w);
+  return(
+    <div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(13,1fr)",gap:4,marginBottom:8}}>
+        {weeks.map(cell)}
+      </div>
+      <div style={{display:"flex",gap:10,flexWrap:"wrap",fontFamily:mono,fontSize:8,color:C.faint,alignItems:"center"}}>
+        <span style={{color:C.gold}}>★ Major</span>
+        <span style={{color:C.live}}>A-Tier</span>
+        <span style={{color:C.dim}}>B-Tier</span>
+        <span style={{color:C.line,borderLeft:`1px solid ${C.line}`,paddingLeft:10}}/>
+        {Object.entries(ACT_COLOR).map(([k,col])=>(
+          <span key={k} style={{display:"flex",alignItems:"center",gap:3}}>
+            <span style={{width:8,height:8,borderRadius:2,background:col,display:"inline-block"}}/>
+            <span style={{color:C.faint}}>{ACTIVITIES[k]?.label||k}</span>
+          </span>
+        ))}
+        <span style={{color:C.acc,marginLeft:"auto"}}>▸ now</span>
+      </div>
+    </div>
+  );
+}
+
 function BudgetForecast({season,myTeam,roster}){
   const {EVENTS:EVS,isSalaryWeek:isPayWeek}=arguments[0]&&{}||{};
   // Compute weekly net: monthly income and salary, averaged per week
@@ -65,6 +124,9 @@ export function CalendarView({season,myTeam,onAdvance,onTransfer,onSim,onHireCoa
 
     {/* Calendar grid */}
     <SL n="TME" t={`${season.year||2026} SEASON`}/>
+    <div style={{marginBottom:16}}>
+      <SeasonHeatmap season={season} myTeam={myTeam}/>
+    </div>
     <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6,marginBottom:16}}>
       {(()=>{
         const months=["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
