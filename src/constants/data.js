@@ -1,5 +1,5 @@
 export const MAPS = ["Mirage","Inferno","Nuke","Ancient","Dust2","Anubis","Train"];
-export const AI_TEAMS = ["Vitality","Spirit","FaZe","G2","MOUZ","NAVI","FURIA","Falcons","Liquid","Astralis","Heroic","Complexity","paiN","3DMAX","GamerLegion"];
+export const AI_TEAMS = ["Vitality","Spirit","FaZe","G2","MOUZ","NAVI","FURIA","Falcons","Liquid","Astralis","Heroic","Complexity","paiN","3DMAX","GamerLegion","Eternal Fire","TheMongolz","NIP","Cloud9","Virtus.pro","ENCE","BIG","Fnatic","OG","MIBR","Imperial","Monte","Lynn Vision","Apeks","SAW","Wildcard"];
 
 export const PLAYERS_INIT = [
   // ── Vitality ──────────────────────────────────────────────────────────
@@ -103,6 +103,118 @@ export const PLAYERS_INIT = [
   {team:"GamerLegion",name:"ztr",role:"Entry",aim:84,gameSense:78,util:70,igl:62,mentality:74,consistency:66,traits:["boom"],salary:10,contract:2,age:21,era:"current"},
   {team:"GamerLegion",name:"spooke",role:"Lurk",aim:80,gameSense:80,util:74,igl:48,mentality:80,consistency:68,traits:[],salary:10,contract:2,age:23,era:"current"},
   {team:"GamerLegion",name:"Kursy",role:"Support",aim:72,gameSense:78,util:86,igl:54,mentality:76,consistency:84,traits:[],salary:10,contract:3,age:24,era:"current"},
+  // ── Eternal Fire ─────────────────────────────────────────────────────
+  // Turkish superteam; woxic is one of the most mechanical AWPs ever but wildly inconsistent
+  {team:"Eternal Fire",name:"imoRR",role:"IGL",aim:73,gameSense:85,util:82,igl:87,mentality:85,consistency:76,traits:["leader"],salary:14,contract:3,age:23,era:"current"},
+  {team:"Eternal Fire",name:"woxic",role:"AWP",aim:96,gameSense:86,util:73,igl:50,mentality:78,consistency:58,traits:["boom","clutch"],salary:17,contract:2,age:25,era:"current"},
+  {team:"Eternal Fire",name:"XANTARES",role:"Entry",aim:95,gameSense:82,util:72,igl:46,mentality:80,consistency:64,traits:["boom"],salary:15,contract:2,age:27,era:"current"},
+  {team:"Eternal Fire",name:"Calyx",role:"Lurk",aim:90,gameSense:86,util:78,igl:52,mentality:83,consistency:74,traits:[],salary:14,contract:2,age:26,era:"current"},
+  {team:"Eternal Fire",name:"paz",role:"Support",aim:75,gameSense:82,util:88,igl:58,mentality:82,consistency:78,traits:[],salary:12,contract:3,age:24,era:"current"},
+  // ── TheMongolz ───────────────────────────────────────────────────────
+  // Rising Mongolian force, genuine Major contenders; buster is an elite entry fragger
+  {team:"TheMongolz",name:"Techno",role:"IGL",aim:76,gameSense:86,util:84,igl:87,mentality:88,consistency:82,traits:["leader"],salary:14,contract:3,age:25,era:"current"},
+  {team:"TheMongolz",name:"Senzu",role:"AWP",aim:91,gameSense:84,util:74,igl:52,mentality:80,consistency:70,traits:["boom"],salary:14,contract:2,age:22,era:"current"},
+  {team:"TheMongolz",name:"buster",role:"Entry",aim:91,gameSense:83,util:79,igl:54,mentality:85,consistency:74,traits:["boom","clutch"],salary:15,contract:3,age:23,era:"current"},
+  {team:"TheMongolz",name:"ark",role:"Entry",aim:87,gameSense:79,util:75,igl:50,mentality:81,consistency:72,traits:["boom"],salary:12,contract:2,age:22,era:"current"},
+  {team:"TheMongolz",name:"mzinho",role:"Lurk",aim:84,gameSense:82,util:77,igl:56,mentality:79,consistency:68,traits:[],salary:12,contract:2,age:25,era:"current"},
+  // ── NIP ──────────────────────────────────────────────────────────────
+  // Swedish legend org; hampus is a crafty IGL, headtr1ck the young AWP hope
+  {team:"NIP",name:"hampus",role:"IGL",aim:76,gameSense:83,util:81,igl:87,mentality:84,consistency:76,traits:["leader"],salary:14,contract:3,age:26,era:"current"},
+  {team:"NIP",name:"headtr1ck",role:"AWP",aim:88,gameSense:80,util:71,igl:49,mentality:77,consistency:68,traits:["boom"],salary:13,contract:2,age:22,era:"current"},
+  {team:"NIP",name:"Plopski",role:"Entry",aim:86,gameSense:79,util:73,igl:50,mentality:76,consistency:76,traits:[],salary:12,contract:2,age:25,era:"current"},
+  {team:"NIP",name:"maxster",role:"Lurk",aim:82,gameSense:77,util:71,igl:46,mentality:73,consistency:64,traits:["boom"],salary:11,contract:2,age:21,era:"current"},
+  {team:"NIP",name:"l00m1natii",role:"Support",aim:72,gameSense:76,util:87,igl:52,mentality:78,consistency:80,traits:[],salary:10,contract:3,age:23,era:"current"},
+  // ── Cloud9 ────────────────────────────────────────────────────────────
+  // CIS/International superteam roster; Ax1Le is a mechanical monster, HObbit veteran
+  {team:"Cloud9",name:"interz",role:"IGL",aim:71,gameSense:83,util:81,igl:87,mentality:83,consistency:72,traits:["leader"],salary:14,contract:3,age:27,era:"current"},
+  {team:"Cloud9",name:"degster",role:"AWP",aim:90,gameSense:83,util:71,igl:47,mentality:77,consistency:64,traits:["boom"],salary:14,contract:2,age:24,era:"current"},
+  {team:"Cloud9",name:"Ax1Le",role:"Entry",aim:91,gameSense:85,util:77,igl:51,mentality:83,consistency:70,traits:["boom","clutch"],salary:16,contract:3,age:25,era:"current"},
+  {team:"Cloud9",name:"HObbit",role:"Lurk",aim:82,gameSense:86,util:81,igl:60,mentality:85,consistency:82,traits:[],salary:14,contract:2,age:28,era:"current"},
+  {team:"Cloud9",name:"n0rb3r7",role:"Support",aim:74,gameSense:78,util:84,igl:54,mentality:76,consistency:70,traits:[],salary:11,contract:2,age:23,era:"current"},
+  // ── Virtus.pro ───────────────────────────────────────────────────────
+  // Russian powerhouse; Jame famous for deliberate time-wasting AWP style
+  {team:"Virtus.pro",name:"fame",role:"IGL",aim:72,gameSense:82,util:80,igl:86,mentality:83,consistency:73,traits:["leader"],salary:13,contract:3,age:25,era:"current"},
+  {team:"Virtus.pro",name:"Jame",role:"AWP",aim:88,gameSense:88,util:75,igl:82,mentality:90,consistency:76,traits:["leader","clutch"],salary:16,contract:2,age:27,era:"current"},
+  {team:"Virtus.pro",name:"FL1T",role:"Entry",aim:89,gameSense:82,util:75,igl:50,mentality:80,consistency:68,traits:["boom"],salary:13,contract:2,age:24,era:"current"},
+  {team:"Virtus.pro",name:"qikert",role:"Lurk",aim:83,gameSense:80,util:74,igl:52,mentality:78,consistency:68,traits:[],salary:11,contract:2,age:25,era:"current"},
+  {team:"Virtus.pro",name:"SANJI",role:"Support",aim:74,gameSense:80,util:86,igl:56,mentality:80,consistency:76,traits:[],salary:12,contract:3,age:26,era:"current"},
+  // ── ENCE ─────────────────────────────────────────────────────────────
+  // Finnish org; Snappi is a veteran IGL, dycha a flashy Polish AWPer
+  {team:"ENCE",name:"Snappi",role:"IGL",aim:74,gameSense:84,util:84,igl:88,mentality:86,consistency:77,traits:["leader"],salary:13,contract:3,age:28,era:"current"},
+  {team:"ENCE",name:"dycha",role:"AWP",aim:90,gameSense:79,util:70,igl:46,mentality:74,consistency:60,traits:["boom"],salary:13,contract:2,age:26,era:"current"},
+  {team:"ENCE",name:"HENU",role:"Entry",aim:85,gameSense:77,util:71,igl:51,mentality:74,consistency:70,traits:["boom"],salary:11,contract:2,age:23,era:"current"},
+  {team:"ENCE",name:"hades",role:"Lurk",aim:82,gameSense:80,util:75,igl:52,mentality:77,consistency:72,traits:[],salary:11,contract:2,age:24,era:"current"},
+  {team:"ENCE",name:"O'Sullivan",role:"Support",aim:73,gameSense:77,util:85,igl:50,mentality:79,consistency:79,traits:[],salary:10,contract:3,age:25,era:"current"},
+  // ── BIG ──────────────────────────────────────────────────────────────
+  // German org; syrson is a streaky rifler/AWPer, faveN solid entry
+  {team:"BIG",name:"prosus",role:"IGL",aim:70,gameSense:81,util:80,igl:86,mentality:81,consistency:72,traits:["leader"],salary:12,contract:3,age:24,era:"current"},
+  {team:"BIG",name:"syrson",role:"AWP",aim:88,gameSense:79,util:68,igl:44,mentality:73,consistency:60,traits:["boom"],salary:12,contract:2,age:27,era:"current"},
+  {team:"BIG",name:"faveN",role:"Entry",aim:83,gameSense:76,util:73,igl:53,mentality:71,consistency:72,traits:[],salary:11,contract:2,age:25,era:"current"},
+  {team:"BIG",name:"k1to",role:"Lurk",aim:79,gameSense:76,util:73,igl:47,mentality:71,consistency:74,traits:[],salary:10,contract:2,age:24,era:"current"},
+  {team:"BIG",name:"krimbo",role:"Support",aim:71,gameSense:75,util:83,igl:50,mentality:77,consistency:78,traits:[],salary:10,contract:3,age:23,era:"current"},
+  // ── Fnatic ───────────────────────────────────────────────────────────
+  // Swedish legend brand rebuilding; FASHR emerging AWP talent
+  {team:"Fnatic",name:"roeJ",role:"IGL",aim:74,gameSense:80,util:82,igl:85,mentality:83,consistency:75,traits:["leader"],salary:12,contract:3,age:27,era:"current"},
+  {team:"Fnatic",name:"FASHR",role:"AWP",aim:86,gameSense:78,util:69,igl:46,mentality:73,consistency:62,traits:["boom"],salary:12,contract:2,age:21,era:"current"},
+  {team:"Fnatic",name:"Sulya",role:"Entry",aim:84,gameSense:75,util:71,igl:50,mentality:74,consistency:70,traits:["boom"],salary:11,contract:2,age:22,era:"current"},
+  {team:"Fnatic",name:"afro",role:"Lurk",aim:78,gameSense:76,util:73,igl:45,mentality:73,consistency:70,traits:[],salary:10,contract:2,age:24,era:"current"},
+  {team:"Fnatic",name:"EC1S",role:"Support",aim:70,gameSense:76,util:84,igl:54,mentality:77,consistency:78,traits:[],salary:10,contract:3,age:26,era:"current"},
+  // ── OG ───────────────────────────────────────────────────────────────
+  // European org with mix of veterans; nexa crafty lurker-fragger
+  {team:"OG",name:"niko",role:"IGL",aim:73,gameSense:80,util:78,igl:85,mentality:80,consistency:71,traits:["leader"],salary:12,contract:3,age:26,era:"current"},
+  {team:"OG",name:"F1KU",role:"AWP",aim:85,gameSense:76,util:67,igl:42,mentality:69,consistency:58,traits:["boom"],salary:11,contract:2,age:22,era:"current"},
+  {team:"OG",name:"nexa",role:"Lurk",aim:78,gameSense:82,util:78,igl:68,mentality:80,consistency:70,traits:[],salary:11,contract:2,age:28,era:"current"},
+  {team:"OG",name:"Maden",role:"Entry",aim:84,gameSense:77,util:73,igl:52,mentality:74,consistency:70,traits:["boom"],salary:11,contract:2,age:25,era:"current"},
+  {team:"OG",name:"Flammie",role:"Support",aim:71,gameSense:74,util:82,igl:48,mentality:72,consistency:76,traits:[],salary:9,contract:3,age:22,era:"current"},
+  // ── MIBR ─────────────────────────────────────────────────────────────
+  // Brazilian legend org; drop and Insani are young guns, exit veteran IGL
+  {team:"MIBR",name:"exit",role:"IGL",aim:68,gameSense:78,util:76,igl:84,mentality:82,consistency:74,traits:["leader"],salary:12,contract:3,age:27,era:"current"},
+  {team:"MIBR",name:"chelo",role:"AWP",aim:85,gameSense:75,util:68,igl:42,mentality:71,consistency:60,traits:["boom"],salary:11,contract:2,age:26,era:"current"},
+  {team:"MIBR",name:"drop",role:"Entry",aim:84,gameSense:73,util:70,igl:48,mentality:73,consistency:68,traits:["boom"],salary:11,contract:2,age:22,era:"current"},
+  {team:"MIBR",name:"Insani",role:"Entry",aim:86,gameSense:73,util:69,igl:46,mentality:71,consistency:64,traits:["boom"],salary:11,contract:2,age:21,era:"current"},
+  {team:"MIBR",name:"brnz4n",role:"Support",aim:70,gameSense:73,util:81,igl:52,mentality:71,consistency:76,traits:[],salary:9,contract:3,age:23,era:"current"},
+  // ── Imperial ─────────────────────────────────────────────────────────
+  // Brazilian squad; felps veteran lurker, HEN1 AWP
+  {team:"Imperial",name:"decenty",role:"IGL",aim:71,gameSense:78,util:76,igl:85,mentality:80,consistency:72,traits:["leader"],salary:12,contract:3,age:25,era:"current"},
+  {team:"Imperial",name:"HEN1",role:"AWP",aim:86,gameSense:77,util:69,igl:44,mentality:72,consistency:62,traits:["boom","clutch"],salary:12,contract:2,age:28,era:"current"},
+  {team:"Imperial",name:"JOTA",role:"Entry",aim:84,gameSense:74,util:71,igl:48,mentality:73,consistency:70,traits:["boom"],salary:11,contract:2,age:24,era:"current"},
+  {team:"Imperial",name:"felps",role:"Lurk",aim:82,gameSense:80,util:76,igl:58,mentality:76,consistency:70,traits:["clutch"],salary:11,contract:2,age:29,era:"current"},
+  {team:"Imperial",name:"boltz",role:"Support",aim:72,gameSense:74,util:80,igl:52,mentality:74,consistency:76,traits:[],salary:9,contract:3,age:28,era:"current"},
+  // ── Monte ─────────────────────────────────────────────────────────────
+  // CIS/Ukrainian team; SELLTER aggressive entry, 255 tactical IGL
+  {team:"Monte",name:"255",role:"IGL",aim:70,gameSense:79,util:78,igl:84,mentality:81,consistency:71,traits:["leader"],salary:11,contract:3,age:24,era:"current"},
+  {team:"Monte",name:"Sdaim",role:"AWP",aim:84,gameSense:77,util:68,igl:44,mentality:74,consistency:62,traits:["boom"],salary:11,contract:2,age:23,era:"current"},
+  {team:"Monte",name:"SELLTER",role:"Entry",aim:85,gameSense:74,util:70,igl:46,mentality:73,consistency:66,traits:["boom"],salary:11,contract:2,age:22,era:"current"},
+  {team:"Monte",name:"relaxa",role:"Lurk",aim:78,gameSense:76,util:72,igl:44,mentality:71,consistency:68,traits:[],salary:9,contract:2,age:23,era:"current"},
+  {team:"Monte",name:"cynic",role:"Support",aim:68,gameSense:74,util:80,igl:50,mentality:72,consistency:74,traits:[],salary:9,contract:3,age:22,era:"current"},
+  // ── Lynn Vision ──────────────────────────────────────────────────────
+  // Chinese team; Westmelon is a star AWPer, EmiliaQAQ mechanical fragger
+  {team:"Lynn Vision",name:"Mercury",role:"IGL",aim:69,gameSense:78,util:77,igl:84,mentality:80,consistency:70,traits:["leader"],salary:10,contract:3,age:25,era:"current"},
+  {team:"Lynn Vision",name:"Westmelon",role:"AWP",aim:88,gameSense:80,util:68,igl:44,mentality:74,consistency:66,traits:["boom"],salary:12,contract:2,age:23,era:"current"},
+  {team:"Lynn Vision",name:"EmiliaQAQ",role:"Entry",aim:86,gameSense:73,util:68,igl:46,mentality:70,consistency:62,traits:["boom"],salary:11,contract:2,age:22,era:"current"},
+  {team:"Lynn Vision",name:"Aaron",role:"Lurk",aim:76,gameSense:74,util:72,igl:48,mentality:70,consistency:68,traits:[],salary:9,contract:2,age:24,era:"current"},
+  {team:"Lynn Vision",name:"reck",role:"Support",aim:67,gameSense:72,util:79,igl:48,mentality:70,consistency:72,traits:[],salary:8,contract:3,age:22,era:"current"},
+  // ── Apeks ─────────────────────────────────────────────────────────────
+  // Norwegian team; Kylar rising AWP star, MICHU veteran IGL
+  {team:"Apeks",name:"MICHU",role:"IGL",aim:72,gameSense:79,util:78,igl:85,mentality:80,consistency:72,traits:["leader"],salary:11,contract:3,age:28,era:"current"},
+  {team:"Apeks",name:"Kylar",role:"AWP",aim:87,gameSense:78,util:68,igl:44,mentality:72,consistency:64,traits:["boom"],salary:12,contract:2,age:22,era:"current"},
+  {team:"Apeks",name:"REDSTAR",role:"Entry",aim:82,gameSense:73,util:68,igl:48,mentality:70,consistency:66,traits:["boom"],salary:10,contract:2,age:23,era:"current"},
+  {team:"Apeks",name:"nerz",role:"Lurk",aim:76,gameSense:74,util:70,igl:44,mentality:69,consistency:64,traits:[],salary:8,contract:2,age:22,era:"current"},
+  {team:"Apeks",name:"Cobra",role:"Support",aim:66,gameSense:72,util:78,igl:48,mentality:70,consistency:70,traits:[],salary:8,contract:3,age:23,era:"current"},
+  // ── SAW ───────────────────────────────────────────────────────────────
+  // Portuguese team punching above weight; ewjerkz mechanical fragger
+  {team:"SAW",name:"arrozdoce",role:"IGL",aim:70,gameSense:78,util:76,igl:84,mentality:79,consistency:72,traits:["leader"],salary:11,contract:3,age:24,era:"current"},
+  {team:"SAW",name:"just1ce",role:"AWP",aim:86,gameSense:77,util:67,igl:42,mentality:71,consistency:62,traits:["boom"],salary:11,contract:2,age:24,era:"current"},
+  {team:"SAW",name:"ewjerkz",role:"Entry",aim:88,gameSense:76,util:71,igl:46,mentality:74,consistency:68,traits:["boom","clutch"],salary:13,contract:2,age:23,era:"current"},
+  {team:"SAW",name:"story",role:"Lurk",aim:76,gameSense:74,util:70,igl:44,mentality:70,consistency:66,traits:[],salary:9,contract:2,age:22,era:"current"},
+  {team:"SAW",name:"MUTiRiS",role:"Support",aim:67,gameSense:72,util:78,igl:48,mentality:70,consistency:68,traits:[],salary:8,contract:3,age:23,era:"current"},
+  // ── Wildcard ──────────────────────────────────────────────────────────
+  // NA/International roster; k0nfig elite mechanical entry, Swisher crafty NA IGL
+  {team:"Wildcard",name:"Swisher",role:"IGL",aim:73,gameSense:79,util:78,igl:84,mentality:80,consistency:72,traits:["leader"],salary:11,contract:3,age:26,era:"current"},
+  {team:"Wildcard",name:"cxzi",role:"AWP",aim:86,gameSense:77,util:67,igl:42,mentality:71,consistency:62,traits:["boom"],salary:11,contract:2,age:23,era:"current"},
+  {team:"Wildcard",name:"k0nfig",role:"Entry",aim:92,gameSense:83,util:74,igl:50,mentality:79,consistency:68,traits:["boom","clutch"],salary:14,contract:2,age:27,era:"current"},
+  {team:"Wildcard",name:"WolfY",role:"Lurk",aim:79,gameSense:77,util:73,igl:48,mentality:72,consistency:70,traits:[],salary:10,contract:2,age:25,era:"current"},
+  {team:"Wildcard",name:"slaxz-",role:"Support",aim:68,gameSense:73,util:80,igl:50,mentality:72,consistency:72,traits:[],salary:9,contract:3,age:24,era:"current"},
   // ── Free Agents (current era) ─────────────────────────────────────────
   {team:"FA",name:"tabseN",role:"IGL",aim:74,gameSense:78,util:76,igl:86,mentality:82,consistency:78,traits:["leader"],salary:12,contract:0,age:29,era:"current"},
   {team:"FA",name:"AcoR",role:"AWP",aim:91,gameSense:79,util:70,igl:45,mentality:72,consistency:62,traits:["boom"],salary:11,contract:0,age:25,era:"current"},
