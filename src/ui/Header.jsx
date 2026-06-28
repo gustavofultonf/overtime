@@ -22,7 +22,7 @@ export function Header({season,myTeam,onReset,stageLabel,onSave}){
 
 export function Tabs({tab,setTab,calMode,miniMode}){
   const items=calMode
-    ?[["calendar","CALENDAR"],["roster","ROSTER"],["dynamics","DYNAMICS"],["tactics","TACTICS"],["market","MARKET"],["maps","MAPS"],["facility","FACILITY"],["rankings","RANKINGS"],["rivals","RIVALS"],["season","SEASON"]]
+    ?[["calendar","CALENDAR"],["roster","ROSTER"],["dynamics","DYNAMICS"],["tactics","TACTICS"],["market","MARKET"],["maps","MAPS"],["facility","FACILITY"],["finance","FINANCE"],["rankings","RANKINGS"],["rivals","RIVALS"],["season","SEASON"]]
     :miniMode
     ?[["hub","HUB"],["bracket","BRACKET"],["roster","ROSTER"],["stats","STATS"],["rivals","RIVALS"],["season","SEASON"]]
     :[["hub","HUB"],["groups","GROUPS"],["bracket","BRACKET"],["roster","ROSTER"],["stats","STATS"],["rivals","RIVALS"],["season","SEASON"]];

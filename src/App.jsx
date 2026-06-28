@@ -17,6 +17,7 @@ import { swissRound, swissRoundMini, swissDone, nextSwissFix, resolveSwissFix,
          seedPlayoff, resolvePlayoffAI, nextPlayoffFix, newTournament, newMiniTournament,
          placementOf, prizeMoney, miniPlacement, miniPrizeMoney,
          decayFormBetweenEvents, tickContracts, bracketElim } from './engine/tournament.js';
+import { computeFinances } from './engine/finance.js';
 
 // UI
 import { C, sans, mono } from './ui/theme.js';
@@ -31,6 +32,7 @@ import { TransferMarket } from './ui/TransferMarket.jsx';
 import { SeasonHistory } from './ui/SeasonHistory.jsx';
 import { MapProfView } from './ui/MapProfView.jsx';
 import { FacilitiesView } from './ui/FacilitiesView.jsx';
+import { FinanceView } from './ui/FinanceView.jsx';
 import { RankingsView } from './ui/RankingsView.jsx';
 import { RivalryView } from './ui/RivalryView.jsx';
 import { VetoOverlay } from './ui/VetoOverlay.jsx';
@@ -114,6 +116,7 @@ export default function App(){
   function loadFromSave(save){
     if(!save)return;
     const s={...save.season,simState:save.simState};
+    if(s.phase==="event") s.phase="calendar";
     setMyTeam(save.myTeam);
     setSeason(s);
     setT(null);
@@ -411,34 +414,16 @@ export default function App(){
 
   function paySalary(week){
     if(!isSalaryWeek(week)) return null;
-    const roster=rosterOf(season.simState,myTeam);
-    const coachPay=season.simState.coach?season.simState.coach.salary:0;
-    const totalSalary=roster.reduce((s,p)=>s+p.salary,0)+coachPay;
-    // Revenue streams
-    const contentTier=season.facilities?.content||0;
-    const contentIncome=[0,15,30][contentTier]||0;
-    // Merch income: scales with world ranking
-    const rank=(()=>{const r=getRankedTeams(season.simState,myTeam);return r.findIndex(x=>x.team===myTeam)+1;})();
-    const merchIncome=rank<=3?40:rank<=6?25:rank<=10?15:rank<=16?8:3;
-    // Org stipend: base income from investors
-    const stipendIncome=rank<=5?30:rank<=10?20:rank<=16?12:5;
-    // Streaming: sum of player popularity (star players = more viewers)
-    const streamIncome=Math.round(roster.reduce((s,p)=>{
-      const pop=playerOvr(p)/20+(season.simState.career?.[p.name]?.totalMvps||0)*0.5;
-      return s+pop;
-    },0));
-    // Sponsorship income
-    const sponsorIncome=(season.sponsorships||[]).reduce((s,sp)=>s+(sp.active?sp.monthly:0),0);
-    const totalIncome=contentIncome+merchIncome+stipendIncome+streamIncome+sponsorIncome;
-    const net=totalIncome-totalSalary;
+    const fin=computeFinances(season,myTeam);
+    const {income}=fin, totalSalary=fin.expenses.salaryTotal, totalIncome=income.total, net=fin.net;
     season.budget+=net;
     const dateStr=weekToLabel(week,season.year);
     const parts=[];
-    if(contentIncome)parts.push(`content ${contentIncome}K`);
-    if(merchIncome)parts.push(`merch ${merchIncome}K`);
-    if(stipendIncome)parts.push(`stipend ${stipendIncome}K`);
-    if(streamIncome)parts.push(`streams ${streamIncome}K`);
-    if(sponsorIncome)parts.push(`sponsors ${sponsorIncome}K`);
+    if(income.content)parts.push(`content ${income.content}K`);
+    if(income.merch)parts.push(`merch ${income.merch}K`);
+    if(income.stipend)parts.push(`stipend ${income.stipend}K`);
+    if(income.streams)parts.push(`streams ${income.streams}K`);
+    if(income.sponsor)parts.push(`sponsors ${income.sponsor}K`);
     const incStr=parts.length?` | Income: ${parts.join(", ")} = ${totalIncome}K`:"";
     return `[$] ${dateStr} — Salary: ${totalSalary}K${incStr} | Net: ${net>=0?"+":""}${net}K${season.budget<0?" ! DEBT!":""}`;
   }
@@ -987,6 +972,7 @@ export default function App(){
         {tab==="market"&&<TransferMarket season={season} myTeam={myTeam} onNegotiateFA={doNegotiateFA} onBuyoutOffer={doBuyoutOffer} onTradeOffer={doTradeOffer} onSellPlayer={doSellPlayer} onRelease={p=>doTransfer("release",p)}/>}
         {tab==="maps"&&<MapProfView state={season.simState} myTeam={myTeam}/>}
         {tab==="facility"&&<FacilitiesView season={season} onUpgrade={upgradeFacility}/>}
+        {tab==="finance"&&<FinanceView season={season} myTeam={myTeam}/>}
         {tab==="rankings"&&<RankingsView state={season.simState} myTeam={myTeam} week={season.week} year={season.year||2026}/>}
         {tab==="rivals"&&<RivalryView state={season.simState} myTeam={myTeam}/>}
         {tab==="dynamics"&&<DynamicsView season={season} myTeam={myTeam}/>}
@@ -1006,6 +992,7 @@ export default function App(){
     </div>);
 
   // Event phase
+  if(!t) return null;
   const isMajor=t.isMajor;
   const nf=nextUserFx();
   const elimInSwiss=t.swiss?.eliminated?.includes(myTeam);

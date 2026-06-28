@@ -61,9 +61,10 @@ export function resolveSwissFix(s,fx){
   const {res}=fx;
   s.records[res.winnerName].w++;s.records[res.loserName].l++;
   s.records[res.winnerName].matches.push(fx);s.records[res.loserName].matches.push(fx);
+  const adv=s._advanceAt||3,eli=s._elimAt||3;
   s.teams.forEach(t=>{
-    if(s.records[t].w>=3&&!s.advanced.includes(t)) s.advanced.push(t);
-    if(s.records[t].l>=3&&!s.eliminated.includes(t)) s.eliminated.push(t);
+    if(s.records[t].w>=adv&&!s.advanced.includes(t)) s.advanced.push(t);
+    if(s.records[t].l>=eli&&!s.eliminated.includes(t)) s.eliminated.push(t);
   });
 }
 
