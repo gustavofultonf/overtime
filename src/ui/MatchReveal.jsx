@@ -194,9 +194,9 @@ export function MatchReveal({ reveal, myTeam, t, onDone }) {
     const rd = mp.rounds[roundIdx - 1];
     if (!rd) return;
     let t = null;
-    if (rd.isAce)      t = { icon: '★', label: 'ACE!',       sub: rd.narrative, color: C.gold };
-    else if (rd.isClutch)    t = { icon: '⚡', label: 'CLUTCH!',    sub: rd.narrative, color: C.win };
-    else if (rd.isEcoUpset) t = { icon: '$', label: 'ECO UPSET!', sub: rd.narrative, color: C.acc };
+    if (rd.isAce)      t = { label: 'ACE',        sub: rd.narrative, color: C.gold };
+    else if (rd.isClutch)    t = { label: 'CLUTCH',     sub: rd.narrative, color: C.win };
+    else if (rd.isEcoUpset) t = { label: 'ECO UPSET',  sub: rd.narrative, color: C.acc };
     if (t) {
       setToast(t); setToastVisible(true);
       const timer = setTimeout(() => setToastVisible(false), 2000);
@@ -499,7 +499,7 @@ export function MatchReveal({ reveal, myTeam, t, onDone }) {
             display: 'flex', alignItems: 'center', gap: 12,
             pointerEvents: 'none',
           }}>
-            <span style={{ fontSize: 22, lineHeight: 1 }}>{toast.icon}</span>
+            <span style={{ width: 10, height: 10, borderRadius: '50%', background: toast.color, boxShadow: `0 0 10px ${toast.color}`, flexShrink: 0 }} />
             <div>
               <div style={{ fontFamily: mono, fontWeight: 800, fontSize: 15, color: toast.color, letterSpacing: 2 }}>{toast.label}</div>
               <div style={{ fontFamily: mono, fontSize: 10, color: C.dim, marginTop: 2 }}>{toast.sub}</div>
@@ -517,7 +517,7 @@ export function MatchReveal({ reveal, myTeam, t, onDone }) {
             border: `1px solid ${C.gold}66`,
             borderRadius: 6, padding: '6px 16px',
           }}>
-            ⚡ OVERTIME ⚡
+            OVERTIME
           </div>
         )}
         {matchPoint && (
@@ -619,7 +619,7 @@ export function MatchReveal({ reveal, myTeam, t, onDone }) {
                       <div style={{ width: 34, height: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: mono, fontSize: 7, fontWeight: 800, color: C.gold }}>P</div>
                     ) : (rd.isAce || rd.isClutch || rd.isEcoUpset) ? (
                       <div style={{ width: 34, height: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9 }}>
-                        {rd.isAce ? <span style={{ color: C.gold }}>★</span> : rd.isClutch ? <span style={{ color: C.win }}>⚡</span> : <span style={{ color: C.acc }}>$</span>}
+                        {rd.isAce ? <span style={{ width: 6, height: 6, borderRadius: '50%', background: C.gold }} /> : rd.isClutch ? <span style={{ width: 6, height: 6, borderRadius: '50%', background: C.win }} /> : <span style={{ color: C.acc, fontFamily: mono, fontSize: 8, fontWeight: 700 }}>$</span>}
                       </div>
                     ) : null}
                     {/* Team A buy */}
@@ -661,7 +661,7 @@ export function MatchReveal({ reveal, myTeam, t, onDone }) {
             return (
               <div key={i} style={{
                 fontFamily: mono, fontSize: 11, padding: '4px 8px', borderRadius: 4,
-                background: isOT ? `${C.gold}18` : rd.isEcoUpset ? 'rgba(255,92,46,.1)' : rd.isClutch ? 'rgba(61,220,132,.1)' : rd.isAce ? 'rgba(255,194,75,.1)' : 'transparent',
+                background: isOT ? `${C.gold}18` : rd.isEcoUpset ? 'rgba(155,140,255,.1)' : rd.isClutch ? 'rgba(61,220,132,.1)' : rd.isAce ? 'rgba(243,194,91,.1)' : 'transparent',
                 color: isOT ? C.gold : rd.isEcoUpset ? C.acc : rd.isClutch ? C.win : rd.isAce ? C.gold : C.dim,
                 border: isOT ? `1px solid ${C.gold}33` : 'none',
               }}>
@@ -677,13 +677,13 @@ export function MatchReveal({ reveal, myTeam, t, onDone }) {
       {/* Controls */}
       <div style={{ display: 'flex', justifyContent: 'center', gap: 10, marginTop: 14, alignItems: 'center', flexWrap: 'wrap' }}>
         {!done && (<>
-          <button onClick={() => setSpeed(s => Math.max(50, s - 150))} style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 6, padding: '6px 12px', fontFamily: mono, fontSize: 11, color: C.dim, cursor: 'pointer' }}>⏩ Faster</button>
-          <button onClick={() => { setRoundIdx(mp?.rounds?.length || 0); }} style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 6, padding: '6px 12px', fontFamily: mono, fontSize: 11, color: C.dim, cursor: 'pointer' }}>⏭ Skip Map</button>
-          <button onClick={() => { setMapIdx(res.maps.length - 1); setRoundIdx(res.maps[res.maps.length - 1]?.rounds?.length || 0); setDone(true); }} style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 6, padding: '6px 12px', fontFamily: mono, fontSize: 11, color: C.dim, cursor: 'pointer' }}>⏭⏭ Skip All</button>
+          <button onClick={() => setSpeed(s => Math.max(50, s - 150))} style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 6, padding: '6px 12px', fontFamily: mono, fontSize: 11, color: C.dim, cursor: 'pointer' }}>Faster</button>
+          <button onClick={() => { setRoundIdx(mp?.rounds?.length || 0); }} style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 6, padding: '6px 12px', fontFamily: mono, fontSize: 11, color: C.dim, cursor: 'pointer' }}>Skip Map</button>
+          <button onClick={() => { setMapIdx(res.maps.length - 1); setRoundIdx(res.maps[res.maps.length - 1]?.rounds?.length || 0); setDone(true); }} style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 6, padding: '6px 12px', fontFamily: mono, fontSize: 11, color: C.dim, cursor: 'pointer' }}>Skip All</button>
         </>)}
         {done && (
           <button onClick={onDone} style={{ background: C.acc, color: '#0a0c10', border: 'none', borderRadius: 9, padding: '13px 26px', fontWeight: 800, fontSize: 15, cursor: 'pointer' }}>
-            {res.winnerName === myTeam ? '[W] VICTORY — Continue' : 'Continue →'}
+            {res.winnerName === myTeam ? 'VICTORY — Continue' : 'Continue →'}
           </button>
         )}
       </div>

@@ -80,7 +80,7 @@ export function BoardReview({season,myTeam,onBeginNewYear,onMenu}){
         {season.yearHistory.map((yh,i)=>(
         <div key={i} style={{background:C.panel,border:`1px solid ${C.line}`,borderRadius:8,padding:"10px 14px",minWidth:110}}>
           <div style={{fontFamily:mono,fontWeight:700,fontSize:15,color:C.acc}}>{yh.year}</div>
-          <div style={{fontFamily:mono,fontSize:10,color:C.dim}}>#{yh.rank} · {yh.trophies}[W]</div>
+          <div style={{fontFamily:mono,fontSize:10,color:C.dim}}>#{yh.rank} · {yh.trophies} titles</div>
           <div style={{fontFamily:mono,fontSize:10,color:C.gold}}>${yh.budgetEnd}K</div>
         </div>))}
       </div>

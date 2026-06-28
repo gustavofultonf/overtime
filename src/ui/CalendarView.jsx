@@ -39,7 +39,7 @@ function SeasonHeatmap({season,myTeam}){
         opacity:(!past&&!current&&!ev)?0.4:1,
         transition:"all .2s ease",cursor:"default",
       }}>
-        {ev?(ev.tier==="Major"?"★":ev.tier[0]):current?"▸":entry?.event?"!":""}
+        {ev?(ev.tier==="Major"?"M":ev.tier[0]):current?"":entry?.event?"!":""}
       </div>
     );
   };
@@ -51,9 +51,9 @@ function SeasonHeatmap({season,myTeam}){
         {weeks.map(cell)}
       </div>
       <div style={{display:"flex",gap:10,flexWrap:"wrap",fontFamily:mono,fontSize:8,color:C.faint,alignItems:"center"}}>
-        <span style={{color:C.gold}}>★ Major</span>
-        <span style={{color:C.live}}>A-Tier</span>
-        <span style={{color:C.dim}}>B-Tier</span>
+        <span style={{display:"flex",alignItems:"center",gap:4}}><span style={{width:8,height:8,borderRadius:2,background:C.gold}}/>Major</span>
+        <span style={{display:"flex",alignItems:"center",gap:4}}><span style={{width:8,height:8,borderRadius:2,background:C.live}}/>A-Tier</span>
+        <span style={{display:"flex",alignItems:"center",gap:4}}><span style={{width:8,height:8,borderRadius:2,background:C.dim}}/>B-Tier</span>
         <span style={{color:C.line,borderLeft:`1px solid ${C.line}`,paddingLeft:10}}/>
         {Object.entries(ACT_COLOR).map(([k,col])=>(
           <span key={k} style={{display:"flex",alignItems:"center",gap:3}}>
@@ -61,7 +61,7 @@ function SeasonHeatmap({season,myTeam}){
             <span style={{color:C.faint}}>{ACTIVITIES[k]?.label||k}</span>
           </span>
         ))}
-        <span style={{color:C.acc,marginLeft:"auto"}}>▸ now</span>
+        <span style={{display:"flex",alignItems:"center",gap:4,color:C.acc,marginLeft:"auto"}}><span style={{width:8,height:8,borderRadius:2,border:`1.5px solid ${C.acc}`}}/>Now</span>
       </div>
     </div>
   );
@@ -79,7 +79,7 @@ function BudgetForecast({season,myTeam,roster}){
   const tight=projectedBudget<totalSalary*2;
   const inDebt=projectedBudget<0;
   return(
-    <div style={{background:inDebt?"rgba(239,68,68,.08)":tight?"rgba(255,194,75,.06)":C.panel2,border:`1px solid ${inDebt?C.red:tight?C.gold+"55":C.line}`,borderRadius:8,padding:"10px 16px",marginBottom:16,fontFamily:mono,fontSize:11}}>
+    <div style={{background:inDebt?"rgba(239,68,68,.08)":tight?"rgba(243,194,91,.06)":C.panel2,border:`1px solid ${inDebt?C.red:tight?C.gold+"55":C.line}`,borderRadius:8,padding:"10px 16px",marginBottom:16,fontFamily:mono,fontSize:11}}>
       <div style={{display:"flex",gap:16,flexWrap:"wrap",alignItems:"center"}}>
         <span style={{color:C.faint,fontWeight:700,letterSpacing:1}}>FORECAST</span>
         <span style={{color:monthlyNet>=0?C.win:C.red}}>Monthly net: {monthlyNet>=0?"+":""}{monthlyNet}K</span>
@@ -143,7 +143,7 @@ export function CalendarView({season,myTeam,onAdvance,onTransfer,onSim,onHireCoa
                 const bd=current?C.acc:ev?(ev.tier==="Major"?C.gold:ev.tier==="A"?C.live:C.line):"transparent";
                 return(<div key={w} title={`W${w} ${weekToLabel(w,season.year)}${ev?" - "+ev.label:""}`}
                   style={{height:16,borderRadius:2,background:bg,border:`1px solid ${bd}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:6,fontFamily:mono,fontWeight:current||ev?700:400,color:fg}}>
-                  {ev?(ev.tier==="Major"?"★":ev.tier[0]):current?"▸":""}
+                  {ev?(ev.tier==="Major"?"M":ev.tier[0]):current?"":""}
                 </div>);
               })}
             </div>
@@ -157,7 +157,7 @@ export function CalendarView({season,myTeam,onAdvance,onTransfer,onSim,onHireCoa
     </div>
     {/* Legend */}
     <div style={{display:"flex",gap:12,marginBottom:16,fontFamily:mono,fontSize:9,color:C.faint,justifyContent:"center"}}>
-      <span style={{color:C.gold}}>★ Major</span><span style={{color:C.live}}>A A-Tier</span><span style={{color:C.dim}}>B B-Tier</span><span style={{color:C.acc}}>▸ Now</span>
+      <span style={{display:"inline-flex",alignItems:"center",gap:4}}><span style={{width:8,height:8,borderRadius:2,background:C.gold}}/>Major</span><span style={{display:"inline-flex",alignItems:"center",gap:4}}><span style={{width:8,height:8,borderRadius:2,background:C.live}}/>A-Tier</span><span style={{display:"inline-flex",alignItems:"center",gap:4}}><span style={{width:8,height:8,borderRadius:2,background:C.dim}}/>B-Tier</span><span style={{display:"inline-flex",alignItems:"center",gap:4,color:C.acc}}><span style={{width:8,height:8,borderRadius:2,border:`1.5px solid ${C.acc}`}}/>Now</span>
     </div>
 
     {weeksUntil===0&&nextEvent?(
@@ -200,9 +200,9 @@ export function CalendarView({season,myTeam,onAdvance,onTransfer,onSim,onHireCoa
       const extSalary=Math.max(c.currentSalary,Math.round(c.currentSalary*perf*1.1));
       const urgent=c.contract===0;
       return(
-      <div key={c.playerName} style={{background:urgent?"rgba(239,68,68,.08)":"rgba(255,194,75,.06)",border:`1px solid ${urgent?C.red+"55":C.gold+"44"}`,borderRadius:12,padding:"14px 18px",marginBottom:14}}>
+      <div key={c.playerName} style={{background:urgent?"rgba(239,68,68,.08)":"rgba(243,194,91,.06)",border:`1px solid ${urgent?C.red+"55":C.gold+"44"}`,borderRadius:12,padding:"14px 18px",marginBottom:14}}>
         <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
-          <span style={{fontFamily:mono,fontWeight:700,fontSize:10,color:urgent?C.red:C.gold,letterSpacing:1}}>{urgent?"! EXPIRED":"⚠ CONTRACT"}</span>
+          <span style={{fontFamily:mono,fontWeight:700,fontSize:10,color:urgent?C.red:C.gold,letterSpacing:1}}>{urgent?"EXPIRED":"CONTRACT"}</span>
           <span style={{fontWeight:700,fontSize:14,color:C.ink}}>{c.playerName}</span>
           <span style={{fontFamily:mono,fontSize:10,color:C.faint,marginLeft:"auto"}}>rating {c.avgRating} · ${c.currentSalary}K/ev</span>
         </div>
@@ -282,8 +282,8 @@ export function CalendarView({season,myTeam,onAdvance,onTransfer,onSim,onHireCoa
 
     {act&&!blocked&&(
       <div style={{display:"flex",gap:12,alignItems:"center",marginBottom:24}}>
-        <button onClick={confirm} disabled={act==="scout"&&!mapChoice} style={{background:(act==="scout"&&!mapChoice)?"#333":C.acc,color:(act==="scout"&&!mapChoice)?C.faint:"#0a0c10",border:"none",borderRadius:9,padding:"13px 26px",fontWeight:800,fontSize:15}}>
-          ADVANCE WEEK →
+        <button onClick={confirm} disabled={act==="scout"&&!mapChoice} style={{background:(act==="scout"&&!mapChoice)?C.line:C.acc,color:(act==="scout"&&!mapChoice)?C.faint:C.onAcc,border:"none",borderRadius:10,padding:"13px 26px",fontWeight:700,fontSize:15}}>
+          Advance Week →
         </button>
         <span style={{fontFamily:mono,fontSize:12,color:C.dim}}>Week {season.week} → {season.week+1}</span>
       </div>
@@ -293,7 +293,7 @@ export function CalendarView({season,myTeam,onAdvance,onTransfer,onSim,onHireCoa
     {!act&&!blocked&&weeksUntil>1&&(
       <div style={{marginBottom:20}}>
         <button onClick={onSim} style={{background:C.panel2,border:`1px solid ${C.live}`,borderRadius:9,padding:"11px 22px",fontFamily:mono,fontSize:12,color:C.live,fontWeight:700}}>
-          ⏩ SIM TO NEXT EVENT ({weeksUntil} weeks)
+          Sim to Next Event ({weeksUntil} weeks) →
         </button>
         <span style={{fontFamily:mono,fontSize:10,color:C.faint,marginLeft:10}}>Auto-manages training, rest, and fatigue</span>
       </div>
@@ -301,7 +301,7 @@ export function CalendarView({season,myTeam,onAdvance,onTransfer,onSim,onHireCoa
 
     {/* Last random event */}
     {season.weekLog.length>0&&season.weekLog[season.weekLog.length-1]?.event&&(
-      <div style={{background:"rgba(255,194,75,.08)",border:`1px solid ${C.gold}44`,borderRadius:8,padding:"10px 14px",marginBottom:16,fontFamily:mono,fontSize:12,color:C.gold}}>
+      <div style={{background:"rgba(243,194,91,.08)",border:`1px solid ${C.gold}44`,borderRadius:8,padding:"10px 14px",marginBottom:16,fontFamily:mono,fontSize:12,color:C.gold}}>
         {season.weekLog[season.weekLog.length-1].event}
       </div>
     )}
@@ -313,7 +313,7 @@ export function CalendarView({season,myTeam,onAdvance,onTransfer,onSim,onHireCoa
         {(season.sponsorships||[]).map((sp,i)=>{
           if(!sp.offered&&!sp.active) return null;
           if(sp.offered) return(
-            <div key={i} style={{background:"rgba(255,194,75,.06)",border:`1px solid ${C.gold}44`,borderRadius:8,padding:"10px 14px",display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+            <div key={i} style={{background:"rgba(243,194,91,.06)",border:`1px solid ${C.gold}44`,borderRadius:8,padding:"10px 14px",display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
               <span style={{fontWeight:700,fontSize:13,color:C.gold}}>{sp.brand}</span>
               <span style={{fontFamily:mono,fontSize:11,color:C.ink}}>${sp.monthly}K/mo × {sp.duration}mo</span>
               <span style={{fontSize:11,color:C.dim}}>{sp.condition!=="None"?`Condition: ${sp.condition}`:"No conditions"}</span>

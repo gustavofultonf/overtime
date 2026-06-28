@@ -27,7 +27,7 @@ export function MatchModal({m,onClose}){
           <div style={{padding:"0 13px 8px"}}>
             <div style={{fontSize:12,color:C.dim,lineHeight:1.55}}>{recapLine(mp)}</div>
             <div style={{display:"flex",gap:8,marginTop:5,flexWrap:"wrap"}}>
-              <span style={{fontFamily:mono,fontSize:10,color:C.win}}>★ {mp.carry}</span>
+              <span style={{fontFamily:mono,fontSize:10,color:C.win}}>MVP {mp.carry}</span>
               <span style={{fontFamily:mono,fontSize:10,color:C.red}}>▼ {mp.anchor}</span>
               {mp.triggers?.map((tr,ti)=><span key={ti} style={{fontFamily:mono,fontSize:9,color:tr.what==="rivalry_win"?C.rival:tr.what==="eco_heroes"?C.live:C.gold,border:`1px solid ${tr.what==="rivalry_win"?C.rival:C.gold}33`,borderRadius:4,padding:"1px 5px"}}>{tr.what==="clutch_carry"?"CLUTCH":tr.what==="supernova"?"SUPERNOVA":tr.what==="rivalry_win"?"RIVALRY WIN":tr.what==="eco_heroes"?"ECO HEROES":"TILTED"} · {tr.who}</span>)}
             </div>
@@ -44,7 +44,7 @@ export function MatchModal({m,onClose}){
                 const isHighlight=rd.isClutch||rd.isEcoUpset||rd.isAce;
                 return(<React.Fragment key={ri}>
                   {halfBreak&&<div style={{padding:"3px 0",textAlign:"center",fontFamily:mono,fontSize:9,color:C.gold,borderTop:`1px dashed ${C.gold}44`}}>— HALF TIME —</div>}
-                  <div style={{display:"grid",gridTemplateColumns:"26px 60px 22px 8px 22px 60px 1fr",gap:4,padding:"3px 0",alignItems:"center",fontFamily:mono,fontSize:10,background:isHighlight?"rgba(255,92,46,.06)":"transparent",borderRadius:3}}>
+                  <div style={{display:"grid",gridTemplateColumns:"26px 60px 22px 8px 22px 60px 1fr",gap:4,padding:"3px 0",alignItems:"center",fontFamily:mono,fontSize:10,background:isHighlight?"rgba(155,140,255,.06)":"transparent",borderRadius:3}}>
                     <span style={{color:C.faint,fontSize:9}}>{rd.round}</span>
                     <span style={{fontSize:8,color:C.dim}}>{buyIcon(rd.buyA)}</span>
                     <span style={{textAlign:"center",fontWeight:700,color:rd.winner===tA?C.win:C.dim}}>{rd.scoreA}</span>

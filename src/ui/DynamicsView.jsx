@@ -4,7 +4,7 @@ import { playerOvr, marketValue } from '../engine/utils.js';
 import { rosterOf, hierarchyTier } from '../engine/state.js';
 
 const TIER_COLOR={Leader:C.gold,Star:C.live,Player:C.dim,Prospect:"#9b8eff"};
-const TIER_BG={Leader:"rgba(255,194,75,.10)",Star:"rgba(255,92,46,.10)",Player:"transparent",Prospect:"rgba(155,142,255,.10)"};
+const TIER_BG={Leader:"rgba(243,194,91,.10)",Star:"rgba(155,140,255,.10)",Player:"transparent",Prospect:"rgba(155,142,255,.10)"};
 const ROLE_COLOR={IGL:C.live,AWP:"#e05050",Entry:C.acc,Lurk:C.gold,Support:C.win};
 
 function MoralBar({morale}){
@@ -58,9 +58,9 @@ export function DynamicsView({season,myTeam}){
           <div style={{fontFamily:mono,fontSize:15,fontWeight:700,color:chem>=70?C.win:chem>=55?C.gold:C.red}}>{chem}</div>
         </div>
         <div style={{marginLeft:"auto",fontFamily:mono,fontSize:10,color:C.faint,lineHeight:1.9}}>
-          <div><span style={{color:C.gold}}>■ Leader</span> — spreads mood to squad</div>
-          <div><span style={{color:C.live}}>■ Star</span> — needs results &amp; pay</div>
-          <div><span style={{color:"#9b8eff"}}>■ Prospect</span> — hungry, stable</div>
+          <div style={{display:"flex",alignItems:"center",gap:5}}><span style={{width:8,height:8,borderRadius:2,background:C.gold}}/><span style={{color:C.gold}}>Leader</span> — spreads mood to squad</div>
+          <div style={{display:"flex",alignItems:"center",gap:5}}><span style={{width:8,height:8,borderRadius:2,background:C.live}}/><span style={{color:C.live}}>Star</span> — needs results &amp; pay</div>
+          <div style={{display:"flex",alignItems:"center",gap:5}}><span style={{width:8,height:8,borderRadius:2,background:C.acc}}/><span style={{color:C.acc}}>Prospect</span> — hungry, stable</div>
         </div>
       </div>
       {unhappyLeaders.length>0&&(
@@ -112,11 +112,11 @@ export function DynamicsView({season,myTeam}){
     {/* How it works */}
     <div style={{background:C.panel2,border:`1px solid ${C.line}`,borderRadius:8,padding:"12px 16px",fontFamily:mono,fontSize:10,color:C.faint,lineHeight:2}}>
       <div style={{color:C.dim,fontWeight:700,marginBottom:4}}>HOW MORALE WORKS</div>
-      <div>■ Results: 1st +12 · 2nd +7 · top 4 +3 · group exit -5 — moderated by mentality</div>
-      <div>■ Pay: fair pay +2 · below market -2 · severely underpaid -5 per event</div>
-      <div>■ Low-morale Leaders drain -1 chemistry per activity week</div>
-      <div>■ Rest &amp; vacation: +3 morale · Scrim: +1 · Bootcamp: -1</div>
-      <div>■ Match impact: morale 20→60→100 = -1 to +1 per-player performance</div>
+      <div>• Results: 1st +12 · 2nd +7 · top 4 +3 · group exit -5 — moderated by mentality</div>
+      <div>• Pay: fair pay +2 · below market -2 · severely underpaid -5 per event</div>
+      <div>• Low-morale Leaders drain -1 chemistry per activity week</div>
+      <div>• Rest &amp; vacation: +3 morale · Scrim: +1 · Bootcamp: -1</div>
+      <div>• Match impact: morale 20→60→100 = -1 to +1 per-player performance</div>
     </div>
   </div>);
 }
