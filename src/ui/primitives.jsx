@@ -1,6 +1,27 @@
 import React from 'react';
 import { C, sans, mono, SHADOW } from './theme.js';
 
+// ── Animated number that eases from its previous value to the next ──
+// Great for budgets / prize money so big swings visibly tick up.
+export function CountUp({value,duration=650,format=v=>Math.round(v),prefix="",suffix="",style}){
+  const [disp,setDisp]=React.useState(value);
+  const fromRef=React.useRef(value);
+  React.useEffect(()=>{
+    const from=fromRef.current,to=value;
+    if(from===to){setDisp(to);return;}
+    const start=performance.now();let raf;
+    const tick=now=>{
+      const t=Math.min(1,(now-start)/duration);
+      const eased=1-Math.pow(1-t,3); // easeOutCubic
+      setDisp(from+(to-from)*eased);
+      if(t<1){raf=requestAnimationFrame(tick);}else{fromRef.current=to;setDisp(to);}
+    };
+    raf=requestAnimationFrame(tick);
+    return ()=>cancelAnimationFrame(raf);
+  },[value,duration]);
+  return <span style={style}>{prefix}{format(disp)}{suffix}</span>;
+}
+
 // ── Brand lockup ────────────────────────────────────────────────────
 // A small geometric mark + "OVERTIME" wordmark. Replaces the old
 // terminal-style "▸ OVERTIME" text used across the entry screens.

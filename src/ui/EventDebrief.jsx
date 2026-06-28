@@ -1,5 +1,6 @@
 import React from 'react';
 import { C, sans, mono } from './theme.js';
+import { CountUp } from './primitives.jsx';
 
 const PLACE_LABELS=["","1st","2nd","3rd","4th","5th-8th","9th-12th","13th-16th"];
 const PLACE_COLORS=["",C.gold,"#c9d2e0","#cd7f32",C.dim,C.faint,C.faint,C.faint];
@@ -12,19 +13,19 @@ export function EventDebrief({debrief,onDismiss}){
   const chemDelta=chemAfter-chemBefore;
 
   return(
-  <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.85)",display:"flex",alignItems:"center",justifyContent:"center",padding:18,zIndex:60}}>
-    <div style={{background:C.panel,border:`1px solid ${C.line}`,borderRadius:14,maxWidth:580,width:"100%",maxHeight:"92vh",overflowY:"auto"}}>
+  <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.85)",display:"flex",alignItems:"center",justifyContent:"center",padding:18,zIndex:60,animation:"fadeUp .2s ease"}}>
+    <div style={{background:C.panel,border:`1px solid ${won?C.gold+"66":C.line}`,borderRadius:14,maxWidth:580,width:"100%",maxHeight:"92vh",overflowY:"auto",animation:"popIn .42s cubic-bezier(.2,.8,.3,1)",...(won?{boxShadow:`0 0 40px -8px ${C.gold}55`}:{})}}>
 
       {/* Header banner */}
-      <div style={{background:won?"rgba(243,194,91,.08)":"rgba(20,20,30,1)",borderRadius:"14px 14px 0 0",padding:"20px 22px",borderBottom:`1px solid ${C.line}`}}>
+      <div className={won?"sheen":undefined} style={{background:won?"rgba(243,194,91,.08)":"rgba(20,20,30,1)",borderRadius:"14px 14px 0 0",padding:"20px 22px",borderBottom:`1px solid ${C.line}`}}>
         <div style={{fontFamily:mono,fontSize:10,color:tier==="Major"?C.gold:tier==="A"?C.live:C.dim,letterSpacing:2,marginBottom:6}}>
           {tier==="Major"?"MAJOR":tier==="A"?"A-TIER":"B-TIER"} · EVENT DEBRIEF
         </div>
         <div style={{fontWeight:800,fontSize:22,letterSpacing:-.5,marginBottom:8,fontFamily:sans}}>{label}</div>
         <div style={{display:"flex",gap:12,alignItems:"center",flexWrap:"wrap"}}>
-          <span style={{fontFamily:mono,fontSize:22,fontWeight:800,color:placeColor}}>{placeLabel}</span>
-          <span style={{fontFamily:mono,fontSize:15,color:C.gold,fontWeight:700}}>+${prize}K</span>
-          {won&&<span style={{fontFamily:mono,fontSize:11,color:C.gold,background:"rgba(243,194,91,.18)",padding:"3px 9px",borderRadius:5,letterSpacing:1}}>CHAMPIONS</span>}
+          <span style={{fontFamily:mono,fontSize:22,fontWeight:800,color:placeColor,display:"inline-block",animation:"stampIn .5s ease"}}>{placeLabel}</span>
+          <CountUp value={prize} prefix="+$" suffix="K" style={{fontFamily:mono,fontSize:15,color:C.gold,fontWeight:700}}/>
+          {won&&<span style={{fontFamily:mono,fontSize:11,color:C.gold,background:"rgba(243,194,91,.18)",padding:"3px 9px",borderRadius:5,letterSpacing:1,animation:"glowPulse 1.8s ease-in-out infinite"}}>CHAMPIONS</span>}
         </div>
         {!won&&champion&&<div style={{fontFamily:mono,fontSize:11,color:C.faint,marginTop:5}}>Champion: <span style={{color:C.dim}}>{champion}</span></div>}
       </div>
@@ -44,7 +45,7 @@ export function EventDebrief({debrief,onDismiss}){
             const isMvp=mvp&&p.name===mvp.name&&p.maps>=2;
             const rColor=p.rating>=1.15?C.win:p.rating>=0.95?C.dim:C.red;
             return(
-            <div key={p.name} style={{background:i===0?"rgba(243,194,91,.05)":C.panel2,border:`1px solid ${i===0?C.gold+"33":C.line}`,borderRadius:8,padding:"9px 13px",display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+            <div key={p.name} style={{background:i===0?"rgba(243,194,91,.05)":C.panel2,border:`1px solid ${i===0?C.gold+"33":C.line}`,borderRadius:8,padding:"9px 13px",display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",animation:`risePop .4s ease both`,animationDelay:`${0.08+i*0.07}s`}}>
               <div style={{minWidth:90}}>
                 <div style={{fontWeight:700,fontSize:13,display:"flex",alignItems:"center",gap:6}}>
                   {p.name}

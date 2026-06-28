@@ -1,7 +1,7 @@
 import { rosterOf } from '../engine/state.js';
 
 export const TUNING = { D: 27, SYNERGY: 0.30 };
-export const DRAFT_BUDGET = 600;
+export const DRAFT_BUDGET = 780;
 export const SEASON_WEEKS = 52;
 
 export function seasonStart(year){return new Date(`${year}-01-06`);} // First Monday
@@ -58,13 +58,33 @@ export const ACTIVITIES = {
   vacation: {label:"vacation",desc:"full reset. -30 fatigue, +3 chemistry, form decays.",fatigue:-30,icon:"vc"},
 };
 
+// Coaches are salaried staff paid monthly like players (figures are $K/month).
 export const COACHES = [
-  {name:"zonic",style:"Tactical",desc:"+2 game sense per bootcamp, +1 map prof per practice",salary:8,bonus:"tactical"},
-  {name:"Jumpy",style:"Motivator",desc:"-3 fatigue per activity, +2 chemistry per scrim",salary:7,bonus:"motivator"},
-  {name:"casle",style:"Analyst",desc:"+2 map proficiency per practice, better veto intel",salary:8,bonus:"analyst"},
-  {name:"Robban",style:"Veteran",desc:"+1 mentality per bootcamp, reduced nerves penalty",salary:9,bonus:"veteran"},
-  {name:"Floo",style:"Fitness",desc:"-5 extra fatigue per rest/vacation, +1 consistency per bootcamp",salary:6,bonus:"fitness"},
+  {name:"zonic",style:"Tactical",desc:"+2 game sense per bootcamp, +1 map prof per practice",salary:18,bonus:"tactical"},
+  {name:"Jumpy",style:"Motivator",desc:"-3 fatigue per activity, +2 chemistry per scrim",salary:14,bonus:"motivator"},
+  {name:"casle",style:"Analyst",desc:"+2 map proficiency per practice, better veto intel",salary:16,bonus:"analyst"},
+  {name:"Robban",style:"Veteran",desc:"+1 mentality per bootcamp, reduced nerves penalty",salary:20,bonus:"veteran"},
+  {name:"Floo",style:"Fitness",desc:"-5 extra fatigue per rest/vacation, +1 consistency per bootcamp",salary:12,bonus:"fitness"},
 ];
+
+// ── Contracts (time-based) ──────────────────────────────────────────
+// p.contract is measured in WEEKS remaining and counts down each week.
+export const WEEKS_PER_YEAR = 52;
+export const CONTRACT_TERMS = [
+  { label: "6-month loan", weeks: 26, loan: true },
+  { label: "1 year",  weeks: 52 },
+  { label: "2 years", weeks: 104 },
+  { label: "3 years", weeks: 156 },
+];
+export function contractLabel(weeks){
+  if(weeks==null) return "—";
+  if(weeks<=0) return "expired";
+  if(weeks<9) return `${weeks}wk`;
+  const months=Math.round(weeks/4.33);
+  if(months<12) return `${months}mo`;
+  const years=Math.floor(months/12), rem=months%12;
+  return rem>0?`${years}y ${rem}m`:`${years}y`;
+}
 
 export const FACILITIES = {
   gaming_house: {name:"Gaming House",icon:"h",maxTier:3,

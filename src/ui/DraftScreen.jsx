@@ -41,9 +41,9 @@ export function DraftScreen({onComplete}){
 
   function buyPlayer(p){
     const cost=draftCost(p);if(budget<cost||roster.length>=5)return;
-    const oldTeam=p.team;p.team=teamName;p.contract=2;
+    const oldTeam=p.team;p.team=teamName;p.contract=104;
     setBudget(b=>b-cost);setRoster(r=>[...r,p]);
-    if(oldTeam!=="FA"){const fas=freeAgents(simState);if(fas.length>0){const best=[...fas].sort((a,b)=>playerOvr(b)-playerOvr(a))[0];best.team=oldTeam;best.contract=2;}}
+    if(oldTeam!=="FA"){const fas=freeAgents(simState);if(fas.length>0){const best=[...fas].sort((a,b)=>playerOvr(b)-playerOvr(a))[0];best.team=oldTeam;best.contract=104;}}
     if(!simState.stats[p.name])simState.stats[p.name]={maps:0,rating:0,mvps:0,clutches:0};if(!simState.career[p.name])simState.career[p.name]={totalMaps:0,totalMvps:0,totalClutches:0,avgRating:0,bestRating:0,eventHistory:[],mapStats:{},origStats:{aim:p.aim,gameSense:p.gameSense,util:p.util,igl:p.igl,mentality:p.mentality,consistency:p.consistency,rifle:p.rifle,pistol:p.pistol,awp:p.awp,clutch:p.clutch,entry:p.entry,stamina:p.stamina,composure:p.composure,experience:p.experience},kills:0};
   }
   function releasePlayer(p){const refund=Math.round(draftCost(p)*0.5);p.team="FA";p.contract=0;setBudget(b=>b+refund);setRoster(r=>r.filter(x=>x.name!==p.name));}
@@ -116,7 +116,7 @@ export function DraftScreen({onComplete}){
                 <div style={{display:"flex",gap:4,marginTop:2}}><Pill c={C.dim}>{p.role}</Pill>{p.traits.map(tr=><TraitPill key={tr} t={tr}/>)}</div>
               </div>
               <Stat l="OVR" v={playerOvr(p)}/><Stat l="AIM" v={p.aim}/><Stat l="SENSE" v={p.gameSense}/>
-              <span style={{fontFamily:mono,fontSize:11,color:C.gold}}>${p.salary}K/ev</span>
+              <span style={{fontFamily:mono,fontSize:11,color:C.gold}}>${p.salary}K/mo</span>
               <span style={{fontFamily:mono,fontSize:9,color:C.faint}}>age {p.age}</span>
               <button onClick={()=>releasePlayer(p)} style={{marginLeft:"auto",background:"transparent",border:`1px solid ${C.red}`,color:C.red,borderRadius:6,padding:"5px 10px",fontFamily:mono,fontSize:10,fontWeight:700}}>DROP</button>
             </div>))}

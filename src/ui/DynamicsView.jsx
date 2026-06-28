@@ -2,6 +2,7 @@ import React from 'react';
 import { C, sans, mono } from './theme.js';
 import { playerOvr, marketValue } from '../engine/utils.js';
 import { rosterOf, hierarchyTier } from '../engine/state.js';
+import { contractLabel } from '../constants/events.js';
 
 const TIER_COLOR={Leader:C.gold,Star:C.live,Player:C.dim,Prospect:"#9b8eff"};
 const TIER_BG={Leader:"rgba(243,194,91,.10)",Star:"rgba(155,140,255,.10)",Player:"transparent",Prospect:"rgba(155,142,255,.10)"};
@@ -102,7 +103,7 @@ export function DynamicsView({season,myTeam}){
             <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
               <SatisfactionTag label={payLabel} ok={payOk} warn={payLow}/>
               <SatisfactionTag label={`Form ${p.form>0?"+":""}${Math.round(p.form)}`} ok={p.form>2} warn={p.form>=-2&&p.form<=2}/>
-              <SatisfactionTag label={`Contract ${p.contract}ev`} ok={p.contract>=2} warn={p.contract===1}/>
+              <SatisfactionTag label={`Contract ${contractLabel(p.contract)}`} ok={p.contract>=52} warn={p.contract<26}/>
             </div>
           </div>
         </div>);

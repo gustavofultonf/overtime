@@ -188,6 +188,14 @@ export function resolveMap(state,map,A,B,ctx,rng,startFrom=null){
 
     const wBuy=aWins?btA:btB, lBuy=aWins?btB:btA;
     const winnerIsCT=(winner===A&&side===0)||(winner===B&&side===1);
+    // Synthesize how the round ended for the round-history icons. The sim doesn't
+    // model plant/defuse directly, so derive a plausible method from the outcome:
+    // an ace is always by kills; otherwise T-side wins split between detonation and
+    // a kill-clean, CT-side wins between elimination, defuse and the clock.
+    const mr=rng();
+    const winMethod=isAce?"elim":winnerIsCT
+      ?(mr<0.30?"defuse":mr<0.78?"elim":"time")
+      :(mr<0.52?"bomb":"elim");
     const isPistolRound=roundNum===1||roundNum===13;
     const isMatchPt=scoreA===12||scoreB===12;
     const recentStreak=rounds.length>=3&&rounds.slice(-3).every(r=>r.winner===winner);
@@ -325,6 +333,7 @@ export function resolveMap(state,map,A,B,ctx,rng,startFrom=null){
       lossStreakA:econ[A].lossStreak,lossStreakB:econ[B].lossStreak,
       tiltA:tilt[A],tiltB:tilt[B],
       narrative,isClutch,isEcoUpset,isAce,
+      winSide:winnerIsCT?"CT":"T",winMethod,
       side:side===0?"first":"second"
     });
   }

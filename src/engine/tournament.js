@@ -163,14 +163,12 @@ export function placementOf(t){
 export function prizeMoney(place){return{1:500,2:300,4:180,8:100,9:50,16:30}[place]||30;}
 export function decayFormBetweenEvents(simState){simState.players.forEach(p=>{p.form=p.form*0.4;});}
 export function tickContracts(simState,myTeam){
-  // Decrement contracts. The user must actively re-sign expiring players (handled via
-  // pendingContracts UI). AI teams auto-renew so their rosters stay intact across the
-  // season — otherwise every AI side bleeds to FA within ~2 events and tournaments
-  // can't field enough teams.
+  // Contracts are weeks-based and tick down weekly (see App.tickContractWeeks).
+  // This per-event hook only guarantees AI sides never disband: any AI player on a
+  // short deal is quietly re-signed so tournaments can always field full rosters.
   simState.players.forEach(p=>{
-    if(p.team==="FA")return;
-    if(p.contract>0)p.contract--;
-    if(p.contract<=0&&p.team!==myTeam)p.contract=2; // AI auto-renew, never disband
+    if(p.team==="FA"||p.team===myTeam)return;
+    if(p.contract<=8)p.contract=104; // AI auto-renew (2yr), never bleed to FA
   });
 }
 

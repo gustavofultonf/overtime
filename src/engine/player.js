@@ -2,7 +2,7 @@ import { AI_TEAMS } from '../constants/data.js';
 import { playerOvr } from './utils.js';
 import { rosterOf, freeAgents } from './state.js';
 
-export { playerOvr, marketValue, draftCost } from './utils.js';
+export { playerOvr, marketValue, draftCost, transferPremium, buyoutPrice, desiredSalary } from './utils.js';
 export { addEventToLog, computeValveRankings } from './valveRanking.js';
 
 export function getTeamOrder(myTeam,state){
@@ -27,8 +27,10 @@ export function aiRosterMoves(state,myTeam){
   AI_TEAMS.forEach(team=>{
     const roster=rosterOf(state,team);
     if(roster.length===0) return;
-    // Find worst performer from last event stats
-    const worst=roster.filter(p=>state.stats[p.name]&&state.stats[p.name].maps>0)
+    const teamBest=[...roster].sort((a,b)=>playerOvr(b)-playerOvr(a))[0];
+    // Find worst performer from last event stats — but never cut a star (OVR>=86)
+    // or the franchise player. Elite talent doesn't get dumped onto the FA market.
+    const worst=roster.filter(p=>state.stats[p.name]&&state.stats[p.name].maps>0&&playerOvr(p)<86&&p!==teamBest)
       .sort((a,b)=>(state.stats[a.name]?.rating||0)-(state.stats[b.name]?.rating||0))[0];
     // Only drop if they performed badly (rating < 0.85) and with some probability
     if(worst&&(state.stats[worst.name]?.rating||1)<0.85&&Math.random()<0.35){

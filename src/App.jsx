@@ -3,11 +3,12 @@ import React, { useState, useCallback } from "react";
 // Constants
 import { MAPS, AI_TEAMS } from './constants/data.js';
 import { EVENTS, SEASON_WEEKS, SALARY_WEEKS, ACTIVITIES, COACHES, FACILITIES,
-         CHOICE_EVENTS, isSalaryWeek, weekToLabel, weekToMonth } from './constants/events.js';
+         CHOICE_EVENTS, isSalaryWeek, weekToLabel, weekToMonth, CONTRACT_TERMS } from './constants/events.js';
 
 // Engine
 import { playerOvr, draftCost, marketValue, getTeamOrder, getSeed,
-         getRankedTeams, addEventToLog, computeValveRankings, aiRosterMoves } from './engine/player.js';
+         getRankedTeams, addEventToLog, computeValveRankings, aiRosterMoves,
+         transferPremium, buyoutPrice, desiredSalary } from './engine/player.js';
 import { initState, rosterOf, freeAgents, teamBase, profileFor,
          getMapProf, isRivalMatch, updateMorale, hierarchyTier } from './engine/state.js';
 import { playSeries, applyActivity, rollRandomEvent } from './engine/match.js';
@@ -28,7 +29,7 @@ import { MiniStat, SL } from './ui/primitives.jsx';
 import { DraftScreen } from './ui/DraftScreen.jsx';
 import { CalendarView } from './ui/CalendarView.jsx';
 import { EventHLTV } from './ui/EventHLTV.jsx';
-import { RosterView2 } from './ui/RosterView.jsx';
+import { RosterView2, StatsView } from './ui/RosterView.jsx';
 import { TransferMarket } from './ui/TransferMarket.jsx';
 import { SeasonHistory } from './ui/SeasonHistory.jsx';
 import { MapProfView } from './ui/MapProfView.jsx';
@@ -338,8 +339,8 @@ export default function App(){
     addEventToLog(season.simState,t,ev,placements,season.week,season.year||2026);
     computeValveRankings(season.simState,season.week,season.year||2026);
 
-    // Check expiring contracts before ticking
-    const expiring=roster.filter(p=>p.contract<=1);
+    // Players within ~4 months of expiry must be re-signed or released at event end.
+    const expiring=roster.filter(p=>p.contract<=16);
 
     // Tick contracts every event (not just Majors)
     decayFormBetweenEvents(season.simState);
@@ -401,11 +402,13 @@ export default function App(){
     const p=season.simState.players.find(x=>x.name===playerName);
     if(!p) return;
     if(choice===0){
+      // Extend 2 years on a performance-based raise.
       const perf=Math.min(1.3,Math.max(0.9,(season.simState.career?.[playerName]?.avgRating||0.95)));
-      p.salary=Math.max(p.salary,Math.round(p.salary*perf*1.1));
-      p.contract=3;
+      p.salary=Math.max(p.salary,desiredSalary(p),Math.round(p.salary*perf*1.1));
+      p.contract=104;
     } else if(choice===1){
-      p.contract=2;
+      // Short 1-year deal, no raise.
+      p.contract=52;
     } else {
       p.team="FA";p.contract=0;
     }
@@ -427,6 +430,19 @@ export default function App(){
     if(income.sponsor)parts.push(`sponsors ${income.sponsor}K`);
     const incStr=parts.length?` | Income: ${parts.join(", ")} = ${totalIncome}K`:"";
     return `[$] ${dateStr} — Salary: ${totalSalary}K${incStr} | Net: ${net>=0?"+":""}${net}K${season.budget<0?" ! DEBT!":""}`;
+  }
+
+  // Contracts are weeks-based: tick them down as time passes. AI sides never expire
+  // (auto-renew); the user's players are kept alive until renewal is offered at the
+  // next event, so nobody silently vanishes mid-season.
+  function tickContractWeeks(n){
+    if(n<=0)return;
+    season.simState.players.forEach(p=>{
+      if(p.team==="FA")return;
+      p.contract-=n;
+      if(p.team!==myTeam){ if(p.contract<=8)p.contract=104; }
+      else if(p.contract<1)p.contract=1;
+    });
   }
 
   function advanceWeek(activity,mapChoice){
@@ -471,6 +487,7 @@ export default function App(){
     });
     season.weekLog.push({week:season.week,activity,mapChoice,event:evMsg||null});
     season.week++;
+    tickContractWeeks(1);
     const salMsg=paySalary(season.week);
     if(salMsg) season.weekLog.push({week:season.week,activity:"salary",event:salMsg});
     checkWeekTransition();
@@ -478,6 +495,7 @@ export default function App(){
   }
 
   function simToNextEvent(){
+    const startWk=season.week;
     const nextEv=EVENTS.find(e=>e.week>=season.week);
     const target=nextEv?nextEv.week:SEASON_WEEKS+1;
     const log=autoSimWeeks(season.simState,myTeam,season.week,target);
@@ -487,7 +505,7 @@ export default function App(){
       enriched.push(entry);
       if(isSalaryWeek(entry.week+1)){
         const roster=rosterOf(season.simState,myTeam);
-        const coachPay=season.simState.coach?season.simState.coach.salary:5;
+        const coachPay=season.simState.coach?season.simState.coach.salary:0;
         const totalSalary=roster.reduce((s,p)=>s+p.salary,0)+coachPay;
         season.budget-=totalSalary;
         enriched.push({week:entry.week+1,activity:"salary",event:`[$] Payday (${weekToLabel(entry.week+1,season.year)}) — ${totalSalary}K salaries paid${season.budget<0?" ! DEBT!":""}`});
@@ -495,6 +513,7 @@ export default function App(){
     }
     season.weekLog.push(...enriched);
     season.week=target;
+    tickContractWeeks(target-startWk);
     checkWeekTransition();
     autoSave();
   }
@@ -586,8 +605,8 @@ export default function App(){
   function doTransfer(action,playerName){
     const p=season.simState.players.find(x=>x.name===playerName);if(!p)return;
     if(action==="release"){season.budget+=Math.round(marketValue(p)*0.3);p.team="FA";p.contract=0;season.simState.chemistry[myTeam]=Math.max(40,(season.simState.chemistry[myTeam]||70)-8);}
-    else if(action==="sign"&&p.team==="FA"){p.team=myTeam;p.contract=2;season.budget-=marketValue(p);season.simState.chemistry[myTeam]=Math.max(40,(season.simState.chemistry[myTeam]||70)-5);if(!season.simState.stats[p.name])season.simState.stats[p.name]={maps:0,rating:0,mvps:0,clutches:0};if(!season.simState.career[p.name])season.simState.career[p.name]={totalMaps:0,totalMvps:0,totalClutches:0,avgRating:0,bestRating:0,eventHistory:[],mapStats:{},origStats:{aim:p.aim,gameSense:p.gameSense,util:p.util,igl:p.igl,mentality:p.mentality,consistency:p.consistency,rifle:p.rifle,pistol:p.pistol,awp:p.awp,clutch:p.clutch,entry:p.entry,stamina:p.stamina,composure:p.composure,experience:p.experience},kills:0};}
-    else if(action==="buy"){const buyout=Math.round(marketValue(p)*2);if(season.budget<buyout)return;const oldTeam=p.team;season.budget-=buyout;p.team=myTeam;p.contract=2;season.simState.chemistry[myTeam]=Math.max(40,(season.simState.chemistry[myTeam]||70)-5);season.simState.chemistry[oldTeam]=Math.max(40,(season.simState.chemistry[oldTeam]||70)-5);const fas=freeAgents(season.simState);if(fas.length>0){const best=fas.sort((a,b)=>playerOvr(b)-playerOvr(a))[0];best.team=oldTeam;best.contract=2;}if(!season.simState.stats[p.name])season.simState.stats[p.name]={maps:0,rating:0,mvps:0,clutches:0};if(!season.simState.career[p.name])season.simState.career[p.name]={totalMaps:0,totalMvps:0,totalClutches:0,avgRating:0,bestRating:0,eventHistory:[],mapStats:{},origStats:{aim:p.aim,gameSense:p.gameSense,util:p.util,igl:p.igl,mentality:p.mentality,consistency:p.consistency,rifle:p.rifle,pistol:p.pistol,awp:p.awp,clutch:p.clutch,entry:p.entry,stamina:p.stamina,composure:p.composure,experience:p.experience},kills:0};}
+    else if(action==="sign"&&p.team==="FA"){p.team=myTeam;p.contract=104;season.budget-=marketValue(p);season.simState.chemistry[myTeam]=Math.max(40,(season.simState.chemistry[myTeam]||70)-5);if(!season.simState.stats[p.name])season.simState.stats[p.name]={maps:0,rating:0,mvps:0,clutches:0};if(!season.simState.career[p.name])season.simState.career[p.name]={totalMaps:0,totalMvps:0,totalClutches:0,avgRating:0,bestRating:0,eventHistory:[],mapStats:{},origStats:{aim:p.aim,gameSense:p.gameSense,util:p.util,igl:p.igl,mentality:p.mentality,consistency:p.consistency,rifle:p.rifle,pistol:p.pistol,awp:p.awp,clutch:p.clutch,entry:p.entry,stamina:p.stamina,composure:p.composure,experience:p.experience},kills:0};}
+    else if(action==="buy"){const oldTeam=p.team;const rk=getRankedTeams(season.simState,myTeam).findIndex(r=>r.team===oldTeam);const buyout=buyoutPrice(p,rk<0?10:rk);if(season.budget<buyout)return;season.budget-=buyout;p.team=myTeam;p.contract=104;season.simState.chemistry[myTeam]=Math.max(40,(season.simState.chemistry[myTeam]||70)-5);season.simState.chemistry[oldTeam]=Math.max(40,(season.simState.chemistry[oldTeam]||70)-5);const fas=freeAgents(season.simState);if(fas.length>0){const best=fas.sort((a,b)=>playerOvr(b)-playerOvr(a))[0];best.team=oldTeam;best.contract=104;}if(!season.simState.stats[p.name])season.simState.stats[p.name]={maps:0,rating:0,mvps:0,clutches:0};if(!season.simState.career[p.name])season.simState.career[p.name]={totalMaps:0,totalMvps:0,totalClutches:0,avgRating:0,bestRating:0,eventHistory:[],mapStats:{},origStats:{aim:p.aim,gameSense:p.gameSense,util:p.util,igl:p.igl,mentality:p.mentality,consistency:p.consistency,rifle:p.rifle,pistol:p.pistol,awp:p.awp,clutch:p.clutch,entry:p.entry,stamina:p.stamina,composure:p.composure,experience:p.experience},kills:0};}
     setSeason({...season});redraw();
   }
 
@@ -606,9 +625,9 @@ export default function App(){
     const career=season.simState.career?.[p.name];
     const r=career?.avgRating||0.95;
     const mult=r>=1.15?1.5:r>=1.1?1.3:r>=1.0?1.1:r>=0.9?1.0:0.85;
-    const desired=Math.max(5,Math.round(p.salary*mult));
+    const desired=Math.max(desiredSalary(p),Math.round(p.salary*mult));
     if(offeredSalary>=desired){
-      p.team=myTeam;p.salary=offeredSalary;p.contract=3;
+      p.team=myTeam;p.salary=offeredSalary;p.contract=104;
       season.budget-=mv;
       season.simState.chemistry[myTeam]=Math.max(40,(season.simState.chemistry[myTeam]||70)-5);
       initCareer(p);
@@ -633,25 +652,27 @@ export default function App(){
     const holdTeam=p.team;
     const ranked=getRankedTeams(season.simState,myTeam);
     const teamRank=ranked.findIndex(r=>r.team===holdTeam);
-    const minMult=teamRank<5?1.8:teamRank<10?1.6:1.4;
-    const ctrMult=teamRank<5?2.2:teamRank<10?1.95:1.75;
-    const minAccept=Math.round(mv*minMult);
-    const counterPrice=Math.round(mv*ctrMult);
+    // Franchise protection: a team's best player carries a big extra premium.
+    const holdRoster=rosterOf(season.simState,holdTeam);
+    const isFranchise=holdRoster.length>0&&[...holdRoster].sort((a,b)=>playerOvr(b)-playerOvr(a))[0].name===p.name;
+    let minAccept=buyoutPrice(p,teamRank<0?10:teamRank);
+    if(isFranchise) minAccept=Math.round(minAccept*1.35);
+    const counterPrice=Math.round(minAccept*1.18);
     if(offerAmount>=minAccept){
       const oldTeam=p.team;
       season.budget-=offerAmount;
-      p.team=myTeam;p.contract=2;
+      p.team=myTeam;p.contract=104;
       season.simState.chemistry[myTeam]=Math.max(40,(season.simState.chemistry[myTeam]||70)-5);
       season.simState.chemistry[oldTeam]=Math.max(40,(season.simState.chemistry[oldTeam]||70)-5);
       const fas=freeAgents(season.simState);
-      if(fas.length>0){const best=fas.sort((a,b)=>playerOvr(b)-playerOvr(a))[0];best.team=oldTeam;best.contract=2;}
+      if(fas.length>0){const best=fas.sort((a,b)=>playerOvr(b)-playerOvr(a))[0];best.team=oldTeam;best.contract=104;}
       initCareer(p);
       season.weekLog.push({week:season.week,activity:"news",event:`[+] ${playerName} bought from ${holdTeam} for $${offerAmount}K`});
       setSeason({...season});redraw();
       return{success:true,accepted:true,msg:`${holdTeam} accepts $${offerAmount}K for ${playerName}!`};
     }
-    if(offerAmount>=mv*1.2){
-      return{success:false,accepted:false,counter:true,counterAmount:counterPrice,msg:`${holdTeam} counters at $${counterPrice}K`};
+    if(offerAmount>=minAccept*0.8){
+      return{success:false,accepted:false,counter:true,counterAmount:counterPrice,msg:`${holdTeam} counters at $${counterPrice}K${isFranchise?" — he's their franchise player":""}`};
     }
     return{success:false,accepted:false,msg:`${holdTeam} rejects. They value ${playerName} at ~$${minAccept}K+`};
   }
@@ -667,11 +688,20 @@ export default function App(){
     const theirTeam=theirP.team;
     const theirRoster=rosterOf(season.simState,theirTeam);
     const needsRole=theirRoster.filter(p=>p.role===myP.role).length<2;
-    if(offerVal>=theirMv*0.90&&(needsRole||myOvr>=theirOvr-5)){
+    const isFranchise=theirRoster.length>0&&[...theirRoster].sort((a,b)=>playerOvr(b)-playerOvr(a))[0].name===theirP.name;
+    // Trades must clear nearly the same bar as a cash buyout — otherwise swapping a
+    // mid player + pocket change for a superstar is a free exploit. Stars also won't
+    // be traded for a clear downgrade, and franchise players need the full premium.
+    const prem=transferPremium(theirP);
+    const tradeBar=Math.round(theirMv*prem*0.85);
+    const bigDowngrade=theirOvr-myOvr>4;            // can't pay mostly in scrubs
+    const star=theirOvr>=86;
+    const franchiseBlock=isFranchise&&offerVal<Math.round(theirMv*prem);
+    if(offerVal>=tradeBar&&!(star&&bigDowngrade)&&!franchiseBlock){
       season.budget-=cashBonus;
       const oldTheirTeam=theirP.team;
-      myP.team=oldTheirTeam;myP.contract=2;
-      theirP.team=myTeam;theirP.contract=2;
+      myP.team=oldTheirTeam;myP.contract=104;
+      theirP.team=myTeam;theirP.contract=104;
       season.simState.chemistry[myTeam]=Math.max(40,(season.simState.chemistry[myTeam]||70)-5);
       season.simState.chemistry[oldTheirTeam]=Math.max(40,(season.simState.chemistry[oldTheirTeam]||70)-5);
       initCareer(theirP);
@@ -679,19 +709,19 @@ export default function App(){
       setSeason({...season});redraw();
       return{success:true,accepted:true,msg:`Trade done! ${theirPlayerName} joins your roster.`};
     }
-    if(offerVal>=theirMv*0.70){
-      const neededCash=Math.max(0,Math.round(theirMv*0.95-myMv));
-      if(neededCash>cashBonus) return{success:false,accepted:false,counter:true,counterCash:neededCash,msg:`${theirTeam} wants $${neededCash}K cash to close the deal.`};
+    if(star&&bigDowngrade) return{success:false,accepted:false,msg:`${theirTeam} won't trade ${theirPlayerName} for a clear downgrade.`};
+    if(offerVal>=tradeBar*0.6){
+      const neededCash=Math.max(0,Math.round(tradeBar-myMv));
+      if(neededCash>cashBonus) return{success:false,accepted:false,counter:true,counterCash:neededCash,msg:`${theirTeam} wants $${neededCash}K cash on top to part with ${theirPlayerName}.`};
     }
-    const reason=!needsRole?"They have that role covered.":offerVal<theirMv*0.70?"Offer too low.":"OVR gap is too large.";
-    return{success:false,accepted:false,msg:`${theirTeam} declined: ${reason}`};
+    return{success:false,accepted:false,msg:`${theirTeam} declined — they value ${theirPlayerName} far higher than that.`};
   }
 
   function doSellPlayer(playerName,buyingTeam,amount){
     const p=season.simState.players.find(x=>x.name===playerName&&x.team===myTeam);
     if(!p) return;
     season.budget+=amount;
-    p.team=buyingTeam;p.contract=2;
+    p.team=buyingTeam;p.contract=104;
     season.simState.chemistry[myTeam]=Math.max(40,(season.simState.chemistry[myTeam]||70)-8);
     season.simState.chemistry[buyingTeam]=Math.max(40,(season.simState.chemistry[buyingTeam]||70)-3);
     season.weekLog.push({week:season.week,activity:"news",event:`[$$] ${playerName} sold to ${buyingTeam} for $${amount}K`});
@@ -778,19 +808,19 @@ export default function App(){
     const ovr=playerOvr(p);
     const recentRating=season.simState.career?.[p.name]?.avgRating||0.9;
     // Player's desired salary based on performance
-    const demandBase=p.salary*(recentRating>=1.1?1.4:recentRating>=1.0?1.15:recentRating>=0.9?1.0:0.85);
+    const demandBase=Math.max(desiredSalary(p),p.salary*(recentRating>=1.1?1.4:recentRating>=1.0?1.15:recentRating>=0.9?1.0:0.85));
     const demand=Math.round(demandBase);
     if(offeredSalary>=demand){
-      p.salary=offeredSalary;p.contract=3;
-      return{success:true,msg:`${p.name} accepts ${offeredSalary}K/mo for 3 events. They wanted ${demand}K.`};
+      p.salary=offeredSalary;p.contract=156;
+      return{success:true,msg:`${p.name} accepts $${offeredSalary}K/mo on a 3-year deal. They wanted $${demand}K.`};
     }
     if(offeredSalary>=demand*0.85){
-      // Counter-offer: split the difference
+      // Counter-offer: split the difference, 2-year term
       const counter=Math.round((offeredSalary+demand)/2);
-      p.salary=counter;p.contract=2;
-      return{success:true,msg:`${p.name} countered at ${counter}K/mo for 2 events (wanted ${demand}K).`};
+      p.salary=counter;p.contract=104;
+      return{success:true,msg:`${p.name} counters at $${counter}K/mo on a 2-year deal (wanted $${demand}K).`};
     }
-    return{success:false,msg:`${p.name} rejected ${offeredSalary}K/mo. They demand at least $Math.round(demand*0.85)K.`};
+    return{success:false,msg:`${p.name} rejected $${offeredSalary}K/mo. They want at least $${Math.round(demand*0.85)}K.`};
   }
 
   // Role assignment
@@ -833,7 +863,7 @@ export default function App(){
     const roster=rosterOf(season.simState,myTeam);
     if(roster.length>=5)return;
     const p=season.academy.prospects[idx];
-    p.team=myTeam;p.contract=3;
+    p.team=myTeam;p.contract=156;
     season.simState.players.push(p);
     season.simState.stats[p.name]={maps:0,rating:0,mvps:0,clutches:0};
     season.simState.career[p.name]={totalMaps:0,totalMvps:0,totalClutches:0,avgRating:0,bestRating:0,eventHistory:[],mapStats:{},origStats:{aim:p.aim,gameSense:p.gameSense,util:p.util,igl:p.igl,mentality:p.mentality,consistency:p.consistency,rifle:p.rifle||60,pistol:p.pistol||50,awp:p.awp||40,clutch:p.clutch||40,entry:p.entry||50,stamina:p.stamina||60,composure:p.composure||40,experience:p.experience||30},kills:0};
@@ -968,11 +998,11 @@ export default function App(){
       <Gstyle/><Header season={season} myTeam={myTeam} onReset={resetAll} onSave={saveToSlot} stageLabel={`${weekToLabel(season.week,season.year)} ${season.year||2026} · W${season.week}`}/>
       <Tabs tab={tab} setTab={setTab} calMode/>
       <main style={{maxWidth:1100,margin:"0 auto",padding:"22px 18px 80px"}}>
-        {tab==="calendar"&&<CalendarView season={season} myTeam={myTeam} onAdvance={advanceWeek} onTransfer={doTransfer} onSim={simToNextEvent} onHireCoach={hireCoach} onFireCoach={fireCoach} onInitAcademy={initAcademy} onPromoteProspect={promoteProspect} onSellProspect={sellProspect} onAcceptSponsor={acceptSponsorship} onDeclineSponsor={declineSponsorship} onResolveEvent={resolveChoiceEvent} onResolveContract={resolveContract}/>}
+        {tab==="calendar"&&<CalendarView season={season} myTeam={myTeam} onAdvance={advanceWeek} onSim={simToNextEvent} onAcceptSponsor={acceptSponsorship} onDeclineSponsor={declineSponsorship} onResolveEvent={resolveChoiceEvent} onResolveContract={resolveContract}/>}
         {tab==="roster"&&<RosterView2 state={season.simState} myTeam={myTeam} onNegotiate={negotiateContract} onChangeRole={changeRole}/>}
         {tab==="market"&&<TransferMarket season={season} myTeam={myTeam} onNegotiateFA={doNegotiateFA} onBuyoutOffer={doBuyoutOffer} onTradeOffer={doTradeOffer} onSellPlayer={doSellPlayer} onRelease={p=>doTransfer("release",p)}/>}
         {tab==="maps"&&<MapProfView state={season.simState} myTeam={myTeam}/>}
-        {tab==="facility"&&<FacilitiesView season={season} onUpgrade={upgradeFacility}/>}
+        {tab==="facility"&&<FacilitiesView season={season} myTeam={myTeam} onUpgrade={upgradeFacility} onHireCoach={hireCoach} onFireCoach={fireCoach} onInitAcademy={initAcademy} onPromoteProspect={promoteProspect} onSellProspect={sellProspect}/>}
         {tab==="finance"&&<FinanceView season={season} myTeam={myTeam}/>}
         {tab==="rankings"&&<RankingsView state={season.simState} myTeam={myTeam} week={season.week} year={season.year||2026}/>}
         {tab==="rivals"&&<RivalryView state={season.simState} myTeam={myTeam}/>}
@@ -1009,7 +1039,11 @@ export default function App(){
       <Gstyle/><Header season={season} myTeam={myTeam} onReset={resetAll} onSave={saveToSlot} stageLabel={`${evLabel} · ${stageLabel}`}/>
       <Tabs tab={tab} setTab={setTab} miniMode={!isMajor}/>
       <main style={{maxWidth:1200,margin:"0 auto",padding:"16px 18px 80px"}}>
-        <EventHLTV t={t} myTeam={myTeam} nf={nf} onPlay={(fx,bo)=>beginVeto(fx,bo)} alive={alive} onOpen={setOpenMatch} onEndEvent={(t.stage==="done"||!alive)?endEvent:null} season={season} SEED={SEED} evLabel={evLabel} tierTag={tierTag} tab={tab} setTab={setTab}/>
+        {tab==="roster"?<RosterView2 state={season.simState} myTeam={myTeam} onNegotiate={negotiateContract} onChangeRole={changeRole}/>
+        :tab==="stats"?<StatsView t={t}/>
+        :tab==="rivals"?<RivalryView state={season.simState} myTeam={myTeam}/>
+        :tab==="season"?<SeasonHistory season={season} myTeam={myTeam}/>
+        :<EventHLTV t={t} myTeam={myTeam} nf={nf} onPlay={(fx,bo)=>beginVeto(fx,bo)} alive={alive} onOpen={setOpenMatch} onEndEvent={endEvent} season={season} SEED={SEED} evLabel={evLabel} tierTag={tierTag} tab={tab} setTab={setTab}/>}
       </main>
       {veto&&<VetoOverlay session={veto} myTeam={myTeam} t={t} onClose={()=>setVeto(null)} onResolved={(res,fx)=>{
         setVeto(null);setReveal({res,fx});

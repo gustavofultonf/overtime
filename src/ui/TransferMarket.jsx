@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { C, mono } from './theme.js';
-import { playerOvr, marketValue, getRankedTeams } from '../engine/player.js';
+import { playerOvr, marketValue, getRankedTeams, buyoutPrice, transferPremium } from '../engine/player.js';
 import { rosterOf, freeAgents } from '../engine/state.js';
 import { AI_TEAMS } from '../constants/data.js';
 import { SL, Pill, Stat } from './primitives.jsx';
+import { contractLabel } from '../constants/events.js';
 
 const ROLES = ["IGL","AWP","Entry","Lurk","Support"];
 const roleColor = {IGL:C.live, AWP:"#e05050", Entry:C.acc, Lurk:C.gold, Support:C.win};
@@ -241,10 +242,21 @@ function BuyTab({ simState, season, myTeam, onBuyoutOffer }) {
   const rosterFull = rosterOf(simState, myTeam).length >= 5;
   const activeTeams = AI_TEAMS.filter(t => rosterOf(simState, t).length > 0);
 
-  function expandPlayer(p, mv) {
+  // Real acceptance floor, mirroring App.doBuyoutOffer (rank + franchise premium).
+  function floorFor(p) {
+    const ranked = getRankedTeams(simState, myTeam);
+    const rank = ranked.findIndex(r => r.team === selectedTeam);
+    const roster = rosterOf(simState, selectedTeam);
+    const isFranchise = roster.length > 0 && [...roster].sort((a, b) => playerOvr(b) - playerOvr(a))[0].name === p.name;
+    let f = buyoutPrice(p, rank < 0 ? 10 : rank);
+    if (isFranchise) f = Math.round(f * 1.35);
+    return f;
+  }
+
+  function expandPlayer(p) {
     const next = expanded === p.name ? null : p.name;
     setExpanded(next);
-    if (next) setBuyOffer(Math.round(mv * 1.8));
+    if (next) setBuyOffer(floorFor(p));
     setResult(null);
   }
 
@@ -280,14 +292,15 @@ function BuyTab({ simState, season, myTeam, onBuyoutOffer }) {
           </div>
           {rosterOf(simState, selectedTeam).map(p => {
             const mv  = marketValue(p);
+            const floor = floorFor(p);
             const rc  = roleColor[p.role] || C.dim;
             const isExp = expanded === p.name;
-            const curOffer = isExp ? buyOffer : Math.round(mv * 1.8);
+            const curOffer = isExp ? buyOffer : floor;
             const canAfford = season.budget >= curOffer;
 
             return (
               <div key={p.name} style={{borderTop:`1px solid ${C.line}`}}>
-                <div onClick={() => expandPlayer(p, mv)}
+                <div onClick={() => expandPlayer(p)}
                   style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",
                     flexWrap:"wrap",cursor:"pointer"}}>
                   <div style={{minWidth:90}}>
@@ -304,7 +317,7 @@ function BuyTab({ simState, season, myTeam, onBuyoutOffer }) {
                   </div>
                   <div style={{marginLeft:"auto",textAlign:"right"}}>
                     <div style={{fontFamily:mono,fontSize:11,color:C.dim}}>MV ${mv}K</div>
-                    <div style={{fontFamily:mono,fontSize:9,color:C.faint}}>min ~${Math.round(mv*1.5)}K</div>
+                    <div style={{fontFamily:mono,fontSize:9,color:C.faint}}>buyout ~${floor}K+</div>
                   </div>
                   <span style={{fontFamily:mono,fontSize:9,color:C.faint}}>{isExp?"▾":"▸"}</span>
                 </div>
@@ -316,7 +329,7 @@ function BuyTab({ simState, season, myTeam, onBuyoutOffer }) {
                     </div>
                     <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:8}}>
                       <input type="range"
-                        min={Math.round(mv*0.8)} max={Math.round(mv*3.5)} step={5}
+                        min={Math.round(floor*0.6)} max={Math.round(floor*1.5)} step={5}
                         value={buyOffer}
                         onChange={e => setBuyOffer(+e.target.value)}
                         style={{flex:1,accentColor:C.acc}}/>
@@ -324,13 +337,13 @@ function BuyTab({ simState, season, myTeam, onBuyoutOffer }) {
                         ${buyOffer}K
                       </span>
                     </div>
-                    {/* Quick offer buttons */}
+                    {/* Quick offer buttons — relative to the acceptance floor */}
                     <div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:10}}>
-                      {[1.2,1.5,1.8,2.2,2.5].map(m => (
-                        <button key={m} onClick={() => setBuyOffer(Math.round(mv*m))}
+                      {[["lowball",0.7],["fair",1.0],["over",1.2]].map(([lbl,m]) => (
+                        <button key={lbl} onClick={() => setBuyOffer(Math.round(floor*m))}
                           style={{background:C.panel,border:`1px solid ${C.line}`,borderRadius:4,
-                            padding:"3px 7px",fontFamily:mono,fontSize:9,color:C.dim}}>
-                          {m}× (${Math.round(mv*m)}K)
+                            padding:"3px 9px",fontFamily:mono,fontSize:9,color:C.dim}}>
+                          {lbl} (${Math.round(floor*m)}K)
                         </button>
                       ))}
                     </div>
@@ -378,7 +391,9 @@ function TradeTab({ simState, season, myTeam, onTradeOffer }) {
   const myMv    = myP    ? marketValue(myP)    : 0;
   const theirMv = theirP ? marketValue(theirP) : 0;
   const offerVal= myMv + tradeCash;
-  const gap     = offerVal - theirMv;
+  // What the AI actually wants in combined value (mirrors App.doTradeOffer).
+  const tradeBar = theirP ? Math.round(theirMv * transferPremium(theirP) * 0.85) : 0;
+  const gap     = offerVal - tradeBar;
 
   return (
     <div>
@@ -451,10 +466,10 @@ function TradeTab({ simState, season, myTeam, onTradeOffer }) {
               Your offer: <span style={{color:C.gold}}>${offerVal}K</span>
             </span>
             <span style={{color:C.dim}}>
-              Their value: <span style={{color:C.gold}}>${theirMv}K</span>
+              They want: <span style={{color:C.gold}}>${tradeBar}K</span>
             </span>
             <span style={{color:gap>=0?C.win:C.red,fontWeight:700}}>
-              Gap: {gap>=0?"+":""}{gap}K
+              {gap>=0?`Likely accept (+${gap}K)`:`Short ${-gap}K`}
             </span>
           </div>
         )}
@@ -535,7 +550,7 @@ function SellTab({ simState, season, myTeam, onSellPlayer, onRelease }) {
                   <div style={{fontWeight:700,fontSize:13}}>{p.name}</div>
                   <div style={{display:"flex",gap:4,marginTop:2}}>
                     <Pill c={rc}>{p.role}</Pill>
-                    <span style={{fontFamily:mono,fontSize:9,color:C.faint}}>age {p.age} · {p.contract}ev</span>
+                    <span style={{fontFamily:mono,fontSize:9,color:C.faint}}>age {p.age} · {contractLabel(p.contract)}</span>
                   </div>
                 </div>
                 <div style={{display:"flex",gap:8}}>
