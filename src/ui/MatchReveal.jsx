@@ -63,23 +63,6 @@ function ScoreGraph({ rounds, tA, tB, myTeam }) {
   );
 }
 
-const BUY_COLOR = { awp_buy: C.live, full: C.win, force: C.gold, eco: C.red };
-const BUY_LABEL = { awp_buy: 'AWP', full: 'FULL', force: 'FRCE', eco: 'ECO' };
-
-function EconBar({ buy, align = 'left' }) {
-  const col = BUY_COLOR[buy] || C.faint;
-  return (
-    <div style={{
-      width: 34, height: 11, borderRadius: 2,
-      background: col + '55', border: `1px solid ${col}`,
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontFamily: mono, fontSize: 7, color: col, fontWeight: 700,
-    }}>
-      {BUY_LABEL[buy] || '?'}
-    </div>
-  );
-}
-
 function MomentumBar({ momentum, myTeam }) {
   if (!momentum || momentum.length === 0) return null;
   const cur = momentum[momentum.length - 1];
@@ -106,6 +89,132 @@ function MomentumBar({ momentum, myTeam }) {
         <div style={{ position: 'absolute', left: '50%', top: 0, width: 1, height: '100%', background: C.gold + 'aa' }} />
       </div>
     </div>
+  );
+}
+
+// ── Round-by-round history (HLTV-style icon strip) ───────────────────
+// Orange = round won on the T side, blue = won on the CT side. Icon shape
+// tells you how it ended: kills (skull), bomb detonation, defuse, or time.
+const SIDE_COL = { T: '#f0883e', CT: '#5aa9e6' };
+
+function RoundIcon({ method, color, size = 13 }) {
+  const fill = { fill: color };
+  if (method === 'bomb') return (
+    <svg width={size} height={size} viewBox="0 0 24 24"><path {...fill} d="M12 1.5l2.2 5.6 5.8-1.6-3.9 4.6 4.4 3.4-5.9.4L12 22.5l-2.6-8.6-5.9-.4 4.4-3.4-3.9-4.6 5.8 1.6z" /></svg>
+  );
+  if (method === 'defuse') return (
+    <svg width={size} height={size} viewBox="0 0 24 24"><path {...fill} d="M5 9a3 3 0 015.8-1.1h2.4A3 3 0 1116 13.9V20a1 1 0 01-1 1h-1v-3h-1v3h-2v-3H9v3H8a1 1 0 01-1-1v-6.1A3 3 0 015 9zm3-1.2A1.2 1.2 0 109.2 9 1.2 1.2 0 008 7.8zm5 0A1.2 1.2 0 1014.2 9 1.2 1.2 0 0013 7.8z" /></svg>
+  );
+  if (method === 'time') return (
+    <svg width={size} height={size} viewBox="0 0 24 24"><g fill="none" stroke={color} strokeWidth="2.2"><circle cx="12" cy="12" r="8" /><path d="M12 7.5V12l3 2" strokeLinecap="round" strokeLinejoin="round" /></g></svg>
+  );
+  // elim → skull
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24"><path {...fill} d="M12 2a8 8 0 00-8 8v3.2c0 .9.5 1.7 1.3 2.1l1.2.6V19a1 1 0 001 1h.5v-2h1.5v2h1v-2h1.5v2h.5a1 1 0 001-1v-3.1l1.2-.6c.8-.4 1.3-1.2 1.3-2.1V10a8 8 0 00-8-8zM8.7 10.4a1.7 1.7 0 110 3.4 1.7 1.7 0 010-3.4zm6.6 0a1.7 1.7 0 110 3.4 1.7 1.7 0 010-3.4zM11 16h2l-1 2z" /></svg>
+  );
+}
+
+function RoundHistory({ rounds, tA, tB, myTeam, mapDone }) {
+  const last = rounds[rounds.length - 1];
+  const scA = last?.scoreA ?? 0, scB = last?.scoreB ?? 0;
+  const Row = ({ team, score, oppScore }) => (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <div style={{ width: 50, display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
+        <TeamCrest name={team} size={16} />
+        <span style={{ fontFamily: mono, fontSize: 10, fontWeight: 700, color: team === myTeam ? C.acc : C.dim }}>{team.slice(0, 3).toUpperCase()}</span>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center' }}>
+        {rounds.map((rd, i) => {
+          const prev = i > 0 ? rounds[i - 1] : null;
+          const half = prev && prev.side !== rd.side && rd.round <= 24;
+          const ot = prev && prev.scoreA === 12 && prev.scoreB === 12;
+          const won = rd.winner === team;
+          const col = SIDE_COL[rd.winSide] || C.dim;
+          const pistol = rd.round === 1 || rd.round === 13;
+          return (
+            <React.Fragment key={i}>
+              {(half || ot) && <div style={{ width: 2, height: 17, background: ot ? C.gold : C.line, margin: '0 3px', borderRadius: 1 }} />}
+              <div title={won ? `R${rd.round}: ${rd.winSide} ${rd.winMethod}` : `R${rd.round}`} style={{
+                width: 17, height: 17, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                borderRadius: 3, background: won ? col + '22' : 'transparent',
+                boxShadow: won && pistol ? `inset 0 0 0 1px ${col}99` : 'none',
+                animation: won ? 'popIn .28s ease both' : undefined,
+              }}>
+                {won
+                  ? <RoundIcon method={rd.winMethod} color={col} />
+                  : <span style={{ width: 3, height: 3, borderRadius: '50%', background: C.line }} />}
+              </div>
+            </React.Fragment>
+          );
+        })}
+        {!mapDone && <div style={{ width: 17, height: 17, marginLeft: 1, borderRadius: 3, border: `1px dashed ${C.line}`, opacity: 0.5 }} />}
+      </div>
+      <span style={{ fontFamily: mono, fontSize: 15, fontWeight: 800, color: score > oppScore ? C.ink : C.faint, marginLeft: 6, minWidth: 16, textAlign: 'right' }}>{score}</span>
+    </div>
+  );
+  return (
+    <div style={{ alignSelf: 'stretch', width: '100%' }}>
+      <div style={{ overflowX: 'auto', paddingBottom: 4 }}>
+        <div style={{ display: 'inline-flex', flexDirection: 'column', gap: 5, minWidth: '100%' }}>
+          <Row team={tA} score={scA} oppScore={scB} />
+          <Row team={tB} score={scB} oppScore={scA} />
+        </div>
+      </div>
+      <div style={{ display: 'flex', gap: 13, justifyContent: 'center', marginTop: 9, flexWrap: 'wrap', fontFamily: mono, fontSize: 8.5, color: C.faint }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><span style={{ width: 8, height: 8, borderRadius: 2, background: SIDE_COL.T }} />T-SIDE</span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><span style={{ width: 8, height: 8, borderRadius: 2, background: SIDE_COL.CT }} />CT-SIDE</span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><RoundIcon method="elim" color={C.dim} size={11} />KILLS</span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><RoundIcon method="bomb" color={C.dim} size={11} />BOMB</span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><RoundIcon method="defuse" color={C.dim} size={11} />DEFUSE</span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><RoundIcon method="time" color={C.dim} size={11} />TIME</span>
+      </div>
+    </div>
+  );
+}
+
+// ── Half-time & timeout decisions ────────────────────────────────────
+// Each option trades a strength swing against a real cost: lingering tilt,
+// squad fatigue/morale, or a thinner economy going into the next stretch.
+// fx fields: str (flat) | gamble:[hi,lo,prob]; clearTilt; tilt; money;
+// lossStreak; fatigue (season); morale (season).
+const HALFTIME_OPTS = [
+  { label: 'Tactical Reset', color: '#a78bfa', pro: 'Fresh strats — steady +4 strength for the half', con: 'Safe, but no big surge', fx: { str: 4, clearTilt: true } },
+  { label: 'Fire Them Up', color: C.acc, pro: 'Adrenaline surge — big +7 strength', con: 'Players tire (+fatigue) and start on edge — losses snowball', fx: { str: 7, tilt: 2, fatigue: 6 } },
+  { label: 'Stay Calm', color: C.win, pro: 'Clears all tilt, steadies nerves (+morale), +2 strength', con: 'Only a small tactical bump', fx: { str: 2, clearTilt: true, morale: 4 } },
+  { label: 'Default Buys', color: C.gold, pro: 'Bank the economy — start the half flush for better buys', con: 'Passive opening — only +1 strength', fx: { str: 1, money: 4500, clearTilt: true } },
+  { label: 'All-In Gamble', color: C.red, pro: 'Swing for it — +10 strength if the read lands', con: 'Boom-or-bust (~55%) and dents squad morale either way', fx: { gamble: [10, -1, 0.55], morale: -4 } },
+];
+const TIMEOUT_OPTS = [
+  { label: 'Go Aggro', color: C.acc, pro: 'Force the tempo — +6 strength burst', con: 'Hard to sustain — players tire (+fatigue)', fx: { str: 6, fatigue: 5 } },
+  { label: 'Save & Reset Eco', color: C.gold, pro: 'Rebuild the bank — full buys next round, +3 strength', con: 'Likely concede this round — you save instead of buy', fx: { str: 3, money: 300, lossStreak: 0 } },
+  { label: 'Mindset Reset', color: C.win, pro: 'Wipe the tilt, clear heads — +5 strength', con: 'Burns your only timeout this map', fx: { str: 5, clearTilt: true } },
+  { label: 'Slow It Down', color: '#a78bfa', pro: 'Play for picks — +4 strength, steadier rounds', con: 'Cedes map control — the opponent dictates pace', fx: { str: 4 } },
+];
+function resolveStr(fx, rng) {
+  if (fx.gamble) { const [hi, lo, prob] = fx.gamble; return rng() < prob ? hi : lo; }
+  return fx.str || 0;
+}
+function effectDesc(fx, strVal) {
+  const parts = [fx.gamble ? `${strVal > 0 ? 'gamble landed +' + strVal : 'gamble flopped ' + strVal} str` : `${strVal >= 0 ? '+' : ''}${strVal} str`];
+  if (fx.clearTilt) parts.push('tilt cleared');
+  if (fx.tilt) parts.push('starts tilted');
+  if (fx.money) parts.push('eco shift');
+  if (fx.fatigue) parts.push('+fatigue');
+  if (fx.morale) parts.push(`${fx.morale > 0 ? '+' : '−'}morale`);
+  return parts.join(' · ');
+}
+function ChoiceButton({ opt, onClick }) {
+  return (
+    <button onClick={onClick} style={{
+      background: C.panel, border: `1px solid ${opt.color}55`, borderLeft: `3px solid ${opt.color}`,
+      borderRadius: 9, padding: '11px 14px', textAlign: 'left', cursor: 'pointer',
+    }}>
+      <div style={{ fontWeight: 800, fontSize: 14, color: opt.color, marginBottom: 5 }}>{opt.label}</div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+        <div style={{ fontFamily: mono, fontSize: 10.5, color: C.win, display: 'flex', gap: 7, lineHeight: 1.3 }}><span style={{ fontWeight: 800, flexShrink: 0 }}>PRO</span><span style={{ color: C.dim }}>{opt.pro}</span></div>
+        <div style={{ fontFamily: mono, fontSize: 10.5, color: C.red, display: 'flex', gap: 7, lineHeight: 1.3 }}><span style={{ fontWeight: 800, flexShrink: 0 }}>CON</span><span style={{ color: C.dim }}>{opt.con}</span></div>
+      </div>
+    </button>
   );
 }
 
@@ -228,57 +337,50 @@ export function MatchReveal({ reveal, myTeam, t, onDone }) {
     (curScore.scoreB === 12 && tB === myTeamInMap)
   );
 
+  // Apply lasting (season-long) fatigue/morale costs to my squad.
+  function applySquadCost(fx) {
+    if (!fx.fatigue && !fx.morale) return;
+    t.simState.players.filter(p => p.team === myTeamInMap).forEach(p => {
+      if (fx.fatigue) p.fatigue = Math.min(100, (p.fatigue || 0) + fx.fatigue);
+      if (fx.morale) p.morale = Math.min(100, Math.max(0, (p.morale ?? 60) + fx.morale));
+    });
+  }
+
+  function finalizeMapFrom(slice, fromRounds) {
+    mp.rounds = mp.rounds.slice(0, slice).concat(fromRounds);
+    const fA = mp.rounds[mp.rounds.length - 1]?.scoreA || 0;
+    const fB = mp.rounds[mp.rounds.length - 1]?.scoreB || 0;
+    mp.score = fA > fB ? [fA, fB] : [fB, fA];
+    mp.winnerName = fA > fB ? tA : tB;
+    mp.loserName = fA > fB ? tB : tA;
+  }
+
   // ── Interactive: halftime team talk ─────────────────────────────────
   function applyHalftimeChoice(choiceIdx) {
     if (!t || !mp) return;
     const lastRd = mp.rounds[11]; // round 12 data (0-indexed)
     if (!lastRd) return;
-    // strMod applied to myTeam's side
+    const opt = HALFTIME_OPTS[choiceIdx]; const fx = opt.fx;
     const isA = tA === myTeamInMap;
-    let strModA = 0, strModB = 0;
-    let desc = '';
-    if (choiceIdx === 0) {
-      // Tactical reset: strong buff
-      if (isA) strModA = 4; else strModB = 4;
-      desc = 'Tactical Reset → +4 str second half';
-    } else if (choiceIdx === 1) {
-      // Motivate: bigger buff but volatile
-      if (isA) strModA = 6; else strModB = 6;
-      desc = 'Fire them up → +6 str second half';
-    } else {
-      // Stay calm: small buff + clear tilt
-      if (isA) strModA = 2; else strModB = 2;
-      desc = 'Stay calm → +2 str, tilt cleared';
-    }
+    const strVal = resolveStr(fx, t.rng);
+    const myTilt = fx.clearTilt ? 0 : (fx.tilt ?? (isA ? lastRd.tiltA : lastRd.tiltB));
+    const myMoney = fx.money ?? 800;
 
     const startFrom = {
-      scoreA: lastRd.scoreA,
-      scoreB: lastRd.scoreB,
-      moneyA: 800,
-      moneyB: 800,
-      lossStreakA: 0,
-      lossStreakB: 0,
-      tiltA: choiceIdx === 2 ? 0 : lastRd.tiltA,
-      tiltB: choiceIdx === 2 ? 0 : lastRd.tiltB,
-      side: 1,
-      startRound: 12,
-      strModA,
-      strModB,
+      scoreA: lastRd.scoreA, scoreB: lastRd.scoreB,
+      moneyA: isA ? myMoney : 800, moneyB: isA ? 800 : myMoney,
+      lossStreakA: 0, lossStreakB: 0,
+      tiltA: isA ? myTilt : (fx.clearTilt ? 0 : lastRd.tiltA),
+      tiltB: isA ? (fx.clearTilt ? 0 : lastRd.tiltB) : myTilt,
+      side: 1, startRound: 12,
+      strModA: isA ? strVal : 0, strModB: isA ? 0 : strVal,
     };
 
+    applySquadCost(fx);
     const newHalf = resolveMap(t.simState, mp.map, tA, tB, { stage: 'group' }, t.rng, startFrom);
-    // Replace second half rounds in mp (mutate in place — fine since we own this array)
-    mp.rounds = mp.rounds.slice(0, 12).concat(newHalf.rounds);
-    mp.score = [newHalf.score[0] + startFrom.scoreA, newHalf.score[1] + startFrom.scoreB];
-    // Determine actual final score
-    const finalScoreA = mp.rounds[mp.rounds.length - 1]?.scoreA || 0;
-    const finalScoreB = mp.rounds[mp.rounds.length - 1]?.scoreB || 0;
-    mp.score = finalScoreA > finalScoreB ? [finalScoreA, finalScoreB] : [finalScoreB, finalScoreA];
-    const aWon = finalScoreA > finalScoreB;
-    mp.winnerName = aWon ? tA : tB;
-    mp.loserName = aWon ? tB : tA;
+    finalizeMapFrom(12, newHalf.rounds);
 
-    setLastInteraction({ type: 'halftime', choice: ['Tactical Reset', 'Fire Up', 'Stay Calm'][choiceIdx], desc });
+    setLastInteraction({ type: 'halftime', choice: opt.label, desc: effectDesc(fx, strVal) });
     setHalftimeDone(true);
     setShowHalftime(false);
     setPaused(false);
@@ -289,49 +391,27 @@ export function MatchReveal({ reveal, myTeam, t, onDone }) {
     if (!t || !mp) return;
     const lastRd = visibleRounds[visibleRounds.length - 1];
     if (!lastRd) return;
+    const opt = TIMEOUT_OPTS[choiceIdx]; const fx = opt.fx;
     const isA = tA === myTeamInMap;
-    let strModA = 0, strModB = 0;
-    let desc = '';
-    let tiltA = lastRd.tiltA, tiltB = lastRd.tiltB;
-    if (choiceIdx === 0) {
-      // Aggro: big str bonus
-      if (isA) strModA = 6; else strModB = 6;
-      desc = 'Go Aggro → +6 str for the run';
-    } else if (choiceIdx === 1) {
-      // Eco cycle: reset loss streak effect
-      if (isA) strModA = 3; else strModB = 3;
-      desc = 'Eco Cycle → +3 str, buy rhythm restored';
-    } else {
-      // Mindset reset: clear tilt + moderate str
-      if (isA) { strModA = 5; tiltA = 0; } else { strModB = 5; tiltB = 0; }
-      desc = 'Mindset Reset → +5 str, tilt cleared';
-    }
+    const strVal = resolveStr(fx, t.rng);
+    const myTilt = fx.clearTilt ? 0 : (isA ? lastRd.tiltA : lastRd.tiltB);
+    const myMoney = fx.money ?? (isA ? lastRd.moneyA : lastRd.moneyB);
+    const myLS = fx.lossStreak ?? (isA ? lastRd.lossStreakA : lastRd.lossStreakB);
 
     const startFrom = {
-      scoreA: lastRd.scoreA,
-      scoreB: lastRd.scoreB,
-      moneyA: lastRd.moneyA,
-      moneyB: lastRd.moneyB,
-      lossStreakA: choiceIdx === 1 ? 0 : lastRd.lossStreakA,
-      lossStreakB: choiceIdx === 1 ? 0 : lastRd.lossStreakB,
-      tiltA,
-      tiltB,
-      side: lastRd.side === 'first' ? 0 : 1,
-      startRound: lastRd.round,
-      strModA,
-      strModB,
+      scoreA: lastRd.scoreA, scoreB: lastRd.scoreB,
+      moneyA: isA ? myMoney : lastRd.moneyA, moneyB: isA ? lastRd.moneyB : myMoney,
+      lossStreakA: isA ? myLS : lastRd.lossStreakA, lossStreakB: isA ? lastRd.lossStreakB : myLS,
+      tiltA: isA ? myTilt : lastRd.tiltA, tiltB: isA ? lastRd.tiltB : myTilt,
+      side: lastRd.side === 'first' ? 0 : 1, startRound: lastRd.round,
+      strModA: isA ? strVal : 0, strModB: isA ? 0 : strVal,
     };
 
+    applySquadCost(fx);
     const continuation = resolveMap(t.simState, mp.map, tA, tB, { stage: 'group' }, t.rng, startFrom);
-    mp.rounds = mp.rounds.slice(0, roundIdx).concat(continuation.rounds);
-    const finalScoreA = mp.rounds[mp.rounds.length - 1]?.scoreA || 0;
-    const finalScoreB = mp.rounds[mp.rounds.length - 1]?.scoreB || 0;
-    mp.score = finalScoreA > finalScoreB ? [finalScoreA, finalScoreB] : [finalScoreB, finalScoreA];
-    const aWon = finalScoreA > finalScoreB;
-    mp.winnerName = aWon ? tA : tB;
-    mp.loserName = aWon ? tB : tA;
+    finalizeMapFrom(roundIdx, continuation.rounds);
 
-    setLastInteraction({ type: 'timeout', choice: ['Go Aggro', 'Eco Cycle', 'Mindset Reset'][choiceIdx], desc });
+    setLastInteraction({ type: 'timeout', choice: opt.label, desc: effectDesc(fx, strVal) });
     setTimeoutUsed(true);
     setShowTimeout(false);
     setPaused(false);
@@ -372,23 +452,13 @@ export function MatchReveal({ reveal, myTeam, t, onDone }) {
             Choose your approach for the second half:
           </div>
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {[
-            { label: 'Tactical Reset', sub: 'Switch up the strats. +4 str second half.', col: '#7c3aed' },
-            { label: 'Fire Them Up', sub: 'Pump the energy. +6 str — but risky.', col: C.acc },
-            { label: 'Stay Calm', sub: 'Keep the head. +2 str + clear any tilt.', col: C.win },
-          ].map((opt, i) => (
-            <button key={i} onClick={() => applyHalftimeChoice(i)} style={{
-              background: C.panel, border: `1px solid ${opt.col}`, borderRadius: 9,
-              padding: '13px 16px', textAlign: 'left', cursor: 'pointer',
-            }}>
-              <div style={{ fontWeight: 800, fontSize: 14, color: opt.col, marginBottom: 2 }}>{opt.label}</div>
-              <div style={{ fontFamily: mono, fontSize: 11, color: C.dim }}>{opt.sub}</div>
-            </button>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+          {HALFTIME_OPTS.map((opt, i) => (
+            <ChoiceButton key={i} opt={opt} onClick={() => applyHalftimeChoice(i)} />
           ))}
         </div>
         <div style={{ marginTop: 12, fontFamily: mono, fontSize: 10, color: C.faint, textAlign: 'center' }}>
-          This will re-simulate the second half with your chosen boost.
+          The second half is re-simulated with your call — pros and cons included.
         </div>
       </Overlay>
     );
@@ -413,19 +483,9 @@ export function MatchReveal({ reveal, myTeam, t, onDone }) {
             One timeout per map. Use it wisely.
           </div>
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {[
-            { label: 'Go Aggro', sub: 'Force the pace. Big +6 str burst.', col: C.acc },
-            { label: 'Eco Cycle', sub: 'Save this round. +3 str, reset buy rhythm.', col: C.gold },
-            { label: 'Mindset Reset', sub: 'Clear the heads. +5 str, wipe the tilt.', col: C.win },
-          ].map((opt, i) => (
-            <button key={i} onClick={() => applyTimeoutChoice(i)} style={{
-              background: C.panel, border: `1px solid ${opt.col}`, borderRadius: 9,
-              padding: '13px 16px', textAlign: 'left', cursor: 'pointer',
-            }}>
-              <div style={{ fontWeight: 800, fontSize: 14, color: opt.col, marginBottom: 2 }}>{opt.label}</div>
-              <div style={{ fontFamily: mono, fontSize: 11, color: C.dim }}>{opt.sub}</div>
-            </button>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+          {TIMEOUT_OPTS.map((opt, i) => (
+            <ChoiceButton key={i} opt={opt} onClick={() => applyTimeoutChoice(i)} />
           ))}
         </div>
       </Overlay>
@@ -465,9 +525,9 @@ export function MatchReveal({ reveal, myTeam, t, onDone }) {
             <TeamCrest name={tA} size={34} />
           </div>
           <div style={{ fontFamily: mono, fontWeight: 800, fontSize: 42, minWidth: 100, textAlign: 'center', letterSpacing: 4 }}>
-            <span style={{ color: flashTeam === tA ? C.gold : C.ink, transition: 'color 0.25s ease' }}>{curScore.scoreA}</span>
+            <span key={'a' + curScore.scoreA} style={{ display: 'inline-block', color: flashTeam === tA ? C.gold : C.ink, transition: 'color 0.25s ease', animation: 'scorePop .4s ease' }}>{curScore.scoreA}</span>
             <span style={{ color: C.faint, fontSize: 24 }}> : </span>
-            <span style={{ color: flashTeam === tB ? C.gold : C.ink, transition: 'color 0.25s ease' }}>{curScore.scoreB}</span>
+            <span key={'b' + curScore.scoreB} style={{ display: 'inline-block', color: flashTeam === tB ? C.gold : C.ink, transition: 'color 0.25s ease', animation: 'scorePop .4s ease' }}>{curScore.scoreB}</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: 10, flex: 1 }}>
             <TeamCrest name={tB} size={34} />
@@ -574,84 +634,9 @@ export function MatchReveal({ reveal, myTeam, t, onDone }) {
                 <span>● ACE</span><span style={{ color: C.win }}>● CLUTCH</span><span style={{ color: C.acc }}>● ECO UPSET</span>
               </div>
             </div>
-          ) : (<>
-          {/* Economy legend */}
-          <div style={{ display: 'flex', gap: 10, marginBottom: 4 }}>
-            {Object.entries(BUY_COLOR).map(([k, col]) => (
-              <div key={k} style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                <div style={{ width: 8, height: 8, borderRadius: 1, background: col }} />
-                <span style={{ fontFamily: mono, fontSize: 8, color: C.faint }}>{BUY_LABEL[k]}</span>
-              </div>
-            ))}
-          </div>
-          {/* Round blocks: teamA buy | result arrow | teamB buy */}
-          <div style={{ display: 'flex', gap: 2, flexWrap: 'wrap', justifyContent: 'center' }}>
-            {visibleRounds.map((rd, i) => {
-              const prevRd = i > 0 ? visibleRounds[i - 1] : null;
-              const halfBreak = prevRd && prevRd.side !== rd.side && rd.round <= 24;
-              const isOTBreak = prevRd && prevRd.scoreA === 12 && prevRd.scoreB === 12;
-              const isOTRound = rd.round > 24;
-              const myWin = rd.winner === myTeamInMap;
-              const hasNarrative = rd.isClutch || rd.isEcoUpset || rd.isAce;
-              return (
-                <React.Fragment key={i}>
-                  {halfBreak && (
-                    <div style={{ width: 2, alignSelf: 'stretch', background: C.gold, margin: '0 3px', borderRadius: 1 }} />
-                  )}
-                  {isOTBreak && (
-                    <div style={{
-                      display: 'flex', flexDirection: 'column', alignItems: 'center',
-                      margin: '0 4px', gap: 1, justifyContent: 'center',
-                    }}>
-                      <div style={{ width: 2, height: 14, background: C.gold, borderRadius: 1 }} />
-                      <div style={{ fontFamily: mono, fontSize: 7, color: C.gold, fontWeight: 800, letterSpacing: 1 }}>OT</div>
-                      <div style={{ width: 2, height: 14, background: C.gold, borderRadius: 1 }} />
-                    </div>
-                  )}
-                  <div style={{
-                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1,
-                    border: isOTRound ? `1px solid ${C.gold}88` : hasNarrative ? `1px solid ${C.gold}44` : 'none',
-                    background: isOTRound ? `${C.gold}0a` : 'transparent',
-                    borderRadius: 3, padding: '1px',
-                  }}>
-                    {/* Pistol / special badge (top) */}
-                    {(rd.round === 1 || rd.round === 13) ? (
-                      <div style={{ width: 34, height: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: mono, fontSize: 7, fontWeight: 800, color: C.gold }}>P</div>
-                    ) : (rd.isAce || rd.isClutch || rd.isEcoUpset) ? (
-                      <div style={{ width: 34, height: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9 }}>
-                        {rd.isAce ? <span style={{ width: 6, height: 6, borderRadius: '50%', background: C.gold }} /> : rd.isClutch ? <span style={{ width: 6, height: 6, borderRadius: '50%', background: C.win }} /> : <span style={{ color: C.acc, fontFamily: mono, fontSize: 8, fontWeight: 700 }}>$</span>}
-                      </div>
-                    ) : null}
-                    {/* Team A buy */}
-                    <EconBar buy={rd.buyA} />
-                    {/* Result arrow */}
-                    <div style={{
-                      width: 34, height: 12,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontFamily: mono, fontSize: 9, fontWeight: 700,
-                      color: rd.winner === tA ? (tA === myTeamInMap ? C.win : C.red) : (tB === myTeamInMap ? C.win : C.red),
-                      background: myWin !== undefined
-                        ? (rd.winner === myTeamInMap ? 'rgba(61,220,132,.12)' : 'rgba(239,68,68,.10)')
-                        : 'transparent',
-                      borderRadius: 2,
-                    }}>
-                      {rd.winner === tA ? '◀' : '▶'}
-                    </div>
-                    {/* Team B buy */}
-                    <EconBar buy={rd.buyB} />
-                  </div>
-                </React.Fragment>
-              );
-            })}
-            {!mapDone && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'center' }}>
-                {[0, 1, 2].map(i => (
-                  <div key={i} style={{ width: 34, height: i === 1 ? 12 : 11, borderRadius: 2, background: C.panel2 }} />
-                ))}
-              </div>
-            )}
-          </div>
-          </>)}
+          ) : (
+            <RoundHistory rounds={visibleRounds} tA={tA} tB={tB} myTeam={myTeam} mapDone={mapDone} />
+          )}
         </div>
 
         {/* Notable events feed */}

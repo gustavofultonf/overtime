@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { C, sans, mono } from './theme.js';
-import { Wordmark, TeamCrest } from './primitives.jsx';
+import { Wordmark, TeamCrest, CountUp } from './primitives.jsx';
 
 export function Header({season,myTeam,onReset,stageLabel,onSave}){
   const [showSave,setShowSave]=useState(false);
@@ -20,7 +20,7 @@ export function Header({season,myTeam,onReset,stageLabel,onSave}){
     <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:10}}>
       <div style={{display:"flex",alignItems:"center",gap:7,background:C.panel,border:`1px solid ${broke?C.red+"66":C.line}`,borderRadius:9,padding:"6px 11px"}}>
         <span style={{fontFamily:mono,fontSize:9,color:C.faint,letterSpacing:1}}>BUDGET</span>
-        <span style={{fontFamily:mono,fontSize:13,fontWeight:700,color:broke?C.red:C.gold}}>${budget}K</span>
+        <CountUp value={budget} prefix="$" suffix="K" style={{fontFamily:mono,fontSize:13,fontWeight:700,color:broke?C.red:C.gold,display:"inline-block"}}/>
       </div>
       <div style={{position:"relative"}}>
         <button onClick={()=>setShowSave(!showSave)} title="Save game" style={{background:C.panel,color:C.live,border:`1px solid ${C.line}`,borderRadius:9,padding:"8px 12px",fontSize:12,fontFamily:sans,fontWeight:700}}>Save</button>
@@ -35,10 +35,8 @@ export function Header({season,myTeam,onReset,stageLabel,onSave}){
 
 export function Tabs({tab,setTab,calMode,miniMode}){
   const items=calMode
-    ?[["calendar","Calendar"],["roster","Squad"],["dynamics","Dynamics"],["tactics","Tactics"],["market","Transfers"],["maps","Maps"],["facility","Facility"],["finance","Finance"],["rankings","Rankings"],["rivals","Rivals"],["season","Season"]]
-    :miniMode
-    ?[["hub","Hub"],["bracket","Bracket"],["roster","Squad"],["stats","Stats"],["rivals","Rivals"],["season","Season"]]
-    :[["hub","Hub"],["groups","Groups"],["bracket","Bracket"],["roster","Squad"],["stats","Stats"],["rivals","Rivals"],["season","Season"]];
+    ?[["calendar","Calendar"],["roster","Squad"],["dynamics","Dynamics"],["tactics","Tactics"],["market","Transfers"],["maps","Maps"],["facility","Club"],["finance","Finance"],["rankings","Rankings"],["rivals","Rivals"],["season","Season"]]
+    :[["hub","Event"],["roster","Squad"],["stats","Stats"],["rivals","Rivals"],["season","Season"]];
   return(
   <nav style={{display:"flex",gap:4,padding:"0 22px",borderBottom:`1px solid ${C.line}`,flexWrap:"wrap",overflowX:"auto",background:C.bg}}>
     {items.map(([k,l])=>{const on=tab===k;return(

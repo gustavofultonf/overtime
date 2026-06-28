@@ -3,6 +3,7 @@ import { C, sans, mono } from './theme.js';
 import { playerOvr } from '../engine/player.js';
 import { rosterOf, teamBase } from '../engine/state.js';
 import { Overlay, SL, Intro, Pill, TraitPill, Stat, MiniStat, FormArrow, TeamCrest } from './primitives.jsx';
+import { contractLabel } from '../constants/events.js';
 
 function StatRadar({ p }) {
   const CX = 70, CY = 70, R = 54;
@@ -81,14 +82,14 @@ export function RosterView2({state,myTeam,onNegotiate,onChangeRole}){
     </div>
 
     {/* Player cards — HLTV fantasy style */}
-    <div style={{display:"flex",gap:8,overflowX:"auto",paddingBottom:8,marginBottom:16}}>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))",gap:10,marginBottom:16}}>
       {r.map(p=>{
         const ovr=playerOvr(p);const st=state.stats[p.name];const career=state.career?.[p.name];
         const fc=p.fatigue>80?C.red:p.fatigue>60?C.gold:p.fatigue>40?"#8bc99a":C.win;
         const rc=roleColor[p.role]||C.dim;
         return(
         <button key={p.name} onClick={()=>setProfilePlayer(p)}
-          style={{background:`linear-gradient(180deg,${rc}18,${C.panel})`,border:`1px solid ${rc}55`,borderRadius:10,padding:0,minWidth:140,maxWidth:160,flex:"0 0 auto",textAlign:"center",overflow:"hidden"}}>
+          style={{background:`linear-gradient(180deg,${rc}18,${C.panel})`,border:`1px solid ${rc}55`,borderRadius:10,padding:0,textAlign:"center",overflow:"hidden",animation:"risePop .42s ease both",animationDelay:`${r.indexOf(p)*0.06}s`}}>
           {/* Role header */}
           <div style={{background:rc+"33",padding:"6px 8px",borderBottom:`1px solid ${rc}44`}}>
             <div style={{fontWeight:800,fontSize:11,color:rc,letterSpacing:1}}>{p.role}</div>
@@ -128,7 +129,7 @@ export function RosterView2({state,myTeam,onNegotiate,onChangeRole}){
             </div>
             {/* Contract + salary */}
             <div style={{fontFamily:mono,fontSize:9,color:C.faint}}>
-              ${p.salary}K/mo · {p.contract<=1?<span style={{color:C.red}}>!{p.contract}ev</span>:<span>{p.contract}ev</span>}
+              ${p.salary}K/mo · {p.contract<=16?<span style={{color:C.red}}>{contractLabel(p.contract)}</span>:<span>{contractLabel(p.contract)}</span>}
             </div>
             {/* Age + traits */}
             <div style={{display:"flex",gap:3,justifyContent:"center",marginTop:4,flexWrap:"wrap",alignItems:"center"}}>
@@ -162,7 +163,7 @@ export function RosterView2({state,myTeam,onNegotiate,onChangeRole}){
               style={{background:C.panel2,color:C.ink,border:`1px solid ${C.line}`,borderRadius:5,padding:"4px 8px",fontFamily:mono,fontSize:10}}>
               {["IGL","AWP","Entry","Lurk","Support"].map(rl=><option key={rl} value={rl}>{rl}</option>)}
             </select>}
-            {p.contract<=1&&onNegotiate&&<button onClick={()=>setNegotiating({player:p,offer:p.salary})}
+            {p.contract<=16&&onNegotiate&&<button onClick={()=>setNegotiating({player:p,offer:p.salary})}
               style={{marginLeft:"auto",background:C.gold,color:"#0a0c10",border:"none",borderRadius:5,padding:"4px 10px",fontFamily:mono,fontSize:9,fontWeight:700}}>RENEW CONTRACT</button>}
           </div>
         ))}
@@ -180,7 +181,7 @@ export function RosterView2({state,myTeam,onNegotiate,onChangeRole}){
         ):(
           <div>
             <div style={{marginBottom:12}}>
-              <span style={{fontFamily:mono,fontSize:12,color:C.dim}}>Current: ${negotiating.player.salary}/mo · {negotiating.player.contract} events left</span>
+              <span style={{fontFamily:mono,fontSize:12,color:C.dim}}>Current: ${negotiating.player.salary}/mo · {contractLabel(negotiating.player.contract)} left</span>
             </div>
             <div style={{fontFamily:mono,fontSize:11,color:C.dim,marginBottom:8}}>YOUR OFFER ($/month)</div>
             <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:16}}>
@@ -233,7 +234,7 @@ export function PlayerProfile({p,state,onClose}){
       <div style={{marginLeft:"auto",display:"flex",gap:14,flexWrap:"wrap"}}>
         <MiniStat label="OVR" value={playerOvr(p)} color={playerOvr(p)>=85?C.acc:C.ink}/>
         <MiniStat label="SALARY" value={`${p.salary}K`} color={C.gold}/>
-        <MiniStat label="CONTRACT" value={p.contract} color={p.contract<=1?C.red:C.dim}/>
+        <MiniStat label="CONTRACT" value={contractLabel(p.contract)} color={p.contract<=16?C.red:C.dim}/>
       </div>
     </div>
     {/* Radar + stat bars side by side */}

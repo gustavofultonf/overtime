@@ -29,18 +29,25 @@ export function EventHLTV({t,myTeam,nf,onPlay,alive,onOpen,onEndEvent,season,SEE
 
     {/* Action banner */}
     {t.stage==="done"?(
-      <div style={{background:t.champion===myTeam?"linear-gradient(135deg,#2a2310,#1a1f29)":C.panel,border:`1px solid ${t.champion===myTeam?C.gold:C.line}`,borderRadius:10,padding:"14px 18px",marginBottom:12,display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
+      <div className={t.champion===myTeam?"sheen":undefined} style={{background:t.champion===myTeam?"linear-gradient(135deg,#2a2310,#1a1f29)":C.panel,border:`1px solid ${t.champion===myTeam?C.gold:C.line}`,borderRadius:10,padding:"14px 18px",marginBottom:12,display:"flex",alignItems:"center",gap:12,flexWrap:"wrap",animation:t.champion===myTeam?"glowPulse 2.2s ease-in-out infinite":undefined}}>
         {t.champion===myTeam?<span style={{color:C.gold,fontWeight:800,fontSize:18}}>{myTeam} win {evLabel}</span>:<span style={{color:C.dim,fontSize:15}}>{myTeam} finish {alive?"top":"eliminated"}.</span>}
-        {onEndEvent&&<button onClick={onEndEvent} style={{marginLeft:"auto",background:t.champion===myTeam?C.gold:C.acc,color:"#0a0c10",border:"none",borderRadius:8,padding:"10px 20px",fontWeight:800,fontSize:14}}>Back to Calendar →</button>}
+        {onEndEvent&&<button onClick={onEndEvent} style={{marginLeft:"auto",background:t.champion===myTeam?C.gold:C.acc,color:"#0a0c10",border:"none",borderRadius:8,padding:"10px 20px",fontWeight:800,fontSize:14}}>Back to Dashboard →</button>}
       </div>
     ):!alive?(
       <div style={{background:C.panel,border:`1px solid ${C.red}40`,borderRadius:10,padding:"14px 18px",marginBottom:12,display:"flex",alignItems:"center",gap:12}}>
         <span style={{color:C.red,fontWeight:700}}>{myTeam} eliminated</span>
-        {onEndEvent&&<button onClick={onEndEvent} style={{marginLeft:"auto",background:C.panel2,color:C.acc,border:`1px solid ${C.acc}`,borderRadius:8,padding:"8px 16px",fontWeight:700,fontSize:13}}>Back to Calendar →</button>}
+        {onEndEvent&&<button onClick={onEndEvent} style={{marginLeft:"auto",background:C.panel2,color:C.acc,border:`1px solid ${C.acc}`,borderRadius:8,padding:"8px 16px",fontWeight:700,fontSize:13}}>Back to Dashboard →</button>}
       </div>
     ):nf?(
       <NextMatchHLTV nf={nf} myTeam={myTeam} onPlay={onPlay} t={t} SEED={SEED}/>
-    ):null}
+    ):(
+      // Alive but no pending match yet (waiting on the bracket to resolve, or a rare
+      // stuck state). Never leave the manager without a way out of the event.
+      <div style={{background:C.panel,border:`1px solid ${C.line}`,borderRadius:10,padding:"14px 18px",marginBottom:12,display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
+        <span style={{color:C.dim,fontSize:14}}>No match awaiting you right now — the rest of the bracket is being decided.</span>
+        {onEndEvent&&<button onClick={onEndEvent} style={{marginLeft:"auto",background:C.acc,color:"#0a0c10",border:"none",borderRadius:8,padding:"10px 18px",fontWeight:800,fontSize:14}}>Back to Dashboard →</button>}
+      </div>
+    )}
 
     {/* Stage tabs */}
     <div style={{display:"flex",gap:1,marginBottom:12,background:C.panel,border:`1px solid ${C.line}`,borderRadius:8,overflow:"hidden"}}>

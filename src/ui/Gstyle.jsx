@@ -33,6 +33,18 @@ a{color:${C.acc};}
 @keyframes vetoFlash{0%{box-shadow:0 0 0 0 currentColor;}100%{box-shadow:0 0 0 6px transparent;}}
 @keyframes deciderGlow{0%,100%{box-shadow:0 0 8px 0 ${C.gold}55;}50%{box-shadow:0 0 16px 3px ${C.gold}99;}}
 @keyframes shimmer{0%{background-position:-200% 0;}100%{background-position:200% 0;}}
+@keyframes popIn{0%{opacity:0;transform:scale(.4);}70%{opacity:1;transform:scale(1.12);}100%{transform:scale(1);}}
+@keyframes scorePop{0%{transform:scale(1);}35%{transform:scale(1.4);}100%{transform:scale(1);}}
+@keyframes glowPulse{0%,100%{box-shadow:0 0 10px 0 ${C.gold}44;}50%{box-shadow:0 0 24px 5px ${C.gold}aa;}}
+@keyframes risePop{0%{opacity:0;transform:translateY(14px) scale(.96);}60%{opacity:1;}100%{opacity:1;transform:translateY(0) scale(1);}}
+@keyframes sheen{0%{background-position:200% 0;}100%{background-position:-200% 0;}}
+
+/* Subtle hover-lift for non-button cards */
+.lift{transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease;}
+.lift:hover{transform:translateY(-2px);box-shadow:0 12px 28px -16px rgba(0,0,0,.75);}
+
+/* Gold sheen sweep across an element (e.g. champion banners) */
+.sheen{background-image:linear-gradient(110deg,transparent 30%,${C.gold}33 50%,transparent 70%);background-size:200% 100%;animation:sheen 2.4s linear infinite;}
 
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;}}
 `}</style>;}

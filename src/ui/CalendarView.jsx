@@ -1,471 +1,280 @@
 import React, { useState } from 'react';
 import { C, sans, mono } from './theme.js';
 import { MAPS, AI_TEAMS } from '../constants/data.js';
-import { EVENTS, SEASON_WEEKS, SALARY_WEEKS, ACTIVITIES, COACHES, FACILITIES, isSalaryWeek, weekToLabel, weekToMonth } from '../constants/events.js';
+import { EVENTS, SALARY_WEEKS, ACTIVITIES, weekToLabel, contractLabel } from '../constants/events.js';
 import { playerOvr } from '../engine/player.js';
 import { rosterOf, getMapProf } from '../engine/state.js';
-import { getRankedTeams } from '../engine/player.js';
-import { SL, Banner, Locked, Intro, Pill, MiniStat, Stat, FormArrow } from './primitives.jsx';
-import { computeFinances } from '../engine/finance.js';
+import { SL, Banner, Pill, MiniStat, Stat, FormArrow } from './primitives.jsx';
 
-// ── Season activity heatmap (GitHub-contributions style) ──
-const ACT_COLOR={practice:C.live,bootcamp:C.acc,scrim:C.gold,vod:"#9d7cff",scout:"#2ee6c8",rest:C.win,vacation:"#56d364"};
-function SeasonHeatmap({season,myTeam}){
-  const logByWeek={};
-  (season.weekLog||[]).forEach(w=>{logByWeek[w.week]=w;});
-  const cell=(w)=>{
-    const ev=EVENTS.find(e=>e.week===w);
-    const entry=logByWeek[w];
-    const current=w===season.week;
-    const past=w<season.week;
-    let bg=C.panel2,bd=C.line,title=`W${w} · ${weekToLabel(w,season.year)}`;
-    if(ev){
-      bg=ev.tier==="Major"?C.gold:ev.tier==="A"?C.live:C.dim;
-      bd=bg;title+=` · ${ev.label} (${ev.tier})`;
-    } else if(entry?.activity){
-      const col=ACT_COLOR[entry.activity]||C.dim;
-      bg=col+"cc";bd=col;title+=` · ${ACTIVITIES[entry.activity]?.label||entry.activity}${entry.mapChoice?" ("+entry.mapChoice+")":""}`;
-    } else if(past){ bg=C.panel; bd=C.line; title+=" · —"; }
-    if(entry?.event) title+=` · ${entry.event}`;
-    return(
-      <div key={w} title={title} style={{
-        width:"100%",aspectRatio:"1",borderRadius:3,
-        background:current?"transparent":bg,
-        border:`1.5px solid ${current?C.acc:bd}`,
-        boxShadow:current?`0 0 0 1px ${C.acc}`:undefined,
-        display:"flex",alignItems:"center",justifyContent:"center",
-        fontFamily:mono,fontSize:8,fontWeight:700,
-        color:ev?(ev.tier==="Major"?"#0a0c10":"#0a0c10"):current?C.acc:"#0a0c10aa",
-        opacity:(!past&&!current&&!ev)?0.4:1,
-        transition:"all .2s ease",cursor:"default",
-      }}>
-        {ev?(ev.tier==="Major"?"M":ev.tier[0]):current?"":entry?.event?"!":""}
-      </div>
-    );
-  };
-  // 52 weeks → rows of 13 (quarters)
-  const weeks=[];for(let w=1;w<=SEASON_WEEKS;w++)weeks.push(w);
-  return(
-    <div>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(13,1fr)",gap:4,marginBottom:8}}>
-        {weeks.map(cell)}
-      </div>
-      <div style={{display:"flex",gap:10,flexWrap:"wrap",fontFamily:mono,fontSize:8,color:C.faint,alignItems:"center"}}>
-        <span style={{display:"flex",alignItems:"center",gap:4}}><span style={{width:8,height:8,borderRadius:2,background:C.gold}}/>Major</span>
-        <span style={{display:"flex",alignItems:"center",gap:4}}><span style={{width:8,height:8,borderRadius:2,background:C.live}}/>A-Tier</span>
-        <span style={{display:"flex",alignItems:"center",gap:4}}><span style={{width:8,height:8,borderRadius:2,background:C.dim}}/>B-Tier</span>
-        <span style={{color:C.line,borderLeft:`1px solid ${C.line}`,paddingLeft:10}}/>
-        {Object.entries(ACT_COLOR).map(([k,col])=>(
-          <span key={k} style={{display:"flex",alignItems:"center",gap:3}}>
-            <span style={{width:8,height:8,borderRadius:2,background:col,display:"inline-block"}}/>
-            <span style={{color:C.faint}}>{ACTIVITIES[k]?.label||k}</span>
-          </span>
-        ))}
-        <span style={{display:"flex",alignItems:"center",gap:4,color:C.acc,marginLeft:"auto"}}><span style={{width:8,height:8,borderRadius:2,border:`1.5px solid ${C.acc}`}}/>Now</span>
-      </div>
-    </div>
-  );
-}
+const tierColor = t => t === "Major" ? C.gold : t === "A" ? C.live : C.dim;
+const tierLabel = t => t === "Major" ? "MAJOR" : t === "A" ? "A-TIER" : "B-TIER";
 
-function BudgetForecast({season,myTeam,roster}){
-  // Compute weekly net from the central finance model (monthly figures).
-  const fin=computeFinances(season,myTeam);
-  const totalSalary=fin.expenses.salaryTotal;
-  const monthlyNet=fin.net;
-  const weeklyNet=fin.weeklyNet;
-  const nextEv=EVENTS.find(e=>e.week>=season.week);
-  const weeksUntil=nextEv?nextEv.week-season.week:0;
-  const projectedBudget=Math.round(season.budget+weeklyNet*weeksUntil);
-  const tight=projectedBudget<totalSalary*2;
-  const inDebt=projectedBudget<0;
-  return(
-    <div style={{background:inDebt?"rgba(239,68,68,.08)":tight?"rgba(243,194,91,.06)":C.panel2,border:`1px solid ${inDebt?C.red:tight?C.gold+"55":C.line}`,borderRadius:8,padding:"10px 16px",marginBottom:16,fontFamily:mono,fontSize:11}}>
-      <div style={{display:"flex",gap:16,flexWrap:"wrap",alignItems:"center"}}>
-        <span style={{color:C.faint,fontWeight:700,letterSpacing:1}}>FORECAST</span>
-        <span style={{color:monthlyNet>=0?C.win:C.red}}>Monthly net: {monthlyNet>=0?"+":""}{monthlyNet}K</span>
-        <span style={{color:C.dim}}>Weekly: {weeklyNet>=0?"+":""}{Math.round(weeklyNet)}K</span>
-        {nextEv&&<span style={{color:inDebt?C.red:tight?C.gold:C.dim}}>At {nextEv.label.split(" ")[0]}: {projectedBudget>=0?"$":"-$"}{Math.abs(projectedBudget)}K</span>}
-        {inDebt&&<span style={{color:C.red,fontWeight:700}}>! DEFICIT WARNING</span>}
-        {!inDebt&&tight&&<span style={{color:C.gold}}>! Budget getting tight</span>}
-      </div>
-    </div>
-  );
-}
+export function CalendarView({ season, myTeam, onAdvance, onSim, onAcceptSponsor, onDeclineSponsor, onResolveEvent, onResolveContract }) {
+  const [act, setAct] = useState(null);
+  const [mapChoice, setMapChoice] = useState(MAPS[0]);
+  const [scoutChoice, setScoutChoice] = useState(null);
 
-export function CalendarView({season,myTeam,onAdvance,onTransfer,onSim,onHireCoach,onFireCoach,onInitAcademy,onPromoteProspect,onSellProspect,onAcceptSponsor,onDeclineSponsor,onResolveEvent,onResolveContract}){
-  const [act,setAct]=useState(null);
-  const [mapChoice,setMapChoice]=useState(MAPS[0]);
-  const roster=rosterOf(season.simState,myTeam);
-  const avgFatigue=roster.length?Math.round(roster.reduce((s,p)=>s+p.fatigue,0)/roster.length):0;
-  const nextEvent=EVENTS.find(e=>e.week>=season.week);
-  const weeksUntil=nextEvent?nextEvent.week-season.week:99;
-  const totalSalary=roster.reduce((s,p)=>s+p.salary,0);
-  const pendingContracts=season.pendingContracts||[];
-  const blocked=!!(season.pendingEvent||pendingContracts.length);
+  const roster = rosterOf(season.simState, myTeam);
+  const avgFatigue = roster.length ? Math.round(roster.reduce((s, p) => s + p.fatigue, 0) / roster.length) : 0;
+  const chem = season.simState.chemistry?.[myTeam] ?? 55;
+  const nextEvent = EVENTS.find(e => e.week >= season.week);
+  const weeksUntil = nextEvent ? nextEvent.week - season.week : 99;
+  const totalSalary = roster.reduce((s, p) => s + p.salary, 0);
+  const pendingContracts = season.pendingContracts || [];
+  const blocked = !!(season.pendingEvent || pendingContracts.length);
+  const upcoming = EVENTS.filter(e => e.week >= season.week).slice(0, 4);
+  const sponsorOffers = (season.sponsorships || []).filter(sp => sp.offered);
 
-  function confirm(){if(!act)return;onAdvance(act,act==="practice"?mapChoice:null);setAct(null);}
+  const nextPay = SALARY_WEEKS.find(w => w >= season.week);
+  const wksToPay = nextPay ? nextPay - season.week : 0;
+  const coachPay = season.simState.coach ? season.simState.coach.salary : 0;
+  const payDue = totalSalary + coachPay;
 
-  return(<div>
-    <div style={{display:"flex",gap:16,marginBottom:20,flexWrap:"wrap"}}>
-      <MiniStat label="DATE" value={`${weekToLabel(season.week,season.year)} ${season.year||2026}`} color={C.acc}/>
-      <MiniStat label="NEXT EVENT" value={weeksUntil===0?(nextEvent?.label||"EVENT"):`${weeksUntil}wk`} color={weeksUntil<=2?C.red:C.live}/>
-      {nextEvent&&weeksUntil>0&&<MiniStat label="TYPE" value={nextEvent.tier} color={nextEvent.tier==="Major"?C.gold:nextEvent.tier==="A"?C.live:C.dim}/>}
-      {(()=>{const nextPay=SALARY_WEEKS.find(w=>w>=season.week);const wksToPay=nextPay?nextPay-season.week:0;const roster=rosterOf(season.simState,myTeam);const coachPay=season.simState.coach?season.simState.coach.salary:5;const sal=roster.reduce((s,p)=>s+p.salary,0)+coachPay;return <MiniStat label={wksToPay===0?"PAYDAY":"NEXT PAY"} value={wksToPay===0?`${sal}K due!`:`${wksToPay}wk · ${sal}K`} color={wksToPay===0?C.red:wksToPay<=1?C.gold:C.dim}/>;})()}
-      <MiniStat label="AVG FATIGUE" value={avgFatigue} color={avgFatigue>70?C.red:avgFatigue>50?C.gold:C.win}/>
-      <MiniStat label="BUDGET" value={`$${season.budget}K`} color={season.budget>0?C.gold:C.red}/>
+  function confirm() {
+    if (!act) return;
+    const arg = act === "practice" ? mapChoice : act === "scout" ? scoutChoice : null;
+    if (act === "scout" && !arg) return;
+    onAdvance(act, arg);
+    setAct(null);
+  }
+
+  const lastEvent = season.weekLog.length > 0 ? season.weekLog[season.weekLog.length - 1]?.event : null;
+
+  return (<div>
+    {/* ── Overview stat strip ── */}
+    <div style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>
+      <MiniStat label="DATE" value={`${weekToLabel(season.week, season.year)} ${season.year || 2026}`} color={C.acc} />
+      <MiniStat label="NEXT EVENT" value={weeksUntil === 0 ? (nextEvent?.label || "EVENT") : `${weeksUntil}wk`} color={weeksUntil <= 2 ? C.red : C.live} />
+      <MiniStat label="BUDGET" value={`$${season.budget}K`} color={season.budget > 0 ? C.gold : C.red} />
+      <MiniStat label="CHEMISTRY" value={chem} color={chem >= 70 ? C.win : chem >= 50 ? C.gold : C.red} />
+      <MiniStat label="AVG FATIGUE" value={avgFatigue} color={avgFatigue > 70 ? C.red : avgFatigue > 50 ? C.gold : C.win} />
+      <MiniStat label={wksToPay === 0 ? "PAYDAY" : "NEXT PAY"} value={wksToPay === 0 ? `${payDue}K due!` : `${wksToPay}wk · ${payDue}K`} color={wksToPay === 0 ? C.red : wksToPay <= 1 ? C.gold : C.dim} />
     </div>
 
-    {/* Calendar grid */}
-    <SL n="TME" t={`${season.year||2026} SEASON`}/>
-    <div style={{marginBottom:16}}>
-      <SeasonHeatmap season={season} myTeam={myTeam}/>
-    </div>
-    <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6,marginBottom:16}}>
-      {(()=>{
-        const months=["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
-        const monthGroups={};
-        for(let w=1;w<=SEASON_WEEKS;w++){const m=weekToMonth(w);if(!monthGroups[m])monthGroups[m]=[];monthGroups[m].push(w);}
-        return months.map((mName,mi)=>{
-          const weeks=monthGroups[mi]||[];
-          if(!weeks.length)return null;
-          const isPast=weeks.every(w=>w<season.week);
-          const isCurrent=weeks.some(w=>w===season.week);
-          const hasEvent=weeks.some(w=>EVENTS.find(e=>e.week===w));
-          return(
-          <div key={mi} style={{background:isCurrent?C.acc+"11":C.panel,border:`1px solid ${isCurrent?C.acc:hasEvent?C.gold+"44":C.line}`,borderRadius:7,padding:"6px",opacity:isPast?0.6:1}}>
-            <div style={{fontFamily:mono,fontSize:9,fontWeight:700,color:isCurrent?C.acc:hasEvent?C.gold:isPast?C.faint:C.dim,letterSpacing:1,marginBottom:4,textAlign:"center"}}>{mName}</div>
-            <div style={{display:"grid",gridTemplateColumns:`repeat(${Math.min(weeks.length,5)},1fr)`,gap:2}}>
-              {weeks.map(w=>{
-                const ev=EVENTS.find(e=>e.week===w);
-                const current=w===season.week;const past=w<season.week;
-                const bg=current?C.acc:ev?(ev.tier==="Major"?C.gold+"33":ev.tier==="A"?C.live+"22":C.panel2):past?"transparent":C.panel2;
-                const fg=current?"#0a0c10":ev?(ev.tier==="Major"?C.gold:ev.tier==="A"?C.live:C.dim):past?C.faint:C.dim;
-                const bd=current?C.acc:ev?(ev.tier==="Major"?C.gold:ev.tier==="A"?C.live:C.line):"transparent";
-                return(<div key={w} title={`W${w} ${weekToLabel(w,season.year)}${ev?" - "+ev.label:""}`}
-                  style={{height:16,borderRadius:2,background:bg,border:`1px solid ${bd}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:6,fontFamily:mono,fontWeight:current||ev?700:400,color:fg}}>
-                  {ev?(ev.tier==="Major"?"M":ev.tier[0]):current?"":""}
-                </div>);
-              })}
-            </div>
-            {/* Show event name if this month has one */}
-            {weeks.map(w=>EVENTS.find(e=>e.week===w)).filter(Boolean).map((ev,i)=>(
-              <div key={i} style={{fontFamily:mono,fontSize:7,color:ev.tier==="Major"?C.gold:ev.tier==="A"?C.live:C.dim,marginTop:2,textAlign:"center",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{ev.label}</div>
-            ))}
-          </div>);
-        }).filter(Boolean);
-      })()}
-    </div>
-    {/* Legend */}
-    <div style={{display:"flex",gap:12,marginBottom:16,fontFamily:mono,fontSize:9,color:C.faint,justifyContent:"center"}}>
-      <span style={{display:"inline-flex",alignItems:"center",gap:4}}><span style={{width:8,height:8,borderRadius:2,background:C.gold}}/>Major</span><span style={{display:"inline-flex",alignItems:"center",gap:4}}><span style={{width:8,height:8,borderRadius:2,background:C.live}}/>A-Tier</span><span style={{display:"inline-flex",alignItems:"center",gap:4}}><span style={{width:8,height:8,borderRadius:2,background:C.dim}}/>B-Tier</span><span style={{display:"inline-flex",alignItems:"center",gap:4,color:C.acc}}><span style={{width:8,height:8,borderRadius:2,border:`1.5px solid ${C.acc}`}}/>Now</span>
-    </div>
-
-    {weeksUntil===0&&nextEvent?(
-      <Banner c={nextEvent.tier==="Major"?C.gold:nextEvent.tier==="A"?C.live:C.dim}>
-        <span style={{fontSize:15,fontWeight:700,color:nextEvent.tier==="Major"?C.gold:nextEvent.tier==="A"?C.live:C.ink}}>
-          {nextEvent.label} -- {weekToLabel(season.week,season.year)}, {nextEvent.location||""}
-        </span>
-        <span style={{fontFamily:mono,fontSize:11,color:C.dim,display:"block",marginTop:3}}>
-          {nextEvent.tier==="Major"?"Major - 16 teams":nextEvent.tier==="A"?`A-Tier - ${nextEvent.teams} teams - Bo${nextEvent.bo}`:`B-Tier - ${nextEvent.teams} teams - Bo${nextEvent.bo}`}
-        </span>
-      </Banner>
-    ):(<>
-    {/* Pending choice event */}
-    {season.pendingEvent&&(
-      <div style={{background:"rgba(99,102,241,.10)",border:`1px solid #6366f155`,borderRadius:12,padding:"16px 18px",marginBottom:20}}>
-        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
-          <span style={{fontFamily:mono,fontWeight:700,fontSize:10,color:"#a5b4fc",letterSpacing:1}}>! EVENT</span>
-          <span style={{fontWeight:700,fontSize:15,color:C.ink}}>{season.pendingEvent.title}</span>
+    {/* ── Time-sensitive alerts ── */}
+    {season.pendingEvent && (
+      <div style={{ background: "rgba(99,102,241,.10)", border: `1px solid #6366f155`, borderRadius: 12, padding: "16px 18px", marginBottom: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+          <span style={{ fontFamily: mono, fontWeight: 700, fontSize: 10, color: "#a5b4fc", letterSpacing: 1 }}>DECISION</span>
+          <span style={{ fontWeight: 700, fontSize: 15, color: C.ink }}>{season.pendingEvent.title}</span>
         </div>
-        <div style={{fontSize:13,color:C.dim,marginBottom:14}}>{season.pendingEvent.text}</div>
-        <div style={{display:"flex",flexDirection:"column",gap:8}}>
-          {season.pendingEvent.choices.map((c,i)=>(
-            <button key={i} onClick={()=>onResolveEvent&&onResolveEvent(i)}
-              style={{background:C.panel,border:`1px solid #6366f144`,borderRadius:8,padding:"10px 14px",textAlign:"left",display:"flex",gap:10,alignItems:"flex-start",cursor:"pointer"}}>
-              <span style={{fontFamily:mono,fontSize:11,color:"#818cf8",minWidth:14}}>{i+1}.</span>
+        <div style={{ fontSize: 13, color: C.dim, marginBottom: 14 }}>{season.pendingEvent.text}</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {season.pendingEvent.choices.map((c, i) => (
+            <button key={i} onClick={() => onResolveEvent && onResolveEvent(i)}
+              style={{ background: C.panel, border: `1px solid #6366f144`, borderRadius: 8, padding: "10px 14px", textAlign: "left", display: "flex", gap: 10, alignItems: "flex-start", cursor: "pointer" }}>
+              <span style={{ fontFamily: mono, fontSize: 11, color: "#818cf8", minWidth: 14 }}>{i + 1}.</span>
               <span>
-                <span style={{fontWeight:700,fontSize:13,color:C.ink,display:"block"}}>{c.label}</span>
-                <span style={{fontFamily:mono,fontSize:10,color:C.dim}}>{c.desc}</span>
+                <span style={{ fontWeight: 700, fontSize: 13, color: C.ink, display: "block" }}>{c.label}</span>
+                <span style={{ fontFamily: mono, fontSize: 10, color: C.dim }}>{c.desc}</span>
               </span>
             </button>
           ))}
         </div>
-        <div style={{fontFamily:mono,fontSize:9,color:C.faint,marginTop:10}}>Resolve this event before advancing the week.</div>
+        <div style={{ fontFamily: mono, fontSize: 9, color: C.faint, marginTop: 10 }}>Resolve this before advancing the week.</div>
       </div>
     )}
 
-    {/* Contract expiry alerts */}
-    {(season.pendingContracts||[]).map(c=>{
-      const perf=Math.min(1.3,Math.max(0.9,c.avgRating));
-      const extSalary=Math.max(c.currentSalary,Math.round(c.currentSalary*perf*1.1));
-      const urgent=c.contract===0;
-      return(
-      <div key={c.playerName} style={{background:urgent?"rgba(239,68,68,.08)":"rgba(243,194,91,.06)",border:`1px solid ${urgent?C.red+"55":C.gold+"44"}`,borderRadius:12,padding:"14px 18px",marginBottom:14}}>
-        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
-          <span style={{fontFamily:mono,fontWeight:700,fontSize:10,color:urgent?C.red:C.gold,letterSpacing:1}}>{urgent?"EXPIRED":"CONTRACT"}</span>
-          <span style={{fontWeight:700,fontSize:14,color:C.ink}}>{c.playerName}</span>
-          <span style={{fontFamily:mono,fontSize:10,color:C.faint,marginLeft:"auto"}}>rating {c.avgRating} · ${c.currentSalary}K/ev</span>
-        </div>
-        <div style={{fontSize:12,color:C.dim,marginBottom:12}}>
-          {urgent?`${c.playerName}'s contract has expired. Extend or they leave.`:`${c.playerName}'s contract expires after next event.`}
-        </div>
-        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-          <button onClick={()=>onResolveContract&&onResolveContract(c.playerName,0)}
-            style={{flex:1,minWidth:120,background:C.win+"22",border:`1px solid ${C.win}44`,borderRadius:8,padding:"9px 12px",textAlign:"left",cursor:"pointer"}}>
-            <div style={{fontWeight:700,fontSize:12,color:C.win}}>Extend 3 events</div>
-            <div style={{fontFamily:mono,fontSize:10,color:C.dim}}>${extSalary}K/ev · performance raise</div>
-          </button>
-          <button onClick={()=>onResolveContract&&onResolveContract(c.playerName,1)}
-            style={{flex:1,minWidth:120,background:C.panel,border:`1px solid ${C.line}`,borderRadius:8,padding:"9px 12px",textAlign:"left",cursor:"pointer"}}>
-            <div style={{fontWeight:700,fontSize:12,color:C.dim}}>Short deal 2 events</div>
-            <div style={{fontFamily:mono,fontSize:10,color:C.faint}}>${c.currentSalary}K/ev · no raise</div>
-          </button>
-          <button onClick={()=>onResolveContract&&onResolveContract(c.playerName,2)}
-            style={{minWidth:90,background:"transparent",border:`1px solid ${C.red}44`,borderRadius:8,padding:"9px 12px",textAlign:"left",cursor:"pointer"}}>
-            <div style={{fontWeight:700,fontSize:12,color:C.red}}>Release</div>
-            <div style={{fontFamily:mono,fontSize:10,color:C.faint}}>free agent</div>
-          </button>
-        </div>
-      </div>);
+    {pendingContracts.map(c => {
+      const perf = Math.min(1.3, Math.max(0.9, c.avgRating));
+      const extSalary = Math.max(c.currentSalary, Math.round(c.currentSalary * perf * 1.1));
+      const urgent = c.contract <= 0;
+      return (
+        <div key={c.playerName} style={{ background: urgent ? "rgba(239,68,68,.08)" : "rgba(243,194,91,.06)", border: `1px solid ${urgent ? C.red + "55" : C.gold + "44"}`, borderRadius: 12, padding: "14px 18px", marginBottom: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+            <span style={{ fontFamily: mono, fontWeight: 700, fontSize: 10, color: urgent ? C.red : C.gold, letterSpacing: 1 }}>{urgent ? "EXPIRED" : "CONTRACT"}</span>
+            <span style={{ fontWeight: 700, fontSize: 14, color: C.ink }}>{c.playerName}</span>
+            <span style={{ fontFamily: mono, fontSize: 10, color: C.faint, marginLeft: "auto" }}>rating {c.avgRating} · ${c.currentSalary}K/mo</span>
+          </div>
+          <div style={{ fontSize: 12, color: C.dim, marginBottom: 12 }}>
+            {urgent ? `${c.playerName}'s contract has expired. Extend or they leave.` : `${c.playerName}'s deal runs down in ${contractLabel(c.contract)} — sort his future now.`}
+          </div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button onClick={() => onResolveContract && onResolveContract(c.playerName, 0)}
+              style={{ flex: 1, minWidth: 120, background: C.win + "22", border: `1px solid ${C.win}44`, borderRadius: 8, padding: "9px 12px", textAlign: "left", cursor: "pointer" }}>
+              <div style={{ fontWeight: 700, fontSize: 12, color: C.win }}>Extend — 2 years</div>
+              <div style={{ fontFamily: mono, fontSize: 10, color: C.dim }}>${extSalary}K/mo · performance raise</div>
+            </button>
+            <button onClick={() => onResolveContract && onResolveContract(c.playerName, 1)}
+              style={{ flex: 1, minWidth: 120, background: C.panel, border: `1px solid ${C.line}`, borderRadius: 8, padding: "9px 12px", textAlign: "left", cursor: "pointer" }}>
+              <div style={{ fontWeight: 700, fontSize: 12, color: C.dim }}>Short deal — 1 year</div>
+              <div style={{ fontFamily: mono, fontSize: 10, color: C.faint }}>${c.currentSalary}K/mo · no raise</div>
+            </button>
+            <button onClick={() => onResolveContract && onResolveContract(c.playerName, 2)}
+              style={{ minWidth: 90, background: "transparent", border: `1px solid ${C.red}44`, borderRadius: 8, padding: "9px 12px", textAlign: "left", cursor: "pointer" }}>
+              <div style={{ fontWeight: 700, fontSize: 12, color: C.red }}>Release</div>
+              <div style={{ fontFamily: mono, fontSize: 10, color: C.faint }}>free agent</div>
+            </button>
+          </div>
+        </div>);
     })}
 
-    {/* Activity picker */}
-    <SL n="ACT" t="WEEKLY ACTIVITY"/>
-    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:10,marginBottom:16,opacity:blocked?0.45:1,pointerEvents:blocked?"none":"auto"}}>
-      {Object.entries(ACTIVITIES).map(([k,a])=>{
-        const sel=act===k;
-        const warn=a.fatigue>0&&avgFatigue+a.fatigue>70;
-        return(
-        <button key={k} onClick={()=>setAct(k)}
-          style={{background:sel?C.acc+"22":C.panel,border:`1px solid ${sel?C.acc:C.line}`,borderRadius:9,padding:"12px 14px",textAlign:"left"}}>
-          <div style={{fontSize:20,marginBottom:4}}>{a.icon}</div>
-          <div style={{fontWeight:700,fontSize:13,color:sel?C.acc:C.ink}}>{a.label}</div>
-          <div style={{fontSize:11,color:C.dim,lineHeight:1.4,marginTop:4}}>{a.desc}</div>
-          {warn&&<div style={{fontFamily:mono,fontSize:9,color:C.red,marginTop:4}}>! HIGH FATIGUE</div>}
-        </button>);
-      })}
-    </div>
-
-    {act==="practice"&&(
-      <div style={{marginBottom:16}}>
-        <div style={{fontFamily:mono,fontSize:11,color:C.dim,marginBottom:8}}>CHOOSE MAP TO DRILL</div>
-        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-          {MAPS.map(m=>{const prof=getMapProf(season.simState,myTeam)[m]||50;return(
-            <button key={m} onClick={()=>setMapChoice(m)}
-              style={{background:mapChoice===m?C.acc:C.panel,color:mapChoice===m?"#0a0c10":C.ink,border:`1px solid ${mapChoice===m?C.acc:C.line}`,borderRadius:7,padding:"8px 14px",fontFamily:mono,fontSize:12}}>
-              {m} <span style={{fontSize:10,color:mapChoice===m?"#0a0c10aa":C.faint}}>{prof}</span>
-            </button>);
-          })}
-        </div>
-      </div>
-    )}
-
-    {act==="scout"&&(
-      <div style={{marginBottom:16}}>
-        <div style={{fontFamily:mono,fontSize:11,color:C.dim,marginBottom:8}}>CHOOSE TEAM TO SCOUT</div>
-        <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-          {AI_TEAMS.filter(t=>rosterOf(season.simState,t).length>0).map(t=>{
-            const scouted=season.scoutedTeams?.[t];
-            return(<button key={t} onClick={()=>setMapChoice(t)}
-              style={{background:mapChoice===t?C.acc:C.panel,color:mapChoice===t?"#0a0c10":C.ink,border:`1px solid ${mapChoice===t?C.acc:scouted?C.win+"66":C.line}`,borderRadius:7,padding:"6px 12px",fontFamily:mono,fontSize:11}}>
-              {t}{scouted?" ok":""}
-            </button>);
-          })}
-        </div>
-        {mapChoice&&season.scoutedTeams?.[mapChoice]&&(
-          <div style={{background:C.panel2,border:`1px solid ${C.line}`,borderRadius:8,padding:"8px 12px",marginTop:8,fontFamily:mono,fontSize:10,color:C.dim}}>
-            Already scouted — re-scouting updates intel
-          </div>
-        )}
-      </div>
-    )}
-
-    {act&&!blocked&&(
-      <div style={{display:"flex",gap:12,alignItems:"center",marginBottom:24}}>
-        <button onClick={confirm} disabled={act==="scout"&&!mapChoice} style={{background:(act==="scout"&&!mapChoice)?C.line:C.acc,color:(act==="scout"&&!mapChoice)?C.faint:C.onAcc,border:"none",borderRadius:10,padding:"13px 26px",fontWeight:700,fontSize:15}}>
-          Advance Week →
-        </button>
-        <span style={{fontFamily:mono,fontSize:12,color:C.dim}}>Week {season.week} → {season.week+1}</span>
-      </div>
-    )}
-
-    {/* Sim to next event */}
-    {!act&&!blocked&&weeksUntil>1&&(
-      <div style={{marginBottom:20}}>
-        <button onClick={onSim} style={{background:C.panel2,border:`1px solid ${C.live}`,borderRadius:9,padding:"11px 22px",fontFamily:mono,fontSize:12,color:C.live,fontWeight:700}}>
-          Sim to Next Event ({weeksUntil} weeks) →
-        </button>
-        <span style={{fontFamily:mono,fontSize:10,color:C.faint,marginLeft:10}}>Auto-manages training, rest, and fatigue</span>
-      </div>
-    )}
-
-    {/* Last random event */}
-    {season.weekLog.length>0&&season.weekLog[season.weekLog.length-1]?.event&&(
-      <div style={{background:"rgba(243,194,91,.08)",border:`1px solid ${C.gold}44`,borderRadius:8,padding:"10px 14px",marginBottom:16,fontFamily:mono,fontSize:12,color:C.gold}}>
-        {season.weekLog[season.weekLog.length-1].event}
-      </div>
-    )}
-
-    {/* Sponsorships */}
-    {(season.sponsorships||[]).filter(sp=>sp.offered||sp.active).length>0&&(<>
-      <SL n="SPO" t="SPONSORSHIPS"/>
-      <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:16}}>
-        {(season.sponsorships||[]).map((sp,i)=>{
-          if(!sp.offered&&!sp.active) return null;
-          if(sp.offered) return(
-            <div key={i} style={{background:"rgba(243,194,91,.06)",border:`1px solid ${C.gold}44`,borderRadius:8,padding:"10px 14px",display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
-              <span style={{fontWeight:700,fontSize:13,color:C.gold}}>{sp.brand}</span>
-              <span style={{fontFamily:mono,fontSize:11,color:C.ink}}>${sp.monthly}K/mo × {sp.duration}mo</span>
-              <span style={{fontSize:11,color:C.dim}}>{sp.condition!=="None"?`Condition: ${sp.condition}`:"No conditions"}</span>
-              <div style={{marginLeft:"auto",display:"flex",gap:6}}>
-                <button onClick={()=>onAcceptSponsor(i)} style={{background:C.win,color:"#0a0c10",border:"none",borderRadius:6,padding:"5px 12px",fontFamily:mono,fontSize:10,fontWeight:700}}>ACCEPT</button>
-                <button onClick={()=>onDeclineSponsor(i)} style={{background:"transparent",border:`1px solid ${C.red}`,color:C.red,borderRadius:6,padding:"5px 10px",fontFamily:mono,fontSize:10,fontWeight:700}}>x</button>
+    {sponsorOffers.length > 0 && (
+      <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
+        {sponsorOffers.map((sp, i) => {
+          const idx = (season.sponsorships || []).indexOf(sp);
+          return (
+            <div key={i} style={{ background: "rgba(243,194,91,.06)", border: `1px solid ${C.gold}44`, borderRadius: 10, padding: "12px 16px", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              <span style={{ fontFamily: mono, fontWeight: 700, fontSize: 10, color: C.gold, letterSpacing: 1 }}>SPONSOR</span>
+              <span style={{ fontWeight: 700, fontSize: 14, color: C.ink }}>{sp.brand}</span>
+              <span style={{ fontFamily: mono, fontSize: 11, color: C.dim }}>${sp.monthly}K/mo × {sp.duration}mo</span>
+              <span style={{ fontSize: 11, color: C.faint }}>{sp.condition !== "None" ? `Condition: ${sp.condition}` : "No conditions"}</span>
+              <div style={{ marginLeft: "auto", display: "flex", gap: 6 }}>
+                <button onClick={() => onAcceptSponsor(idx)} style={{ background: C.win, color: "#0a0c10", border: "none", borderRadius: 6, padding: "6px 14px", fontFamily: mono, fontSize: 10, fontWeight: 700 }}>ACCEPT</button>
+                <button onClick={() => onDeclineSponsor(idx)} style={{ background: "transparent", border: `1px solid ${C.line}`, color: C.dim, borderRadius: 6, padding: "6px 12px", fontFamily: mono, fontSize: 10, fontWeight: 700 }}>DECLINE</button>
               </div>
-            </div>);
-          return(
-            <div key={i} style={{background:C.panel,border:`1px solid ${C.win}33`,borderRadius:8,padding:"8px 14px",display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
-              <span style={{fontWeight:600,fontSize:12,color:C.win}}>{sp.brand}</span>
-              <span style={{fontFamily:mono,fontSize:10,color:C.dim}}>${sp.monthly}K/mo · {Math.ceil(sp.weeksLeft/4)}mo left</span>
-              {sp.condition!=="None"&&<span style={{fontSize:10,color:C.gold}}>{sp.condition}</span>}
             </div>);
         })}
       </div>
-    </>)}
+    )}
 
-    {/* Income overview */}
-    {(()=>{
-      const rank=(()=>{const r=getRankedTeams(season.simState,myTeam);return r.findIndex(x=>x.team===myTeam)+1;})();
-      const merchIncome=rank<=3?40:rank<=6?25:rank<=10?15:rank<=16?8:3;
-      const stipendIncome=rank<=5?30:rank<=10?20:rank<=16?12:5;
-      const contentTier=season.facilities?.content||0;
-      const contentIncome=[0,15,30][contentTier]||0;
-      const streamIncome=Math.round(roster.reduce((s,p)=>{const pop=playerOvr(p)/20+(season.simState.career?.[p.name]?.totalMvps||0)*0.5;return s+pop;},0));
-      const sponsorIncome=(season.sponsorships||[]).reduce((s,sp)=>s+(sp.active?sp.monthly:0),0);
-      const totalIncome=contentIncome+merchIncome+stipendIncome+streamIncome+sponsorIncome;
-      return(
-      <div style={{background:C.panel2,border:`1px solid ${C.line}`,borderRadius:8,padding:"10px 14px",marginBottom:16,display:"flex",gap:10,flexWrap:"wrap",fontFamily:mono,fontSize:10}}>
-        <span style={{color:C.faint}}>MONTHLY:</span>
-        <span style={{color:C.win}}>+${stipendIncome}K stipend</span>
-        <span style={{color:C.win}}>+${merchIncome}K merch</span>
-        {streamIncome>0&&<span style={{color:C.win}}>+${streamIncome}K streams</span>}
-        {contentIncome>0&&<span style={{color:C.win}}>+${contentIncome}K content</span>}
-        {sponsorIncome>0&&<span style={{color:C.win}}>+${sponsorIncome}K sponsors</span>}
-        <span style={{color:C.gold}}>= ${totalIncome}K income</span>
-        <span style={{color:C.red}}>- ${totalSalary}K salary</span>
-        <span style={{color:totalIncome>=totalSalary?C.win:C.red,fontWeight:700}}>Net {totalIncome>=totalSalary?"+":""}{totalIncome-totalSalary}</span>
-      </div>);
-    })()}
-
-    <BudgetForecast season={season} myTeam={myTeam} roster={roster}/>
-
-    {/* Coach */}
-    <SL n="CCH" t="COACH"/>
-    {season.simState.coach?(
-      <div style={{background:C.panel,border:`1px solid ${C.live}`,borderRadius:9,padding:"12px 16px",display:"flex",alignItems:"center",gap:12,marginBottom:20,flexWrap:"wrap"}}>
-        <div>
-          <div style={{fontWeight:700,fontSize:14}}>{season.simState.coach.name}</div>
-          <div style={{fontFamily:mono,fontSize:10,color:C.live}}>{season.simState.coach.style}</div>
-        </div>
-        <span style={{fontSize:12,color:C.dim,flex:1}}>{season.simState.coach.desc}</span>
-        <span style={{fontFamily:mono,fontSize:11,color:C.gold}}>${season.simState.coach.salary}K/ev</span>
-        <button onClick={onFireCoach} style={{background:"transparent",border:`1px solid ${C.red}`,color:C.red,borderRadius:6,padding:"5px 10px",fontFamily:mono,fontSize:10,fontWeight:700}}>FIRE</button>
-      </div>
-    ):(
-      <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:20}}>
-        {COACHES.map(c=>(
-          <div key={c.name} style={{background:C.panel2,border:`1px solid ${C.line}`,borderRadius:8,padding:"9px 13px",display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
-            <div style={{minWidth:70}}>
-              <div style={{fontWeight:600,fontSize:13}}>{c.name}</div>
-              <span style={{fontFamily:mono,fontSize:9,color:C.live}}>{c.style}</span>
+    {weeksUntil === 0 && nextEvent ? (
+      <Banner c={tierColor(nextEvent.tier)}>
+        <span style={{ fontSize: 15, fontWeight: 700, color: tierColor(nextEvent.tier) }}>
+          {nextEvent.label} — {weekToLabel(season.week, season.year)}, {nextEvent.location || ""}
+        </span>
+        <span style={{ fontFamily: mono, fontSize: 11, color: C.dim, display: "block", marginTop: 3 }}>
+          {tierLabel(nextEvent.tier)} · {nextEvent.teams} teams{nextEvent.bo ? ` · Bo${nextEvent.bo}` : ""}
+        </span>
+      </Banner>
+    ) : (
+      /* ── THIS WEEK — actions ── */
+      <>
+        <SL n="ACT" t="THIS WEEK" />
+        <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 12, padding: "16px", marginBottom: 22, position: "relative" }}>
+          {blocked && (
+            <div style={{ fontFamily: mono, fontSize: 11, color: C.gold, marginBottom: 12, background: "rgba(243,194,91,.06)", border: `1px solid ${C.gold}33`, borderRadius: 7, padding: "8px 12px" }}>
+              Resolve the alerts above before training this week.
             </div>
-            <span style={{fontSize:11,color:C.dim,flex:1}}>{c.desc}</span>
-            <span style={{fontFamily:mono,fontSize:11,color:C.gold}}>${c.salary}K/ev</span>
-            <button onClick={()=>onHireCoach(c)} disabled={season.budget<c.salary}
-              style={{background:C.win,color:"#0a0c10",border:"none",borderRadius:6,padding:"5px 12px",fontFamily:mono,fontSize:10,fontWeight:700}}>HIRE</button>
+          )}
+          <div style={{ opacity: blocked ? 0.4 : 1, pointerEvents: blocked ? "none" : "auto" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(150px,1fr))", gap: 9 }}>
+              {Object.entries(ACTIVITIES).map(([k, a]) => {
+                const sel = act === k;
+                const warn = a.fatigue > 0 && avgFatigue + a.fatigue > 70;
+                const fc = a.fatigue > 0 ? (warn ? C.red : C.gold) : C.win;
+                return (
+                  <button key={k} onClick={() => setAct(sel ? null : k)}
+                    style={{ background: sel ? C.acc + "1f" : C.panel2, border: `1px solid ${sel ? C.acc : C.line}`, borderRadius: 9, padding: "11px 13px", textAlign: "left", cursor: "pointer" }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6, marginBottom: 4 }}>
+                      <span style={{ fontWeight: 700, fontSize: 13, color: sel ? C.acc : C.ink, textTransform: "capitalize" }}>{a.label}</span>
+                      <span style={{ fontFamily: mono, fontSize: 9, color: fc, fontWeight: 700 }}>{a.fatigue > 0 ? `+${a.fatigue}` : a.fatigue} FTG</span>
+                    </div>
+                    <div style={{ fontSize: 10.5, color: C.dim, lineHeight: 1.4 }}>{a.desc}</div>
+                    {warn && <div style={{ fontFamily: mono, fontSize: 9, color: C.red, marginTop: 4 }}>! squad already tired</div>}
+                  </button>);
+              })}
+            </div>
+
+            {act === "practice" && (
+              <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${C.line}` }}>
+                <div style={{ fontFamily: mono, fontSize: 10, color: C.faint, letterSpacing: 1, marginBottom: 8 }}>MAP TO DRILL</div>
+                <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>
+                  {MAPS.map(m => { const prof = getMapProf(season.simState, myTeam)[m] || 50; return (
+                    <button key={m} onClick={() => setMapChoice(m)}
+                      style={{ background: mapChoice === m ? C.acc : C.panel2, color: mapChoice === m ? "#0a0c10" : C.ink, border: `1px solid ${mapChoice === m ? C.acc : C.line}`, borderRadius: 7, padding: "7px 13px", fontFamily: mono, fontSize: 12 }}>
+                      {m} <span style={{ fontSize: 10, color: mapChoice === m ? "#0a0c10aa" : C.faint }}>{prof}</span>
+                    </button>); })}
+                </div>
+              </div>
+            )}
+
+            {act === "scout" && (
+              <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${C.line}` }}>
+                <div style={{ fontFamily: mono, fontSize: 10, color: C.faint, letterSpacing: 1, marginBottom: 8 }}>TEAM TO SCOUT</div>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  {AI_TEAMS.filter(tm => rosterOf(season.simState, tm).length > 0).map(tm => {
+                    const scouted = season.scoutedTeams?.[tm];
+                    return (<button key={tm} onClick={() => setScoutChoice(tm)}
+                      style={{ background: scoutChoice === tm ? C.acc : C.panel2, color: scoutChoice === tm ? "#0a0c10" : C.ink, border: `1px solid ${scoutChoice === tm ? C.acc : scouted ? C.win + "66" : C.line}`, borderRadius: 7, padding: "6px 12px", fontFamily: mono, fontSize: 11 }}>
+                      {tm}{scouted ? " ✓" : ""}
+                    </button>);
+                  })}
+                </div>
+              </div>
+            )}
+
+            <div style={{ display: "flex", gap: 12, alignItems: "center", marginTop: 16, flexWrap: "wrap" }}>
+              <button onClick={confirm} disabled={!act || (act === "scout" && !scoutChoice)}
+                style={{ background: (!act || (act === "scout" && !scoutChoice)) ? C.line : C.acc, color: (!act || (act === "scout" && !scoutChoice)) ? C.faint : C.onAcc, border: "none", borderRadius: 9, padding: "12px 24px", fontWeight: 700, fontSize: 15, cursor: act ? "pointer" : "default" }}>
+                Advance Week →
+              </button>
+              {!act && weeksUntil > 1 && (
+                <button onClick={onSim} style={{ background: "transparent", border: `1px solid ${C.live}`, borderRadius: 9, padding: "11px 20px", fontFamily: mono, fontSize: 12, color: C.live, fontWeight: 700, cursor: "pointer" }}>
+                  Sim {weeksUntil} weeks to {nextEvent?.label?.split(" ")[0] || "event"} →
+                </button>
+              )}
+              <span style={{ fontFamily: mono, fontSize: 11, color: C.faint, marginLeft: "auto" }}>
+                {act ? `Week ${season.week} → ${season.week + 1}` : "Pick an activity, or sim ahead"}
+              </span>
+            </div>
           </div>
-        ))}
+        </div>
+      </>
+    )}
+
+    {lastEvent && (
+      <div style={{ background: "rgba(243,194,91,.07)", border: `1px solid ${C.gold}44`, borderRadius: 9, padding: "10px 14px", marginBottom: 22, fontFamily: mono, fontSize: 12, color: C.gold }}>
+        {lastEvent}
       </div>
     )}
 
-    {/* Player fatigue overview */}
-    <SL n="FTG" t="PLAYER STATUS"/>
-    <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:20}}>
-      {roster.map(p=>{
-        const fc=p.fatigue>80?C.red:p.fatigue>60?C.gold:p.fatigue>40?"#8bc99a":C.win;
-        return(
-        <div key={p.name} style={{background:C.panel,border:`1px solid ${C.line}`,borderRadius:8,padding:"10px 14px",display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
-          <div style={{minWidth:90}}>
-            <div style={{fontWeight:700,fontSize:13}}>{p.name}</div>
-            <div style={{display:"flex",gap:3}}><Pill c={C.dim}>{p.role}</Pill><span style={{fontFamily:mono,fontSize:9,color:C.faint}}>age {p.age}</span></div>
-          </div>
-          <Stat l="OVR" v={playerOvr(p)}/>
-          <FormArrow form={p.form}/>
-          <div style={{display:"flex",flexDirection:"column",alignItems:"center",minWidth:52}}>
-            <span style={{fontFamily:mono,fontSize:9,color:C.faint}}>FATIGUE</span>
-            <div style={{width:48,height:6,background:C.line,borderRadius:3,overflow:"hidden",marginTop:2}}>
-              <div style={{width:`${p.fatigue}%`,height:"100%",background:fc,borderRadius:3}}/>
+    {/* ── Upcoming events ── */}
+    <SL n="EVT" t="UPCOMING EVENTS" />
+    <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 24 }}>
+      {upcoming.length === 0 && <div style={{ fontFamily: mono, fontSize: 11, color: C.faint, padding: "8px 0" }}>No events left this season.</div>}
+      {upcoming.map((ev, i) => {
+        const wk = ev.week - season.week;
+        const tc = tierColor(ev.tier);
+        const isNext = i === 0;
+        return (
+          <div key={ev.week} className="lift" style={{ background: isNext ? "linear-gradient(135deg,#13171f,#1a1f29)" : C.panel, border: `1px solid ${isNext ? tc : C.line}`, borderLeft: `3px solid ${tc}`, borderRadius: 10, padding: "12px 16px", display: "flex", alignItems: "center", gap: 14, animation: "risePop .4s ease both", animationDelay: `${i * 0.06}s`, ...(isNext ? { boxShadow: `0 0 18px -6px ${tc}66` } : {}) }}>
+            <div style={{ background: tc + "22", border: `1px solid ${tc}`, borderRadius: 6, padding: "3px 9px", fontFamily: mono, fontSize: 9, color: tc, fontWeight: 700, flexShrink: 0 }}>{tierLabel(ev.tier)}</div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontWeight: 700, fontSize: 14, color: isNext ? C.ink : C.dim }}>{ev.label}</div>
+              <div style={{ fontFamily: mono, fontSize: 10, color: C.faint, marginTop: 2 }}>{ev.location} · {weekToLabel(ev.week, season.year)} · {ev.teams} teams</div>
             </div>
-            <span style={{fontFamily:mono,fontSize:10,color:fc}}>{p.fatigue}</span>
-          </div>
-          {p.fatigue>80&&<span style={{fontFamily:mono,fontSize:9,color:C.red,border:`1px solid ${C.red}`,borderRadius:4,padding:"1px 5px"}}>EXHAUSTED</span>}
-        </div>);
+            <div style={{ textAlign: "right", flexShrink: 0 }}>
+              <div style={{ fontFamily: mono, fontSize: 15, fontWeight: 800, color: wk === 0 ? C.red : wk <= 2 ? C.gold : C.live }}>{wk === 0 ? "NOW" : `${wk}wk`}</div>
+              <div style={{ fontFamily: mono, fontSize: 9, color: C.faint }}>{wk === 0 ? "this week" : "away"}</div>
+            </div>
+          </div>);
       })}
     </div>
 
-    {/* Transfer market lives in the MARKET tab */}
-    <div style={{background:C.panel2,border:`1px solid ${C.line}`,borderRadius:8,padding:"10px 16px",fontFamily:mono,fontSize:11,color:C.faint,marginBottom:16}}>
-      Roster {roster.length}/5 · Salary ${totalSalary}K/mo — use the <span style={{color:C.acc}}>MARKET</span> tab to sign, buy, trade or sell players.
+    {/* ── Squad ── */}
+    <SL n="SQD" t="SQUAD" />
+    <div style={{ fontFamily: mono, fontSize: 10.5, color: C.faint, marginBottom: 8 }}>
+      {roster.length}/5 players · ${totalSalary}K/mo salary · manage via the <span style={{ color: C.acc }}>Transfers</span> tab
+    </div>
+    <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 24 }}>
+      {roster.map((p, i) => {
+        const fc = p.fatigue > 80 ? C.red : p.fatigue > 60 ? C.gold : p.fatigue > 40 ? "#8bc99a" : C.win;
+        const morale = p.morale ?? 60;
+        const mc = morale >= 70 ? C.win : morale >= 45 ? C.gold : C.red;
+        return (
+          <div key={p.name} className="lift" style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 9, padding: "11px 15px", display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap", animation: "fadeUp .4s ease both", animationDelay: `${i * 0.06}s` }}>
+            <div style={{ minWidth: 96 }}>
+              <div style={{ fontWeight: 700, fontSize: 13.5 }}>{p.name}</div>
+              <div style={{ display: "flex", gap: 4, alignItems: "center", marginTop: 2 }}><Pill c={C.dim}>{p.role}</Pill><span style={{ fontFamily: mono, fontSize: 9, color: C.faint }}>age {p.age}</span></div>
+            </div>
+            <Stat l="OVR" v={playerOvr(p)} />
+            <FormArrow form={p.form} />
+            <Meter label="FATIGUE" value={p.fatigue} color={fc} />
+            <Meter label="MORALE" value={morale} color={mc} />
+            {p.fatigue > 80 && <span style={{ fontFamily: mono, fontSize: 9, color: C.red, border: `1px solid ${C.red}`, borderRadius: 4, padding: "1px 6px" }}>EXHAUSTED</span>}
+          </div>);
+      })}
     </div>
 
-    {/* Academy */}
-    <SL n="ACD" t="ACADEMY"/>
-    {!season.academy?(
-      <div style={{background:C.panel,border:`1px dashed ${C.line}`,borderRadius:9,padding:"14px 18px",display:"flex",alignItems:"center",gap:12,marginBottom:20}}>
-        <span style={{fontSize:18}}>[AC]</span>
-        <div style={{flex:1}}>
-          <div style={{fontWeight:700,fontSize:13}}>Establish Academy</div>
-          <div style={{fontSize:11,color:C.dim}}>Develop young talent for your roster or sell for profit.</div>
-        </div>
-        <button onClick={onInitAcademy} disabled={season.budget<100}
-          style={{background:season.budget>=100?C.acc:"#333",color:season.budget>=100?"#0a0c10":C.faint,border:"none",borderRadius:7,padding:"8px 16px",fontWeight:700,fontSize:12}}>
-          $100K
-        </button>
-      </div>
-    ):(
-      <div style={{marginBottom:20}}>
-        <div style={{fontFamily:mono,fontSize:10,color:C.faint,marginBottom:8}}>Developing for {season.academy.weeksActive} weeks · {season.academy.prospects.length}/4 prospects</div>
-        <div style={{display:"flex",flexDirection:"column",gap:6}}>
-          {season.academy.prospects.map((p,i)=>(
-            <div key={i} style={{background:C.panel,border:`1px solid ${C.line}`,borderRadius:8,padding:"9px 13px",display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
-              <div style={{minWidth:80}}>
-                <div style={{fontWeight:600,fontSize:12}}>{p.name}</div>
-                <div style={{display:"flex",gap:3}}><Pill c={C.dim}>{p.role}</Pill><span style={{fontFamily:mono,fontSize:9,color:C.win}}>age {p.age}</span></div>
-              </div>
-              <Stat l="OVR" v={playerOvr(p)}/>
-              <Stat l="AIM" v={p.aim}/>
-              <span style={{fontFamily:mono,fontSize:9,color:C.faint}}>{p.weeksInAcademy||0}wk trained</span>
-              <div style={{marginLeft:"auto",display:"flex",gap:4}}>
-                <button onClick={()=>onPromoteProspect(i)} disabled={rosterOf(season.simState,myTeam).length>=5}
-                  style={{background:C.win,color:"#0a0c10",border:"none",borderRadius:5,padding:"4px 10px",fontFamily:mono,fontSize:9,fontWeight:700}}>PROMOTE</button>
-                <button onClick={()=>onSellProspect(i)} disabled={(p.weeksInAcademy||0)<8}
-                  style={{background:(p.weeksInAcademy||0)>=8?C.panel2:"#222",color:(p.weeksInAcademy||0)>=8?C.gold:C.faint,border:`1px solid ${(p.weeksInAcademy||0)>=8?C.gold+"44":C.line}`,borderRadius:5,padding:"4px 10px",fontFamily:mono,fontSize:9,fontWeight:700}}>{(p.weeksInAcademy||0)>=8?`SELL $Math.round(playerOvr(p)*0.8)K`:`${8-(p.weeksInAcademy||0)}wk to sell`}</button>
-              </div>
-            </div>
-          ))}
-          {season.academy.prospects.length===0&&<div style={{fontFamily:mono,fontSize:11,color:C.faint,padding:"8px 0"}}>No prospects yet — new talent scouted every 6 weeks.</div>}
-        </div>
-      </div>
-    )}
-    </>)}
-
-    {/* Week log with events */}
-    {season.weekLog.length>0&&(<>
-      <SL n="LOG" t="ACTIVITY LOG"/>
-      <div style={{display:"flex",flexDirection:"column",gap:4,maxHeight:200,overflowY:"auto"}}>
-        {[...season.weekLog].reverse().slice(0,15).map((w,i)=>(
-          <div key={i} style={{fontFamily:mono,fontSize:11,color:w.event?C.gold:C.dim,padding:"4px 0"}}>
-            <span style={{color:C.faint}}>W{w.week}</span>{" "}
-            {w.event?w.event:(<>{ACTIVITIES[w.activity]?.icon} {ACTIVITIES[w.activity]?.label}{w.mapChoice?` (${w.mapChoice})`:""}</>)}
+    {/* ── Activity log ── */}
+    {season.weekLog.length > 0 && (<>
+      <SL n="LOG" t="ACTIVITY LOG" />
+      <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 10, padding: "6px 14px", display: "flex", flexDirection: "column", maxHeight: 240, overflowY: "auto" }}>
+        {[...season.weekLog].reverse().slice(0, 18).map((w, i) => (
+          <div key={i} style={{ fontFamily: mono, fontSize: 11, color: w.event ? C.gold : C.dim, padding: "6px 0", borderTop: i === 0 ? "none" : `1px solid ${C.line}` }}>
+            <span style={{ color: C.faint, marginRight: 6 }}>W{w.week}</span>
+            {w.event ? w.event : (<span style={{ textTransform: "capitalize" }}>{ACTIVITIES[w.activity]?.label || w.activity}{w.mapChoice ? ` (${w.mapChoice})` : ""}</span>)}
           </div>
         ))}
       </div>
@@ -473,3 +282,14 @@ export function CalendarView({season,myTeam,onAdvance,onTransfer,onSim,onHireCoa
   </div>);
 }
 
+function Meter({ label, value, color }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", minWidth: 52 }}>
+      <span style={{ fontFamily: mono, fontSize: 9, color: C.faint }}>{label}</span>
+      <div style={{ width: 48, height: 6, background: C.line, borderRadius: 3, overflow: "hidden", marginTop: 3 }}>
+        <div style={{ width: `${Math.max(0, Math.min(100, value))}%`, height: "100%", background: color, borderRadius: 3 }} />
+      </div>
+      <span style={{ fontFamily: mono, fontSize: 10, color, marginTop: 1 }}>{value}</span>
+    </div>
+  );
+}

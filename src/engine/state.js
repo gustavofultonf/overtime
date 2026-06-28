@@ -1,6 +1,6 @@
 import { MAPS, AI_TEAMS, PLAYERS_INIT } from '../constants/data.js';
 import { SEASON_WEEKS, TUNING } from '../constants/events.js';
-import { playerOvr, marketValue } from './utils.js';
+import { playerOvr, marketValue, desiredSalary } from './utils.js';
 import { computeValveRankings, prizeForPlace } from './valveRanking.js';
 
 export function initState(eras){
@@ -32,7 +32,10 @@ export function initState(eras){
   }
   const players=deduped.map(p=>{
     const rng=()=>Math.random()*10-5; // ±5 noise
-    return{...p,form:0,fatigue:20+Math.random()*20|0,
+    // Contracts are now WEEKS remaining. Convert the authored event-count into a
+    // 1–3 year deal, staggered so the whole league doesn't expire on the same week.
+    const contractWeeks=Math.max(16,(p.contract||2)*52-Math.floor(Math.random()*44));
+    return{...p,form:0,fatigue:20+Math.random()*20|0,contract:contractWeeks,
       // Derived combat stats
       rifle:  clamp(p.aim*0.65+p.consistency*0.35+rng()),
       pistol: clamp(p.aim*0.45+p.mentality*0.3+p.gameSense*0.25+rng()),
@@ -45,8 +48,9 @@ export function initState(eras){
       experience: clamp(Math.min(99, 30+p.age*2+(p.traits.includes("leader")?10:0)+rng())),
     };
   });
-  // Second pass: initialize morale (needs derived stats for marketValue)
+  // Second pass: enforce a salary floor (stars earn star money) + init morale
   players.forEach(p=>{
+    p.salary=Math.max(p.salary||0,desiredSalary(p));
     const mv=marketValue(p);
     const payFactor=p.salary>=mv*0.90?3:p.salary>=mv*0.70?0:-5;
     p.morale=Math.max(30,Math.min(90,Math.round(65+(p.mentality-70)*0.3+payFactor+(Math.random()*16-8))));
@@ -102,7 +106,7 @@ export function initState(eras){
       let count=0;
       for(const p of players){
         if(p.team!=="FA"||count>=5||assigned>=maxAssign) continue;
-        p.team=team;p.contract=2;
+        p.team=team;p.contract=104;
         count++;assigned++;
       }
     }

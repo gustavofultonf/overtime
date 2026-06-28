@@ -8,40 +8,46 @@ const fmt = v => `${v < 0 ? "-" : ""}$${Math.abs(Math.round(v))}K`;
 // ── Budget trend: bank balance after each event + prize bars ──
 function BudgetChart({ history }) {
   if (!history || history.length < 2) return null;
-  const W = 440, H = 110, PL = 38, PR = 14, PT = 12, PB = 24;
+  const W = 440, H = 120, PL = 42, PR = 16, PT = 14, PB = 26;
   const plotW = W - PL - PR, plotH = H - PT - PB;
   const n = history.length;
   const budgets = history.map(h => h.budgetAfter);
-  const prizes = history.map(h => h.prize);
-  const maxV = Math.max(...budgets, 200) * 1.1;
-  const minV = Math.min(...budgets, 0);
-  const range = maxV - minV || 200;
-  const xOf = i => PL + (i / (n - 1)) * plotW;
-  const yOf = v => PT + (1 - (v - minV) / range) * plotH;
+  const prizes = history.map(h => h.prize || 0);
+  // Axis bounds: include 0, pad so the line never hugs the edges.
+  let hi = Math.max(...budgets, 0), lo = Math.min(...budgets, 0);
+  const pad = Math.max(40, (hi - lo) * 0.15);
+  hi += pad;
+  lo = lo < 0 ? lo - pad : 0;
+  const range = hi - lo || 1;
+  const xOf = i => n === 1 ? PL + plotW / 2 : PL + (i / (n - 1)) * plotW;
+  const yOf = v => PT + (1 - (v - lo) / range) * plotH;
   const maxPrize = Math.max(...prizes, 1);
-  const barW = Math.max(4, Math.min(18, plotW / n * 0.45));
-  const gridVals = [0, Math.round(maxV * 0.5 / 100) * 100, Math.round(maxV / 100) * 100].filter((v, i, a) => a.indexOf(v) === i);
+  const barW = Math.max(5, Math.min(20, (plotW / n) * 0.5));
+  const fmt = v => Math.abs(v) >= 1000 ? (v / 1000).toFixed(1) + 'k' : `${Math.round(v)}`;
+  const gridVals = [hi, lo + range / 2, lo]; // strictly within bounds
+  const baseY = yOf(lo);          // prize-bar baseline (plot bottom)
   return (
     <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ display: 'block', overflow: 'visible' }}>
-      {gridVals.map(v => (
-        <g key={v}>
+      {gridVals.map((v, i) => (
+        <g key={i}>
           <line x1={PL} x2={W - PR} y1={yOf(v)} y2={yOf(v)} stroke={C.line} strokeWidth={0.5} strokeDasharray="3,3" />
-          <text x={PL - 4} y={yOf(v) + 3} fontSize="8" fill={C.faint} textAnchor="end">{v >= 1000 ? (v / 1000).toFixed(0) + 'k' : v}</text>
+          <text x={PL - 5} y={yOf(v) + 3} fontSize="8" fill={C.faint} textAnchor="end">{fmt(v)}</text>
         </g>
       ))}
-      {minV < 0 && <line x1={PL} x2={W - PR} y1={yOf(0)} y2={yOf(0)} stroke={C.red} strokeWidth={1} opacity={0.4} />}
+      {lo < 0 && <line x1={PL} x2={W - PR} y1={yOf(0)} y2={yOf(0)} stroke={C.red} strokeWidth={1} opacity={0.5} />}
+      {/* Prize earned per event — bars rise from the baseline */}
       {history.map((h, i) => {
-        const barH = (h.prize / maxPrize) * plotH * 0.4;
-        return <rect key={i} x={xOf(i) - barW / 2} y={PT + plotH - barH} width={barW} height={barH} fill={C.win + '55'} rx={2} />;
+        if (!h.prize) return null;
+        const barH = (h.prize / maxPrize) * plotH * 0.35;
+        return <rect key={i} x={xOf(i) - barW / 2} y={baseY - barH} width={barW} height={barH} fill={C.win + '40'} rx={2} />;
       })}
       <polyline points={history.map((h, i) => `${xOf(i)},${yOf(h.budgetAfter)}`).join(' ')} fill="none" stroke={C.gold} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
       {history.map((h, i) => (
         <g key={i}>
-          <circle cx={xOf(i)} cy={yOf(h.budgetAfter)} r="3.5" fill={h.budgetAfter > 0 ? C.gold : C.red} />
-          <text x={xOf(i)} y={H - 5} fontSize="8" fill={C.faint} textAnchor="middle">#{h.eventNum}</text>
+          <circle cx={xOf(i)} cy={yOf(h.budgetAfter)} r="3.5" fill={h.budgetAfter >= 0 ? C.gold : C.red} />
+          <text x={xOf(i)} y={H - 7} fontSize="8" fill={C.faint} textAnchor="middle">#{h.eventNum}</text>
         </g>
       ))}
-      <text x={PL} y={PT - 3} fontSize="8" fill={C.faint}>budget ($K)</text>
     </svg>
   );
 }
