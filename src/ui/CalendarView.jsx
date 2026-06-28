@@ -6,6 +6,7 @@ import { playerOvr } from '../engine/player.js';
 import { rosterOf, getMapProf } from '../engine/state.js';
 import { getRankedTeams } from '../engine/player.js';
 import { SL, Banner, Locked, Intro, Pill, MiniStat, Stat, FormArrow } from './primitives.jsx';
+import { computeFinances } from '../engine/finance.js';
 
 // ── Season activity heatmap (GitHub-contributions style) ──
 const ACT_COLOR={practice:C.live,bootcamp:C.acc,scrim:C.gold,vod:"#9d7cff",scout:"#2ee6c8",rest:C.win,vacation:"#56d364"};
@@ -67,19 +68,11 @@ function SeasonHeatmap({season,myTeam}){
 }
 
 function BudgetForecast({season,myTeam,roster}){
-  const {EVENTS:EVS,isSalaryWeek:isPayWeek}=arguments[0]&&{}||{};
-  // Compute weekly net: monthly income and salary, averaged per week
-  const rank=(()=>{const r=getRankedTeams(season.simState,myTeam);return r.findIndex(x=>x.team===myTeam)+1;})();
-  const coachPay=season.simState.coach?season.simState.coach.salary:0;
-  const totalSalary=roster.reduce((s,p)=>s+p.salary,0)+coachPay;
-  const contentTier=season.facilities?.content||0;
-  const contentIncome=[0,15,30][contentTier]||0;
-  const merchIncome=rank<=3?40:rank<=6?25:rank<=10?15:rank<=16?8:3;
-  const stipendIncome=rank<=5?30:rank<=10?20:rank<=16?12:5;
-  const streamIncome=Math.round(roster.reduce((s,p)=>{const pop=playerOvr(p)/20+(season.simState.career?.[p.name]?.totalMvps||0)*0.5;return s+pop;},0));
-  const sponsorIncome=(season.sponsorships||[]).reduce((s,sp)=>s+(sp.active?sp.monthly:0),0);
-  const monthlyNet=(contentIncome+merchIncome+stipendIncome+streamIncome+sponsorIncome)-totalSalary;
-  const weeklyNet=monthlyNet/4;
+  // Compute weekly net from the central finance model (monthly figures).
+  const fin=computeFinances(season,myTeam);
+  const totalSalary=fin.expenses.salaryTotal;
+  const monthlyNet=fin.net;
+  const weeklyNet=fin.weeklyNet;
   const nextEv=EVENTS.find(e=>e.week>=season.week);
   const weeksUntil=nextEv?nextEv.week-season.week:0;
   const projectedBudget=Math.round(season.budget+weeklyNet*weeksUntil);
