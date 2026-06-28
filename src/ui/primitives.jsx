@@ -1,23 +1,49 @@
 import React from 'react';
-import { C, sans, mono } from './theme.js';
+import { C, sans, mono, SHADOW } from './theme.js';
+
+// ── Brand lockup ────────────────────────────────────────────────────
+// A small geometric mark + "OVERTIME" wordmark. Replaces the old
+// terminal-style "▸ OVERTIME" text used across the entry screens.
+export function Wordmark({size=18,sub}){
+  const m=Math.round(size*1.18);
+  return(
+    <div style={{display:"inline-flex",alignItems:"center",gap:size*0.5}}>
+      <svg width={m} height={m} viewBox="0 0 32 32" style={{display:"block",flexShrink:0}}>
+        <defs>
+          <linearGradient id="otm" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor={C.acc}/><stop offset="100%" stopColor={C.acc2}/>
+          </linearGradient>
+        </defs>
+        <rect x="2.5" y="2.5" width="27" height="27" rx="8" fill="none" stroke="url(#otm)" strokeWidth="2.4"/>
+        <path d="M11 10 V22 M11 10 H17.5 A4.5 4.5 0 0 1 17.5 19 H11 M16 19 L22 22.5" fill="none" stroke="url(#otm)" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+      <div style={{lineHeight:1}}>
+        <div style={{fontFamily:sans,fontWeight:800,fontSize:size,letterSpacing:size*0.18,color:C.ink}}>
+          OVER<span style={{color:C.acc}}>TIME</span>
+        </div>
+        {sub&&<div style={{fontFamily:mono,fontSize:Math.max(8,size*0.46),letterSpacing:1.5,color:C.faint,marginTop:size*0.22,textTransform:"uppercase"}}>{sub}</div>}
+      </div>
+    </div>);
+}
 
 export function Overlay({children,onClose,title,wide}){return(
-  <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(0,0,0,.72)",display:"flex",alignItems:"center",justifyContent:"center",padding:18,zIndex:50}}>
-    <div onClick={e=>e.stopPropagation()} style={{background:C.panel,border:`1px solid ${C.line}`,borderRadius:12,maxWidth:wide?600:480,width:"100%",maxHeight:"90vh",overflowY:"auto"}}>
-      <div style={{padding:"14px 18px",borderBottom:`1px solid ${C.line}`,display:"flex",alignItems:"center",position:"sticky",top:0,background:C.panel,zIndex:2}}>
-        <span style={{fontFamily:mono,fontSize:11,color:C.acc,letterSpacing:1}}>{title}</span>
+  <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(6,8,14,.66)",backdropFilter:"blur(6px)",WebkitBackdropFilter:"blur(6px)",display:"flex",alignItems:"center",justifyContent:"center",padding:18,zIndex:50,animation:"fadeUp .18s ease"}}>
+    <div onClick={e=>e.stopPropagation()} style={{background:C.panel,border:`1px solid ${C.line}`,borderRadius:16,maxWidth:wide?600:480,width:"100%",maxHeight:"90vh",overflowY:"auto",boxShadow:SHADOW.pop}}>
+      <div style={{padding:"15px 20px",borderBottom:`1px solid ${C.line}`,display:"flex",alignItems:"center",position:"sticky",top:0,background:C.panel,zIndex:2,borderRadius:"16px 16px 0 0"}}>
+        <span style={{width:7,height:7,borderRadius:2,background:C.acc,marginRight:9,boxShadow:`0 0 8px ${C.acc}`}}/>
+        <span style={{fontFamily:mono,fontSize:11,color:C.ink,letterSpacing:1.5,fontWeight:600,textTransform:"uppercase"}}>{title}</span>
         <button onClick={onClose} style={{marginLeft:"auto",background:"transparent",border:"none",color:C.dim,fontSize:22,lineHeight:1}}>×</button>
       </div>
-      <div style={{padding:"16px 18px"}}>{children}</div>
+      <div style={{padding:"18px 20px"}}>{children}</div>
     </div>
   </div>);}
-export function SL({n,t}){return(<div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12}}><span style={{fontFamily:mono,fontSize:11,color:C.acc,fontWeight:700}}>{n}</span><span style={{fontFamily:mono,fontSize:11,color:C.dim,letterSpacing:1.5}}>{t}</span><span style={{flex:1,height:1,background:C.line}}/></div>);}
-export function Banner({children,c}){return <div style={{background:C.panel,border:`1px solid ${c}`,borderRadius:12,padding:"18px 20px"}}>{children}</div>;}
-export function Locked({text}){return <div style={{background:C.panel,border:`1px dashed ${C.line}`,borderRadius:12,padding:"40px 20px",textAlign:"center",color:C.dim,fontSize:14}}>{text}</div>;}
+export function SL({n,t}){return(<div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14,marginTop:2}}><span style={{fontFamily:mono,fontSize:10,color:C.onAcc||"#0b0e17",fontWeight:700,background:C.acc,borderRadius:5,padding:"2px 6px",letterSpacing:.5}}>{n}</span><span style={{fontFamily:sans,fontSize:12,color:C.ink,letterSpacing:1.5,fontWeight:700,textTransform:"uppercase"}}>{t}</span><span style={{flex:1,height:1,background:`linear-gradient(90deg,${C.line},transparent)`}}/></div>);}
+export function Banner({children,c}){return <div style={{background:C.panel,border:`1px solid ${c}`,borderRadius:14,padding:"18px 20px",boxShadow:SHADOW.card}}>{children}</div>;}
+export function Locked({text}){return <div style={{background:C.panel,border:`1px dashed ${C.line}`,borderRadius:14,padding:"40px 20px",textAlign:"center",color:C.dim,fontSize:14}}>{text}</div>;}
 export function Empty({text}){return <div style={{color:C.faint,fontSize:13,padding:"12px 0"}}>{text}</div>;}
-export function Intro({text}){return <p style={{color:C.dim,fontSize:13,lineHeight:1.6,margin:"0 0 18px",maxWidth:740}}>{text}</p>;}
-export function ColHead({children}){return <div style={{fontFamily:mono,fontSize:11,fontWeight:700,color:C.acc,letterSpacing:1.5,paddingBottom:6,borderBottom:`1px solid ${C.line}`}}>{children}</div>;}
-export function Pill({children,c}){return <span style={{fontFamily:mono,fontSize:9,color:c,border:`1px solid ${c}`,borderRadius:4,padding:"1px 6px"}}>{children}</span>;}
+export function Intro({text}){return <p style={{color:C.dim,fontSize:13,lineHeight:1.65,margin:"0 0 18px",maxWidth:740}}>{text}</p>;}
+export function ColHead({children}){return <div style={{fontFamily:mono,fontSize:10,fontWeight:700,color:C.dim,letterSpacing:1.5,paddingBottom:7,borderBottom:`1px solid ${C.line}`,textTransform:"uppercase"}}>{children}</div>;}
+export function Pill({children,c}){return <span style={{fontFamily:mono,fontSize:9,fontWeight:600,color:c,background:c+"1a",border:`1px solid ${c}55`,borderRadius:5,padding:"1px 6px",letterSpacing:.4}}>{children}</span>;}
 export function TraitPill({t}){const m={clutch:["CLUTCH",C.win],boom:["BOOM/BUST",C.acc],leader:["LEADER",C.live]};const[l,c]=m[t]||[t,C.dim];return <Pill c={c}>{l}</Pill>;}
 export function Stat({l,v}){return(<div style={{display:"flex",flexDirection:"column",alignItems:"center",minWidth:34}}><span style={{fontFamily:mono,fontSize:9,color:C.faint}}>{l}</span><span style={{fontFamily:mono,fontSize:13,fontWeight:700,color:v>=90?C.acc:C.ink}}>{v}</span></div>);}
 export function MiniStat({label,value,color,small}){return(<div style={{display:"flex",flexDirection:"column",alignItems:small?"flex-end":"flex-start"}}><span style={{fontFamily:mono,fontSize:9,color:C.faint,letterSpacing:1}}>{label}</span><span style={{fontFamily:mono,fontSize:small?13:22,fontWeight:700,color}}>{value}</span></div>);}

@@ -1,36 +1,49 @@
 import React, { useState } from 'react';
 import { C, sans, mono } from './theme.js';
+import { Wordmark, TeamCrest } from './primitives.jsx';
 
 export function Header({season,myTeam,onReset,stageLabel,onSave}){
   const [showSave,setShowSave]=useState(false);
+  const budget=season.budget;
+  const broke=budget<0;
   return(
-  <header style={{borderBottom:`1px solid ${C.line}`,padding:"13px 22px",display:"flex",alignItems:"center",gap:14,flexWrap:"wrap",position:"sticky",top:0,background:C.bg,zIndex:20}}>
-    <span style={{fontFamily:mono,fontWeight:700,fontSize:13,color:C.acc,letterSpacing:2}}>▸ OVERTIME</span>
-    <span style={{fontFamily:mono,fontSize:11,color:C.dim,letterSpacing:1}}>{stageLabel}</span>
-    <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:8}}>
-      <span style={{fontFamily:mono,fontSize:10,color:C.gold}}>${season.budget}K</span>
-      <span style={{fontWeight:700,fontSize:13,color:C.acc}}>{myTeam}</span>
+  <header style={{borderBottom:`1px solid ${C.line}`,padding:"11px 22px",display:"flex",alignItems:"center",gap:16,flexWrap:"wrap",position:"sticky",top:0,background:"rgba(11,14,23,.82)",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",zIndex:20}}>
+    <Wordmark size={16}/>
+    <span style={{width:1,height:20,background:C.line}}/>
+    <div style={{display:"flex",alignItems:"center",gap:9,minWidth:0}}>
+      <TeamCrest name={myTeam} size={26}/>
+      <div style={{lineHeight:1.15,minWidth:0}}>
+        <div style={{fontWeight:700,fontSize:14,color:C.ink,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:200}}>{myTeam}</div>
+        <div style={{fontFamily:mono,fontSize:10,color:C.faint,letterSpacing:.5,whiteSpace:"nowrap"}}>{stageLabel}</div>
+      </div>
+    </div>
+    <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:10}}>
+      <div style={{display:"flex",alignItems:"center",gap:7,background:C.panel,border:`1px solid ${broke?C.red+"66":C.line}`,borderRadius:9,padding:"6px 11px"}}>
+        <span style={{fontFamily:mono,fontSize:9,color:C.faint,letterSpacing:1}}>BUDGET</span>
+        <span style={{fontFamily:mono,fontSize:13,fontWeight:700,color:broke?C.red:C.gold}}>${budget}K</span>
+      </div>
       <div style={{position:"relative"}}>
-        <button onClick={()=>setShowSave(!showSave)} style={{background:C.panel,color:C.live,border:`1px solid ${C.line}`,borderRadius:6,padding:"7px 10px",fontSize:11,fontFamily:mono}}>[S]</button>
-        {showSave&&<div style={{position:"absolute",right:0,top:"100%",marginTop:4,background:C.panel,border:`1px solid ${C.line}`,borderRadius:8,padding:"8px",zIndex:30,minWidth:120,display:"flex",flexDirection:"column",gap:4}}>
-          {[1,2,3].map(i=><button key={i} onClick={()=>{onSave(i);setShowSave(false);}} style={{background:C.panel2,border:`1px solid ${C.line}`,borderRadius:5,padding:"6px 10px",fontFamily:mono,fontSize:10,color:C.ink,textAlign:"left"}}>Save Slot {i}</button>)}
+        <button onClick={()=>setShowSave(!showSave)} title="Save game" style={{background:C.panel,color:C.live,border:`1px solid ${C.line}`,borderRadius:9,padding:"8px 12px",fontSize:12,fontFamily:sans,fontWeight:700}}>Save</button>
+        {showSave&&<div style={{position:"absolute",right:0,top:"100%",marginTop:6,background:C.panel,border:`1px solid ${C.line}`,borderRadius:10,padding:"8px",zIndex:30,minWidth:140,display:"flex",flexDirection:"column",gap:5,boxShadow:"0 18px 50px -20px rgba(0,0,0,.8)"}}>
+          <div style={{fontFamily:mono,fontSize:9,color:C.faint,letterSpacing:1,padding:"2px 6px 4px"}}>SAVE TO SLOT</div>
+          {[1,2,3].map(i=><button key={i} onClick={()=>{onSave(i);setShowSave(false);}} style={{background:C.panel2,border:`1px solid ${C.line}`,borderRadius:7,padding:"8px 12px",fontFamily:sans,fontSize:12,fontWeight:600,color:C.ink,textAlign:"left"}}>Slot {i}</button>)}
         </div>}
       </div>
-      <button onClick={onReset} style={{background:C.panel,color:C.dim,border:`1px solid ${C.line}`,borderRadius:6,padding:"7px 10px",fontSize:11,fontFamily:mono}}>MENU</button>
+      <button onClick={onReset} style={{background:"transparent",color:C.dim,border:`1px solid ${C.line}`,borderRadius:9,padding:"8px 12px",fontSize:12,fontFamily:sans,fontWeight:600}}>Menu</button>
     </div>
   </header>);}
 
 export function Tabs({tab,setTab,calMode,miniMode}){
   const items=calMode
-    ?[["calendar","CALENDAR"],["roster","ROSTER"],["dynamics","DYNAMICS"],["tactics","TACTICS"],["market","MARKET"],["maps","MAPS"],["facility","FACILITY"],["finance","FINANCE"],["rankings","RANKINGS"],["rivals","RIVALS"],["season","SEASON"]]
+    ?[["calendar","Calendar"],["roster","Squad"],["dynamics","Dynamics"],["tactics","Tactics"],["market","Transfers"],["maps","Maps"],["facility","Facility"],["finance","Finance"],["rankings","Rankings"],["rivals","Rivals"],["season","Season"]]
     :miniMode
-    ?[["hub","HUB"],["bracket","BRACKET"],["roster","ROSTER"],["stats","STATS"],["rivals","RIVALS"],["season","SEASON"]]
-    :[["hub","HUB"],["groups","GROUPS"],["bracket","BRACKET"],["roster","ROSTER"],["stats","STATS"],["rivals","RIVALS"],["season","SEASON"]];
+    ?[["hub","Hub"],["bracket","Bracket"],["roster","Squad"],["stats","Stats"],["rivals","Rivals"],["season","Season"]]
+    :[["hub","Hub"],["groups","Groups"],["bracket","Bracket"],["roster","Squad"],["stats","Stats"],["rivals","Rivals"],["season","Season"]];
   return(
-  <nav style={{display:"flex",gap:2,padding:"11px 22px 0",borderBottom:`1px solid ${C.line}`,flexWrap:"wrap",overflowX:"auto"}}>
-    {items.map(([k,l])=>(
-      <button key={k} onClick={()=>setTab(k)} style={{background:"transparent",border:"none",padding:"9px 12px",fontFamily:mono,fontSize:11,fontWeight:700,letterSpacing:1,color:tab===k?C.ink:C.dim,borderBottom:`2px solid ${tab===k?C.acc:"transparent"}`,marginBottom:-1,whiteSpace:"nowrap"}}>{l}</button>
-    ))}
+  <nav style={{display:"flex",gap:4,padding:"0 22px",borderBottom:`1px solid ${C.line}`,flexWrap:"wrap",overflowX:"auto",background:C.bg}}>
+    {items.map(([k,l])=>{const on=tab===k;return(
+      <button key={k} onClick={()=>setTab(k)} style={{background:"transparent",border:"none",padding:"12px 13px 11px",fontFamily:sans,fontSize:12.5,fontWeight:on?700:600,letterSpacing:.2,color:on?C.ink:C.dim,borderBottom:`2px solid ${on?C.acc:"transparent"}`,marginBottom:-1,whiteSpace:"nowrap"}}>{l}</button>
+    );})}
   </nav>);}
 
 // ═══════════════════════════════════════════════════════════════════════

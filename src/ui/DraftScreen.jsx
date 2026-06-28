@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { C, sans, mono } from './theme.js';
+import { C, sans, mono, GRAD } from './theme.js';
 import { MAPS, AI_TEAMS, PLAYERS_INIT } from '../constants/data.js';
 import { DRAFT_BUDGET, ACTIVITIES, COACHES, FACILITIES, SEASON_WEEKS } from '../constants/events.js';
 import { playerOvr, draftCost } from '../engine/player.js';
 import { initState } from '../engine/state.js';
 import { rosterOf, freeAgents, profileFor } from '../engine/state.js';
-import { Pill, TraitPill, MiniStat, Intro, SL, Empty, Stat } from './primitives.jsx';
+import { Pill, TraitPill, MiniStat, Intro, SL, Empty, Stat, Wordmark } from './primitives.jsx';
 import { Gstyle } from './Gstyle.jsx';
 
 export function DraftScreen({onComplete}){
@@ -54,46 +54,55 @@ export function DraftScreen({onComplete}){
   const sorted=[...filtered].sort((a,b)=>sort==="ovr"?playerOvr(b)-playerOvr(a):sort==="aim"?b.aim-a.aim:sort==="cost"?draftCost(a)-draftCost(b):b.gameSense-a.gameSense);
 
   if(!named)return(
-    <div style={{minHeight:"100vh",background:C.bg,color:C.ink,fontFamily:sans,display:"flex",alignItems:"center",justifyContent:"center"}}>
+    <div style={{minHeight:"100vh",background:GRAD,color:C.ink,fontFamily:sans,display:"flex",alignItems:"center",justifyContent:"center"}}>
       <Gstyle/>
-      <div style={{maxWidth:520,padding:"40px 24px",textAlign:"center"}}>
-        <div style={{fontFamily:mono,fontWeight:700,fontSize:16,color:C.acc,letterSpacing:3,marginBottom:8}}>▸ OVERTIME</div>
-        <h1 style={{fontSize:32,fontWeight:800,margin:"0 0 8px",letterSpacing:-.5}}>Build Your Org</h1>
-        <p style={{color:C.dim,fontSize:13,lineHeight:1.6,margin:"0 0 20px"}}>
-          Name your organization, choose which player eras to include, then draft 5 players for a {SEASON_WEEKS}-week season.
+      <div style={{maxWidth:540,padding:"40px 24px",textAlign:"center",animation:"fadeUp .35s ease"}}>
+        <div style={{display:"flex",justifyContent:"center",marginBottom:22}}><Wordmark size={18}/></div>
+        <h1 style={{fontSize:34,fontWeight:800,margin:"0 0 10px",letterSpacing:-.8}}>Build Your Organization</h1>
+        <p style={{color:C.dim,fontSize:14,lineHeight:1.65,margin:"0 auto 26px",maxWidth:440}}>
+          Name your org, choose which player eras to include, then draft five players for a {SEASON_WEEKS}-week season.
         </p>
-        <input value={name} onChange={e=>setName(e.target.value)} placeholder="Enter org name…"
+        <input value={name} onChange={e=>setName(e.target.value)} placeholder="Enter organization name…"
           onKeyDown={e=>{if(e.key==="Enter"&&name.trim())confirmSetup();}}
-          style={{background:C.panel,border:`1px solid ${C.line}`,borderRadius:8,padding:"14px 18px",color:C.ink,fontFamily:mono,fontSize:15,fontWeight:700,width:"100%",maxWidth:300,outline:"none",marginBottom:20}}/>
-        <div style={{fontFamily:mono,fontSize:11,color:C.dim,letterSpacing:1.5,marginBottom:10}}>PLAYER ERAS</div>
-        <div style={{display:"flex",gap:8,justifyContent:"center",flexWrap:"wrap",marginBottom:24}}>
+          style={{background:C.panel,border:`1px solid ${C.line}`,borderRadius:10,padding:"14px 18px",color:C.ink,fontFamily:sans,fontSize:16,fontWeight:700,width:"100%",maxWidth:340,outline:"none",marginBottom:26,textAlign:"center"}}/>
+        <div style={{fontFamily:mono,fontSize:11,color:C.dim,letterSpacing:1.5,marginBottom:12,textTransform:"uppercase"}}>Player Eras</div>
+        <div style={{display:"flex",gap:10,justifyContent:"center",flexWrap:"wrap",marginBottom:26}}>
           {ERA_OPTIONS.map(e=>{const on=eras.includes(e.id);return(
             <button key={e.id} onClick={()=>toggleEra(e.id)}
-              style={{background:on?e.color+"22":C.panel,border:`2px solid ${on?e.color:C.line}`,borderRadius:9,padding:"10px 14px",textAlign:"left",minWidth:110}}>
-              <div style={{fontWeight:700,fontSize:13,color:on?e.color:C.dim}}>{e.label}</div>
-              <div style={{fontSize:10,color:on?C.dim:C.faint,marginTop:2}}>{e.desc}</div>
-              {on&&<div style={{fontFamily:mono,fontSize:9,color:e.color,marginTop:4}}>ok ACTIVE</div>}
+              style={{position:"relative",background:on?e.color+"1f":C.panel,border:`1.5px solid ${on?e.color:C.line}`,borderRadius:12,padding:"12px 16px",textAlign:"left",minWidth:120,boxShadow:on?`0 8px 24px -14px ${e.color}`:"none"}}>
+              <div style={{display:"flex",alignItems:"center",gap:6}}>
+                <span style={{width:8,height:8,borderRadius:"50%",background:on?e.color:C.faint,boxShadow:on?`0 0 8px ${e.color}`:"none"}}/>
+                <span style={{fontWeight:700,fontSize:13,color:on?C.ink:C.dim}}>{e.label}</span>
+              </div>
+              <div style={{fontSize:10.5,color:on?C.dim:C.faint,marginTop:5,lineHeight:1.4}}>{e.desc}</div>
             </button>);})}
         </div>
-        <div style={{fontFamily:mono,fontSize:10,color:C.faint,marginBottom:16}}>
+        <div style={{fontFamily:mono,fontSize:11,color:C.faint,marginBottom:20}}>
           {PLAYERS_INIT.filter(p=>eras.includes(p.era||"current")).length} players available across {eras.length} era{eras.length>1?"s":""}
         </div>
         <button onClick={confirmSetup} disabled={!name.trim()}
-          style={{background:C.acc,color:"#0a0c10",border:"none",borderRadius:8,padding:"14px 28px",fontWeight:800,fontSize:15}}>START DRAFT →</button>
+          style={{background:C.acc,color:C.onAcc,border:"none",borderRadius:11,padding:"15px 32px",fontWeight:800,fontSize:15,letterSpacing:.3,boxShadow:`0 12px 32px -14px ${C.acc}`}}>Continue to Draft →</button>
       </div>
     </div>);
 
   if(!simState) return null; // shouldn't happen but guard
 
   return(
-  <div style={{minHeight:"100vh",background:C.bg,color:C.ink,fontFamily:sans}}>
+  <div style={{minHeight:"100vh",background:GRAD,color:C.ink,fontFamily:sans}}>
     <Gstyle/>
-    <header style={{borderBottom:`1px solid ${C.line}`,padding:"13px 22px",display:"flex",alignItems:"center",gap:14,flexWrap:"wrap",position:"sticky",top:0,background:C.bg,zIndex:20}}>
-      <span style={{fontFamily:mono,fontWeight:700,fontSize:13,color:C.acc,letterSpacing:2}}>▸ OVERTIME</span>
-      <span style={{fontFamily:mono,fontSize:11,color:C.dim,letterSpacing:1}}>DRAFT · {teamName}</span>
-      <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:14}}>
-        <span style={{fontFamily:mono,fontSize:12,color:C.gold,fontWeight:700}}>{budget}K</span>
-        <span style={{fontFamily:mono,fontSize:11,color:C.faint}}>ROSTER {roster.length}/5</span>
+    <header style={{borderBottom:`1px solid ${C.line}`,padding:"11px 22px",display:"flex",alignItems:"center",gap:14,flexWrap:"wrap",position:"sticky",top:0,background:"rgba(11,14,23,.82)",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",zIndex:20}}>
+      <Wordmark size={15}/>
+      <span style={{width:1,height:18,background:C.line}}/>
+      <span style={{fontFamily:sans,fontSize:12,color:C.dim,fontWeight:600}}>Draft · <span style={{color:C.ink,fontWeight:700}}>{teamName}</span></span>
+      <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:10}}>
+        <div style={{display:"flex",alignItems:"center",gap:6,background:C.panel,border:`1px solid ${C.line}`,borderRadius:9,padding:"5px 11px"}}>
+          <span style={{fontFamily:mono,fontSize:9,color:C.faint,letterSpacing:1}}>BUDGET</span>
+          <span style={{fontFamily:mono,fontSize:12,color:C.gold,fontWeight:700}}>${budget}K</span>
+        </div>
+        <div style={{display:"flex",alignItems:"center",gap:6,background:C.panel,border:`1px solid ${C.line}`,borderRadius:9,padding:"5px 11px"}}>
+          <span style={{fontFamily:mono,fontSize:9,color:C.faint,letterSpacing:1}}>ROSTER</span>
+          <span style={{fontFamily:mono,fontSize:12,color:roster.length===5?C.win:C.ink,fontWeight:700}}>{roster.length}/5</span>
+        </div>
       </div>
     </header>
     <main style={{maxWidth:1100,margin:"0 auto",padding:"22px 18px 80px"}}>
