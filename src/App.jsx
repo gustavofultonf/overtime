@@ -20,7 +20,8 @@ import { swissRound, swissRoundMini, swissDone, nextSwissFix, resolveSwissFix,
 import { computeFinances } from './engine/finance.js';
 
 // UI
-import { C, sans, mono } from './ui/theme.js';
+import { C, sans, mono, GRAD } from './ui/theme.js';
+import { Wordmark } from './ui/primitives.jsx';
 import { Gstyle } from './ui/Gstyle.jsx';
 import { Header, Tabs } from './ui/Header.jsx';
 import { MiniStat, SL } from './ui/primitives.jsx';
@@ -916,20 +917,20 @@ export default function App(){
   function resetAll(){setPhase("saves");setMyTeam(null);setSeason(null);setT(null);setTab("hub");loadSaves();}
 
   if(phase==="loading") return(
-    <div style={{minHeight:"100vh",background:C.bg,color:C.ink,fontFamily:sans,display:"flex",alignItems:"center",justifyContent:"center"}}>
-      <Gstyle/><div style={{textAlign:"center"}}><div style={{fontFamily:mono,fontWeight:700,fontSize:16,color:C.acc,letterSpacing:3}}>▸ OVERTIME</div><div style={{color:C.dim,fontSize:13,marginTop:8}}>Loading...</div></div>
+    <div style={{minHeight:"100vh",background:GRAD,color:C.ink,fontFamily:sans,display:"flex",alignItems:"center",justifyContent:"center"}}>
+      <Gstyle/><div style={{textAlign:"center",display:"flex",flexDirection:"column",alignItems:"center",gap:16}}><Wordmark size={22}/><div style={{color:C.dim,fontSize:12,fontFamily:mono,letterSpacing:1,animation:"pulse 1.4s ease infinite"}}>Loading…</div></div>
     </div>);
 
   if(phase==="saves") return(
-    <div style={{minHeight:"100vh",background:C.bg,color:C.ink,fontFamily:sans}}>
+    <div style={{minHeight:"100vh",background:GRAD,color:C.ink,fontFamily:sans}}>
       <Gstyle/>
       <div style={{maxWidth:600,margin:"0 auto",padding:"60px 24px"}}>
-        <div style={{textAlign:"center",marginBottom:32}}>
-          <div style={{fontFamily:mono,fontWeight:700,fontSize:20,color:C.acc,letterSpacing:3,marginBottom:8}}>▸ OVERTIME</div>
-          <div style={{fontSize:14,color:C.dim}}>CS Major Team Management Simulator</div>
+        <div style={{textAlign:"center",marginBottom:34,display:"flex",flexDirection:"column",alignItems:"center",gap:10}}>
+          <Wordmark size={30}/>
+          <div style={{fontSize:13,color:C.dim,letterSpacing:.3}}>Counter-Strike Esports Management Simulator</div>
         </div>
-        <button onClick={()=>setPhase("draft")} style={{width:"100%",background:C.acc,color:"#0a0c10",border:"none",borderRadius:10,padding:"16px",fontWeight:800,fontSize:17,marginBottom:24}}>NEW SEASON →</button>
-        <div style={{fontFamily:mono,fontSize:11,color:C.dim,letterSpacing:1.5,marginBottom:12}}>SAVED GAMES</div>
+        <button onClick={()=>setPhase("draft")} style={{width:"100%",background:C.acc,color:C.onAcc,border:"none",borderRadius:12,padding:"16px",fontWeight:800,fontSize:16,letterSpacing:.3,marginBottom:26,boxShadow:`0 10px 30px -12px ${C.acc}`}}>Start New Season →</button>
+        <div style={{fontFamily:mono,fontSize:11,color:C.dim,letterSpacing:1.5,marginBottom:12,textTransform:"uppercase"}}>Saved Games</div>
         <div style={{display:"flex",flexDirection:"column",gap:10}}>
           {["Auto-Save","Slot 1","Slot 2","Slot 3"].map((label,i)=>{
             const save=saves[i];
@@ -963,7 +964,7 @@ export default function App(){
 
   // Calendar phase
   if(season?.phase==="calendar"&&!t) return(
-    <div style={{minHeight:"100vh",background:C.bg,color:C.ink,fontFamily:sans}}>
+    <div style={{minHeight:"100vh",background:GRAD,color:C.ink,fontFamily:sans}}>
       <Gstyle/><Header season={season} myTeam={myTeam} onReset={resetAll} onSave={saveToSlot} stageLabel={`${weekToLabel(season.week,season.year)} ${season.year||2026} · W${season.week}`}/>
       <Tabs tab={tab} setTab={setTab} calMode/>
       <main style={{maxWidth:1100,margin:"0 auto",padding:"22px 18px 80px"}}>
@@ -984,7 +985,7 @@ export default function App(){
 
   // Season done — board review
   if(season?.phase==="done") return(
-    <div style={{minHeight:"100vh",background:C.bg,color:C.ink,fontFamily:sans}}>
+    <div style={{minHeight:"100vh",background:GRAD,color:C.ink,fontFamily:sans}}>
       <Gstyle/><Header season={season} myTeam={myTeam} onReset={resetAll} onSave={saveToSlot} stageLabel={`${season.year||2026} SEASON COMPLETE`}/>
       <main style={{maxWidth:900,margin:"0 auto",padding:"32px 18px 80px"}}>
         <BoardReview season={season} myTeam={myTeam} onBeginNewYear={startNewYear} onMenu={resetAll}/>
@@ -1004,7 +1005,7 @@ export default function App(){
   const SEED=getSeed(myTeam,season?.simState);
 
   return(
-    <div style={{minHeight:"100vh",background:C.bg,color:C.ink,fontFamily:sans}}>
+    <div style={{minHeight:"100vh",background:GRAD,color:C.ink,fontFamily:sans}}>
       <Gstyle/><Header season={season} myTeam={myTeam} onReset={resetAll} onSave={saveToSlot} stageLabel={`${evLabel} · ${stageLabel}`}/>
       <Tabs tab={tab} setTab={setTab} miniMode={!isMajor}/>
       <main style={{maxWidth:1200,margin:"0 auto",padding:"16px 18px 80px"}}>
