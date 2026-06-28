@@ -39,7 +39,7 @@ function BudgetChart({ history }) {
         </g>
       ))}
       <text x={PL} y={PT - 3} fontSize="8" fill={C.faint}>budget ($K)</text>
-      <text x={W - PR} y={H - 4} fontSize="8" fill={C.win + 'aa'} textAnchor="end">▪ prize</text>
+      <text x={W - PR} y={H - 4} fontSize="8" fill={C.win + 'aa'} textAnchor="end">prize</text>
     </svg>
   );
 }
@@ -64,7 +64,7 @@ export function SeasonHistory({season,myTeam}){
         <BudgetChart history={season.history}/>
         <div style={{display:"flex",gap:14,marginTop:6,fontFamily:mono,fontSize:9,color:C.faint}}>
           <span style={{color:C.gold}}>— budget after event</span>
-          <span style={{color:C.win}}>▪ prize earned</span>
+          <span style={{color:C.win}}>prize earned</span>
         </div>
       </div>
     )}
@@ -78,7 +78,7 @@ export function SeasonHistory({season,myTeam}){
         <div key={i} style={{display:"grid",gridTemplateColumns:"40px 60px 1fr 80px 60px 70px",gap:6,padding:"9px 14px",alignItems:"center",borderTop:`1px solid ${C.line}`}}>
           <span style={{fontFamily:mono,fontWeight:700,color:C.acc}}>#{h.eventNum}</span>
           <span style={{fontFamily:mono,fontSize:9,color:tierC}}>{h.tier||"Major"}</span>
-          <span style={{fontSize:12,color:h.champion===myTeam?C.gold:C.ink}}>{h.champion}{h.champion===myTeam?" [W]":""}</span>
+          <span style={{fontSize:12,color:h.champion===myTeam?C.gold:C.ink}}>{h.champion}{h.champion===myTeam?" — champions":""}</span>
           <span style={{fontFamily:mono,fontWeight:700,fontSize:13,textAlign:"right",color:plCol(h.place)}}>{h.place===1?"1st":h.place===2?"2nd":h.place<=4?"T"+h.place:"T"+h.place}</span>
           <span style={{fontFamily:mono,fontSize:11,textAlign:"right",color:C.win}}>+{h.prize}</span>
           <span style={{fontFamily:mono,fontSize:11,textAlign:"right",color:h.budgetAfter>0?C.gold:C.red}}>{h.budgetAfter}</span>

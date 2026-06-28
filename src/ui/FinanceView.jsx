@@ -207,8 +207,8 @@ export function FinanceView({ season, myTeam }) {
           <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 12, padding: '14px 18px' }}>
             <BudgetChart history={season.history} />
             <div style={{ display: 'flex', gap: 16, marginTop: 8, fontFamily: mono, fontSize: 9, color: C.faint }}>
-              <span style={{ color: C.gold }}>— balance after event</span>
-              <span style={{ color: C.win }}>▪ prize earned</span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><span style={{ width: 8, height: 8, borderRadius: 2, background: C.gold }} />balance after event</span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><span style={{ width: 8, height: 8, borderRadius: 2, background: C.win }} />prize earned</span>
             </div>
           </div>
         </>

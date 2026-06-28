@@ -21,7 +21,7 @@ export function VetoOverlay({session,myTeam,t,onClose,onResolved}){
   if(bo===1&&!resolving){
     const chooseBo1=(map)=>{setResolving(true);const res=playSeries(t.simState,myTeam,opp,1,{stage:"group"},t.rng,[map]);onResolved(res,session.fixture);};
     return(
-    <Overlay onClose={onClose} title={`MAP PICK · BO1 · vs ${opp}${rival?" · [!] RIVALRY":""}`} wide>
+    <Overlay onClose={onClose} title={`MAP PICK · BO1 · vs ${opp}${rival?" · RIVALRY":""}`} wide>
       <VetoHeader myTeam={myTeam} opp={opp} state={t.simState} rival={rival}/>
       <p style={{color:C.dim,fontSize:13,margin:"14px 0",lineHeight:1.6}}>Pick your map. Green bar = you're favored.</p>
       <MapBoard allMaps={allMaps} log={[]} picked={[]} remaining={allMaps} decider={null}
@@ -77,12 +77,12 @@ export function VetoOverlay({session,myTeam,t,onClose,onResolved}){
     :<span style={{color:C.dim}}>{opp} is {step[1]==="ban"?"banning":"picking"}…</span>;
 
   return(
-  <Overlay onClose={onClose} title={`MAP VETO · BO${bo} · vs ${opp}${rival?" · [!] RIVALRY":""}`} wide>
+  <Overlay onClose={onClose} title={`MAP VETO · BO${bo} · vs ${opp}${rival?" · RIVALRY":""}`} wide>
     <VetoHeader myTeam={myTeam} opp={opp} state={t.simState} rival={rival}/>
     {/* Sequence strip */}
     <VetoStrip steps={steps} stepIdx={stepIdx} log={log} myTeam={myTeam} opp={opp} resolving={resolving||stepIdx>=steps.length}/>
     {/* Status banner */}
-    <div style={{background:isYour?"rgba(255,92,46,.12)":C.panel2,border:`1px solid ${isYour?C.acc:C.line}`,borderRadius:8,padding:"11px 14px",margin:"12px 0 16px",fontFamily:mono,fontSize:13,minHeight:18}}>
+    <div style={{background:isYour?"rgba(155,140,255,.12)":C.panel2,border:`1px solid ${isYour?C.acc:C.line}`,borderRadius:8,padding:"11px 14px",margin:"12px 0 16px",fontFamily:mono,fontSize:13,minHeight:18}}>
       {phaseText}
     </div>
     <MapBoard allMaps={allMaps} log={log} picked={picked} remaining={remaining} decider={decider}
@@ -98,7 +98,7 @@ function VetoHeader({myTeam,opp,state,rival}){
         <TeamCrest name={myTeam} size={34}/>
         <span style={{fontWeight:800,fontSize:15,color:C.acc}}>{myTeam}</span>
       </div>
-      <span style={{fontFamily:mono,fontSize:12,color:rival?C.rival:C.faint,fontWeight:700,letterSpacing:1}}>{rival?"⚔ RIVALRY":"VS"}</span>
+      <span style={{fontFamily:mono,fontSize:12,color:rival?C.rival:C.faint,fontWeight:700,letterSpacing:1}}>{rival?"RIVALRY":"VS"}</span>
       <div style={{display:"flex",alignItems:"center",gap:8}}>
         <span style={{fontWeight:800,fontSize:15}}>{opp}</span>
         <TeamCrest name={opp} size={34}/>
@@ -134,10 +134,10 @@ function VetoStrip({steps,stepIdx,log,myTeam,opp,resolving}){
         );
       })}
       {/* Decider slot */}
-      <div style={{display:"flex",flexDirection:"column",alignItems:"center",minWidth:64,background:resolving?"rgba(255,194,75,.1)":C.panel2,border:`1px solid ${resolving?C.gold:C.line}`,borderRadius:6,padding:"4px 6px",opacity:resolving?1:0.5,transition:"all .25s ease"}}>
+      <div style={{display:"flex",flexDirection:"column",alignItems:"center",minWidth:64,background:resolving?"rgba(243,194,91,.1)":C.panel2,border:`1px solid ${resolving?C.gold:C.line}`,borderRadius:6,padding:"4px 6px",opacity:resolving?1:0.5,transition:"all .25s ease"}}>
         <span style={{fontFamily:mono,fontSize:8,color:C.gold,letterSpacing:.5}}>LEFT</span>
         <span style={{fontFamily:mono,fontSize:9,fontWeight:700,color:C.gold}}>DECIDER</span>
-        <span style={{fontFamily:mono,fontSize:8,color:C.faint}}>◆</span>
+        <span style={{fontFamily:mono,fontSize:8,color:C.faint}}>auto</span>
       </div>
     </div>
   );
@@ -168,14 +168,14 @@ function MapBoard({allMaps,log,picked,remaining,decider,myTeam,opp,state,onPick,
           <button key={m} onClick={()=>clickable&&onPick(m)} disabled={!clickable}
             style={{
               position:"relative",overflow:"hidden",
-              background:banned?"rgba(255,76,76,.05)":isPick?"rgba(61,220,132,.07)":isDecider?"rgba(255,194,75,.08)":C.panel,
+              background:banned?"rgba(255,76,76,.05)":isPick?"rgba(61,220,132,.07)":isDecider?"rgba(243,194,91,.08)":C.panel,
               border:`1px solid ${accent}`,borderRadius:8,padding:"12px 13px",textAlign:"left",
               opacity:banned?0.5:1,transition:"all .4s ease",cursor:clickable?"pointer":"default",
               animation:isDecider?"deciderGlow 1.6s ease-in-out infinite":undefined,
             }}>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:4}}>
               <span style={{fontWeight:700,fontSize:14,color:banned?C.faint:C.ink,textDecoration:banned?"line-through":"none"}}>{m}</span>
-              {clickable&&<span style={{fontFamily:mono,fontSize:9,color:yourTurn?C.acc:C.faint}}>▸</span>}
+              {clickable&&<span style={{width:7,height:7,borderRadius:"50%",background:yourTurn?C.acc:C.faint,boxShadow:yourTurn?`0 0 6px ${C.acc}`:"none"}}/>}
             </div>
             <div style={{fontFamily:mono,fontSize:10,color:C.faint,marginBottom:6}}>prof: {getMapProf(state,myTeam)[m]||50}</div>
             <EdgeBar edge={edge}/>

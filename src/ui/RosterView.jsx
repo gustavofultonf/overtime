@@ -133,7 +133,7 @@ export function RosterView2({state,myTeam,onNegotiate,onChangeRole}){
             {/* Age + traits */}
             <div style={{display:"flex",gap:3,justifyContent:"center",marginTop:4,flexWrap:"wrap",alignItems:"center"}}>
               <span style={{fontFamily:mono,fontSize:8,color:p.age>=32?C.red:p.age>=29?C.gold:p.age>=23&&p.age<=26?C.win:p.age<=21?C.live:C.faint}}>
-                age {p.age}{p.age>=23&&p.age<=26?" ★":p.age>=32?" ↓":""}
+                age {p.age}
               </span>
               {p.traits.map(tr=><TraitPill key={tr} t={tr}/>)}
             </div>
@@ -227,7 +227,7 @@ export function PlayerProfile({p,state,onClose}){
         <div style={{display:"flex",gap:6,marginTop:4}}>
           <Pill c={C.dim}>{p.role}</Pill>
           {p.traits.map(tr=><TraitPill key={tr} t={tr}/>)}
-          <span style={{fontFamily:mono,fontSize:10,color:p.age>=32?C.red:p.age>=29?C.gold:p.age>=23&&p.age<=26?C.win:p.age<=21?C.live:C.faint}}>age {p.age}{p.age>=23&&p.age<=26?" ★":p.age>=32?" ↓":""}</span>
+          <span style={{fontFamily:mono,fontSize:10,color:p.age>=32?C.red:p.age>=29?C.gold:p.age>=23&&p.age<=26?C.win:p.age<=21?C.live:C.faint}}>age {p.age}</span>
         </div>
       </div>
       <div style={{marginLeft:"auto",display:"flex",gap:14,flexWrap:"wrap"}}>

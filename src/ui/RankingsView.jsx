@@ -32,11 +32,11 @@ export function RankingsView({ state, myTeam, week = 1, year = 2026 }) {
           const pct = maxPts > 0 ? r.pts / maxPts * 100 : 0;
           const badge = isLegend ? { label: 'LEGEND', color: C.gold } : isChal ? { label: 'CHALL', color: C.live } : null;
           return (
-            <div key={r.team} style={{ display: 'grid', gridTemplateColumns: '36px 1fr 80px 1fr', gap: 8, padding: '9px 14px', alignItems: 'center', borderTop: `1px solid ${C.line}`, borderLeft: `3px solid ${me ? C.acc : col}`, background: me ? 'rgba(255,92,46,.06)' : 'transparent' }}>
+            <div key={r.team} style={{ display: 'grid', gridTemplateColumns: '36px 1fr 80px 1fr', gap: 8, padding: '9px 14px', alignItems: 'center', borderTop: `1px solid ${C.line}`, borderLeft: `3px solid ${me ? C.acc : col}`, background: me ? 'rgba(155,140,255,.06)' : 'transparent' }}>
               <span style={{ fontFamily: mono, fontWeight: 700, fontSize: 15, color: col }}>{i + 1}</span>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <TeamCrest name={r.team} size={24} />
-                <span style={{ fontWeight: me ? 700 : 600, fontSize: 13, color: me ? C.acc : C.ink }}>{r.team}{me ? ' ◂ you' : ''}</span>
+                <span style={{ fontWeight: me ? 700 : 600, fontSize: 13, color: me ? C.acc : C.ink }}>{r.team}{me ? ' you' : ''}</span>
                 {badge && <span style={{ fontFamily: mono, fontSize: 9, color: badge.color, background: badge.color + '22', padding: '1px 4px', borderRadius: 3 }}>{badge.label}</span>}
               </div>
               <span style={{ fontFamily: mono, fontWeight: 700, fontSize: 13, textAlign: 'right', color: col }}>{Math.round(r.pts).toLocaleString()}</span>

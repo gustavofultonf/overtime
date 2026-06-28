@@ -16,15 +16,15 @@ export function EventDebrief({debrief,onDismiss}){
     <div style={{background:C.panel,border:`1px solid ${C.line}`,borderRadius:14,maxWidth:580,width:"100%",maxHeight:"92vh",overflowY:"auto"}}>
 
       {/* Header banner */}
-      <div style={{background:won?"rgba(255,194,75,.08)":"rgba(20,20,30,1)",borderRadius:"14px 14px 0 0",padding:"20px 22px",borderBottom:`1px solid ${C.line}`}}>
+      <div style={{background:won?"rgba(243,194,91,.08)":"rgba(20,20,30,1)",borderRadius:"14px 14px 0 0",padding:"20px 22px",borderBottom:`1px solid ${C.line}`}}>
         <div style={{fontFamily:mono,fontSize:10,color:tier==="Major"?C.gold:tier==="A"?C.live:C.dim,letterSpacing:2,marginBottom:6}}>
-          {tier==="Major"?"★ MAJOR":tier==="A"?"■ A-TIER":"■ B-TIER"} · EVENT DEBRIEF
+          {tier==="Major"?"MAJOR":tier==="A"?"A-TIER":"B-TIER"} · EVENT DEBRIEF
         </div>
         <div style={{fontWeight:800,fontSize:22,letterSpacing:-.5,marginBottom:8,fontFamily:sans}}>{label}</div>
         <div style={{display:"flex",gap:12,alignItems:"center",flexWrap:"wrap"}}>
           <span style={{fontFamily:mono,fontSize:22,fontWeight:800,color:placeColor}}>{placeLabel}</span>
           <span style={{fontFamily:mono,fontSize:15,color:C.gold,fontWeight:700}}>+${prize}K</span>
-          {won&&<span style={{fontFamily:mono,fontSize:11,color:C.gold,background:"rgba(255,194,75,.18)",padding:"3px 9px",borderRadius:5,letterSpacing:1}}>CHAMPIONS</span>}
+          {won&&<span style={{fontFamily:mono,fontSize:11,color:C.gold,background:"rgba(243,194,91,.18)",padding:"3px 9px",borderRadius:5,letterSpacing:1}}>CHAMPIONS</span>}
         </div>
         {!won&&champion&&<div style={{fontFamily:mono,fontSize:11,color:C.faint,marginTop:5}}>Champion: <span style={{color:C.dim}}>{champion}</span></div>}
       </div>
@@ -32,8 +32,8 @@ export function EventDebrief({debrief,onDismiss}){
       <div style={{padding:"16px 22px"}}>
         {/* Win bonus */}
         {winBonus&&(
-          <div style={{background:"rgba(255,194,75,.07)",border:`1px solid ${C.gold}44`,borderRadius:8,padding:"8px 13px",marginBottom:14,fontFamily:mono,fontSize:11,color:C.gold}}>
-            ★ WIN BONUS — all players +5 form · chemistry +10
+          <div style={{background:"rgba(243,194,91,.07)",border:`1px solid ${C.gold}44`,borderRadius:8,padding:"8px 13px",marginBottom:14,fontFamily:mono,fontSize:11,color:C.gold}}>
+            WIN BONUS — all players +5 form · chemistry +10
           </div>
         )}
 
@@ -44,11 +44,11 @@ export function EventDebrief({debrief,onDismiss}){
             const isMvp=mvp&&p.name===mvp.name&&p.maps>=2;
             const rColor=p.rating>=1.15?C.win:p.rating>=0.95?C.dim:C.red;
             return(
-            <div key={p.name} style={{background:i===0?"rgba(255,194,75,.05)":C.panel2,border:`1px solid ${i===0?C.gold+"33":C.line}`,borderRadius:8,padding:"9px 13px",display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+            <div key={p.name} style={{background:i===0?"rgba(243,194,91,.05)":C.panel2,border:`1px solid ${i===0?C.gold+"33":C.line}`,borderRadius:8,padding:"9px 13px",display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
               <div style={{minWidth:90}}>
                 <div style={{fontWeight:700,fontSize:13,display:"flex",alignItems:"center",gap:6}}>
                   {p.name}
-                  {isMvp&&<span style={{fontFamily:mono,fontSize:8,color:C.gold,background:"rgba(255,194,75,.18)",padding:"2px 6px",borderRadius:3,letterSpacing:.5}}>MVP</span>}
+                  {isMvp&&<span style={{fontFamily:mono,fontSize:8,color:C.gold,background:"rgba(243,194,91,.18)",padding:"2px 6px",borderRadius:3,letterSpacing:.5}}>MVP</span>}
                 </div>
                 <div style={{fontFamily:mono,fontSize:9,color:C.faint,marginTop:1}}>{p.role}</div>
               </div>

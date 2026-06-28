@@ -8,7 +8,7 @@ const STYLES = ["Aggressive","Structured","Utility","AWP-Dependent"];
 const STYLE_META = {
   "Aggressive": {
     color: C.acc,
-    bg: "rgba(255,92,46,.10)",
+    bg: "rgba(155,140,255,.10)",
     short: "Rush and pressure. Entry fraggers lead every round.",
     beats: "Utility",
     beatenBy: "Structured",
