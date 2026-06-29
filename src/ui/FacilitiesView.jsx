@@ -5,6 +5,15 @@ import { playerOvr } from '../engine/player.js';
 import { rosterOf } from '../engine/state.js';
 import { Intro, SL, Pill, Stat } from './primitives.jsx';
 
+// Scouting grade from a prospect's hidden potential ceiling.
+function prospectGrade(pot) {
+  if (pot >= 90) return { letter: "S", color: C.gold };
+  if (pot >= 84) return { letter: "A", color: C.acc };
+  if (pot >= 77) return { letter: "B", color: C.win };
+  if (pot >= 70) return { letter: "C", color: C.live };
+  return { letter: "D", color: C.dim };
+}
+
 export function FacilitiesView({ season, myTeam, onUpgrade, onHireCoach, onFireCoach, onInitAcademy, onPromoteProspect, onSellProspect }) {
   const coach = season.simState.coach;
   const rosterFull = myTeam ? rosterOf(season.simState, myTeam).length >= 5 : false;
@@ -64,6 +73,11 @@ export function FacilitiesView({ season, myTeam, onUpgrade, onHireCoach, onFireC
                 <div style={{ display: "flex", gap: 4, alignItems: "center", marginTop: 2 }}><Pill c={C.dim}>{p.role}</Pill><span style={{ fontFamily: mono, fontSize: 9, color: C.win }}>age {p.age}</span></div>
               </div>
               <Stat l="OVR" v={playerOvr(p)} />
+              {(() => { const g = prospectGrade(p.potential || playerOvr(p)); return (
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", minWidth: 34 }} title={`Projected ceiling ~${p.potential || "?"} OVR`}>
+                  <span style={{ fontFamily: mono, fontSize: 9, color: C.faint }}>POT</span>
+                  <span style={{ fontFamily: mono, fontSize: 15, fontWeight: 800, color: g.color }}>{g.letter}</span>
+                </div>); })()}
               <Stat l="AIM" v={p.aim} />
               <span style={{ fontFamily: mono, fontSize: 9, color: C.faint }}>{p.weeksInAcademy || 0}wk trained</span>
               <div style={{ marginLeft: "auto", display: "flex", gap: 5 }}>

@@ -161,7 +161,11 @@ export function placementOf(t){
   return t.swiss?.eliminated?.includes(t.myTeam)?t.teams?.length||16:12;
 }
 export function prizeMoney(place){return{1:500,2:300,4:180,8:100,9:50,16:30}[place]||30;}
-export function decayFormBetweenEvents(simState){simState.players.forEach(p=>{p.form=p.form*0.4;});}
+export function decayFormBetweenEvents(simState){
+  simState.players.forEach(p=>{p.form=p.form*0.4;});
+  // Momentum cools one step toward neutral between events.
+  if(simState.momentum){for(const tm in simState.momentum){const m=simState.momentum[tm];simState.momentum[tm]=m>0?m-1:m<0?m+1:0;}}
+}
 export function tickContracts(simState,myTeam){
   // Contracts are weeks-based and tick down weekly (see App.tickContractWeeks).
   // This per-event hook only guarantees AI sides never disband: any AI player on a

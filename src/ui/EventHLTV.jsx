@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { C, sans, mono } from './theme.js';
 import { weekToLabel } from '../constants/events.js';
 import { isRivalMatch } from '../engine/state.js';
+import { predictMatch } from '../engine/prediction.js';
 import { SL, Locked, Empty, TeamCrest } from './primitives.jsx';
 
 export function EventHLTV({t,myTeam,nf,onPlay,alive,onOpen,onEndEvent,season,SEED,evLabel,tierTag,tab,setTab}){
@@ -107,9 +108,47 @@ export function NextMatchHLTV({nf,myTeam,onPlay,t,SEED}){
         <div style={{fontFamily:mono,fontSize:10,color:C.faint,marginTop:2}}>#{SEED[opp]||"?"} seed · chem {t.simState.chemistry[opp]||70}</div>
       </div>
     </div>
+    <MatchPrediction t={t} myTeam={myTeam} opp={opp} bo={bo}/>
     <button onClick={()=>onPlay(nf.fx,bo)} style={{width:"100%",marginTop:14,background:C.acc,color:"#0a0c10",border:"none",borderRadius:8,padding:"12px",fontWeight:800,fontSize:15,letterSpacing:.5}}>
       {bo===1?"PICK MAP →":"ENTER VETO →"}
     </button>
+  </div>);
+}
+
+// ── Pre-match prediction preview ─────────────────────────────────────
+// Read-only analytical forecast — favourite, win probability, likely score
+// and a per-map breakdown. Never touches sim state.
+export function MatchPrediction({t,myTeam,opp,bo}){
+  const [open,setOpen]=useState(false);
+  const pred=predictMatch(t.simState,myTeam,opp,bo);
+  const myP=Math.round(pred.winProbA*100), oppP=100-myP;
+  const conf=pred.confidence>55?"strong call":pred.confidence>25?`lean ${pred.favorite}`:"coin-flip";
+  return(
+  <div style={{marginTop:14,paddingTop:14,borderTop:`1px solid ${C.line}`}}>
+    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+      <span style={{fontFamily:mono,fontSize:9,color:C.live,letterSpacing:1.5}}>ANALYTICS · WIN PROBABILITY</span>
+      <span style={{fontFamily:mono,fontSize:9,color:C.faint,marginLeft:"auto"}}>proj {pred.likelyScore.join("–")} · {conf}</span>
+    </div>
+    <div style={{display:"flex",alignItems:"center",gap:8}}>
+      <span style={{fontFamily:mono,fontSize:14,fontWeight:700,color:C.acc,minWidth:36}}>{myP}%</span>
+      <div style={{flex:1,height:10,borderRadius:5,overflow:"hidden",display:"flex",background:C.panel2}}>
+        <div style={{width:myP+"%",background:C.acc,transition:"width .3s ease"}}/>
+        <div style={{flex:1,background:C.red+"aa"}}/>
+      </div>
+      <span style={{fontFamily:mono,fontSize:14,fontWeight:700,color:C.red,minWidth:36,textAlign:"right"}}>{oppP}%</span>
+    </div>
+    {pred.edges.length>0&&<div style={{fontFamily:mono,fontSize:10,color:C.dim,marginTop:8,lineHeight:1.5}}>{pred.edges.join(" · ")}</div>}
+    <button onClick={()=>setOpen(o=>!o)} style={{background:"transparent",border:"none",color:C.live,fontFamily:mono,fontSize:10,padding:"8px 0 0",cursor:"pointer",letterSpacing:.5}}>
+      {open?"▾ hide map-by-map":"▸ map-by-map projection"}
+    </button>
+    {open&&<div style={{display:"flex",gap:6,marginTop:8,flexWrap:"wrap"}}>
+      {pred.mapBreakdown.map(m=>{const mp=Math.round(m.winProbA*100);return(
+        <div key={m.map} style={{flex:"1 1 64px",background:C.panel2,border:`1px solid ${C.line}`,borderRadius:6,padding:"7px 6px",textAlign:"center"}}>
+          <div style={{fontFamily:mono,fontSize:9,color:C.faint,whiteSpace:"nowrap"}}>{m.map}</div>
+          <div style={{fontFamily:mono,fontSize:14,fontWeight:700,color:mp>=55?C.win:mp>=45?C.gold:C.red}}>{mp}%</div>
+          <div style={{fontFamily:mono,fontSize:8,color:C.faint}}>{m.ratingA}/{m.ratingB}</div>
+        </div>);})}
+    </div>}
   </div>);
 }
 

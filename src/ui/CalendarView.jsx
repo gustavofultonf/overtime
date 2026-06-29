@@ -262,7 +262,8 @@ export function CalendarView({ season, myTeam, onAdvance, onSim, onAcceptSponsor
             <FormArrow form={p.form} />
             <Meter label="FATIGUE" value={p.fatigue} color={fc} />
             <Meter label="MORALE" value={morale} color={mc} />
-            {p.fatigue > 80 && <span style={{ fontFamily: mono, fontSize: 9, color: C.red, border: `1px solid ${C.red}`, borderRadius: 4, padding: "1px 6px" }}>EXHAUSTED</span>}
+            {p.injury && <span style={{ fontFamily: mono, fontSize: 9, color: C.red, border: `1px solid ${C.red}`, borderRadius: 4, padding: "1px 6px" }}>INJ {p.injury.weeks}wk</span>}
+            {!p.injury && p.fatigue > 80 && <span style={{ fontFamily: mono, fontSize: 9, color: C.red, border: `1px solid ${C.red}`, borderRadius: 4, padding: "1px 6px" }}>EXHAUSTED</span>}
           </div>);
       })}
     </div>

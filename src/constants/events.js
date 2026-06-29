@@ -1,4 +1,4 @@
-import { rosterOf } from '../engine/state.js';
+import { rosterOf, rollInjury } from '../engine/state.js';
 
 export const TUNING = { D: 27, SYNERGY: 0.30 };
 export const DRAFT_BUDGET = 780;
@@ -103,7 +103,7 @@ export const FACILITIES = {
 
 export const RANDOM_EVENTS = [
   {id:"sponsor",text:"[$$] Sponsor deal! A brand offers a ${amt}K bonus if you place top 4 at the next event.",weight:8,apply:(s,t,rng)=>{const amt=30+Math.round(rng()*40);s.pendingBonus={condition:"top4",amount:amt};return`[$$] Sponsor offers ${amt}K bonus for top 4 finish`;}},
-  {id:"injury",text:"[!] {player} tweaked their wrist in practice.",weight:6,apply:(s,t,rng)=>{const r=rosterOf(s,t);if(!r.length)return null;const p=r[Math.floor(rng()*r.length)];p.fatigue=Math.min(100,p.fatigue+15);return`[!] ${p.name} tweaked their wrist — +15 fatigue`;}},
+  {id:"injury",text:"[!] {player} tweaked their wrist in practice.",weight:6,apply:(s,t,rng)=>{const r=rosterOf(s,t).filter(p=>!p.injury);if(!r.length)return null;const p=r[Math.floor(rng()*r.length)];p.fatigue=Math.min(100,p.fatigue+10);p.injury=rollInjury(rng);return`[!] ${p.name} picked up a ${p.injury.kind} in practice — out ~${p.injury.weeks}wk`;}},
   {id:"morale",text:"Team dinner boosts morale.",weight:7,apply:(s,t)=>{s.chemistry[t]=Math.min(100,(s.chemistry[t]||55)+4);return"[+] Team dinner night — +4 chemistry";}},
   {id:"media",text:"Media interview goes viral.",weight:5,apply:(s,t,rng)=>{const r=rosterOf(s,t);if(!r.length)return null;const p=r[Math.floor(rng()*r.length)];p.form=Math.min(12,p.form+2);return`[>] ${p.name}'s interview goes viral — confidence boost (+2 form)`;}},
   {id:"drama",text:"Internal disagreement.",weight:4,apply:(s,t)=>{s.chemistry[t]=Math.max(40,(s.chemistry[t]||55)-5);return"[!!] Argument in team comms — -5 chemistry";}},

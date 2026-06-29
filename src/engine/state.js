@@ -35,7 +35,7 @@ export function initState(eras){
     // Contracts are now WEEKS remaining. Convert the authored event-count into a
     // 1–3 year deal, staggered so the whole league doesn't expire on the same week.
     const contractWeeks=Math.max(16,(p.contract||2)*52-Math.floor(Math.random()*44));
-    return{...p,form:0,fatigue:20+Math.random()*20|0,contract:contractWeeks,
+    return{...p,form:0,fatigue:20+Math.random()*20|0,contract:contractWeeks,injury:null,
       // Derived combat stats
       rifle:  clamp(p.aim*0.65+p.consistency*0.35+rng()),
       pistol: clamp(p.aim*0.45+p.mentality*0.3+p.gameSense*0.25+rng()),
@@ -58,6 +58,8 @@ export function initState(eras){
 
   const chemistry={};
   AI_TEAMS.forEach(t=>{chemistry[t]=70;});
+  const momentum={};
+  AI_TEAMS.forEach(t=>{momentum[t]=0;});
   const stats={};
   const career={};
   players.forEach(p=>{
@@ -125,7 +127,7 @@ export function initState(eras){
     else tactics[team]="Utility";
   });
 
-  return {players,chemistry,stats,career,mapProf,rivalries,rankings,matchLog,prizeLog,valveBounty:{},coach:null,pendingBonus:null,tactics};
+  return {players,chemistry,momentum,stats,career,mapProf,rivalries,rankings,matchLog,prizeLog,valveBounty:{},coach:null,pendingBonus:null,tactics};
 }
 
 export function rosterOf(state,team){return state.players.filter(p=>p.team===team);}
@@ -142,8 +144,56 @@ export function teamBase(state,team){
   // fatigue penalty: avg fatigue over 50 reduces effective rating
   const avgFatigue=mean("fatigue");
   const fatiguePenalty=avgFatigue>50?(avgFatigue-50)*0.08:0;
-  return core*(0.85+TUNING.SYNERGY*chem)+formAdj-fatiguePenalty;
+  // Recent competitive momentum nudges effective rating (±~3 at the extremes).
+  const momentumAdj=(state.momentum?.[team]||0)*0.6;
+  // Injuries directly sap the team's effective strength — each carried injury
+  // subtracts its severity, so playing hurt is a real, felt penalty.
+  const injuryPenalty=r.reduce((s,p)=>s+(p.injury?p.injury.sev:0),0);
+  return core*(0.85+TUNING.SYNERGY*chem)+formAdj+momentumAdj-fatiguePenalty-injuryPenalty;
 }
+
+// ── Injuries ─────────────────────────────────────────────────────────
+// Injury severity → effective-rating penalty (points) and recovery weeks.
+export const INJURY_TYPES=[
+  {kind:"wrist strain",   sev:2, minWk:1, maxWk:2},
+  {kind:"back tightness", sev:3, minWk:2, maxWk:3},
+  {kind:"hand injury",    sev:4, minWk:3, maxWk:5},
+  {kind:"illness",        sev:3, minWk:1, maxWk:3},
+  {kind:"shoulder injury",sev:6, minWk:5, maxWk:9},
+];
+export function rollInjury(rng=Math.random){
+  const t=INJURY_TYPES[Math.floor(rng()*INJURY_TYPES.length)];
+  const weeks=t.minWk+Math.floor(rng()*(t.maxWk-t.minWk+1));
+  return {kind:t.kind,sev:t.sev,weeks,total:weeks};
+}
+// Weekly recovery + (low) chance of a new injury, driven by fatigue and the
+// intensity of the week's activity. Medbay facility cushions both. Mutates the
+// roster in place; returns a log string when something changes, else null.
+export function tickInjuries(state,team,activity,facilities,rng=Math.random){
+  const roster=rosterOf(state,team);
+  const mbTier=facilities?.medbay||0;
+  let healed=null,hurt=null;
+  roster.forEach(p=>{
+    if(p.injury){
+      // Rest / medical care speeds recovery.
+      const heal=(activity==="rest"||activity==="vacation"?2:1)+(mbTier>=1?1:0);
+      p.injury.weeks-=heal;
+      if(p.injury.weeks<=0){const k=p.injury.kind;p.injury=null;if(!healed)healed=`[+] ${p.name} recovered from ${k}`;}
+      return;
+    }
+    // Injury risk: baseline from intensive sessions, amplified by fatigue.
+    const intensity=activity==="bootcamp"?1.6:activity==="scrim"?1.2:activity==="practice"?0.9:0.3;
+    const fatigueRisk=Math.max(0,(p.fatigue-55))/100; // 0 below 55, ramps after
+    let chance=(0.010+fatigueRisk*0.05)*intensity;
+    if(mbTier>=2) chance*=0.35;       // elite medical bay: strong prevention
+    else if(mbTier>=1) chance*=0.6;
+    if(rng()<chance){p.injury=rollInjury(rng);if(!hurt)hurt=`[!] ${p.name} picked up a ${p.injury.kind} — out ~${p.injury.weeks}wk`;}
+  });
+  return hurt||healed;
+}
+
+// ── Momentum ─────────────────────────────────────────────────────────
+export function momentumOf(state,team){return state.momentum?.[team]||0;}
 
 export function profileFor(team){
   let s=0;for(const c of team)s=(s*31+c.charCodeAt(0))>>>0;

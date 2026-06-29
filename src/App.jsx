@@ -10,7 +10,7 @@ import { playerOvr, draftCost, marketValue, getTeamOrder, getSeed,
          getRankedTeams, addEventToLog, computeValveRankings, aiRosterMoves,
          transferPremium, buyoutPrice, desiredSalary } from './engine/player.js';
 import { initState, rosterOf, freeAgents, teamBase, profileFor,
-         getMapProf, isRivalMatch, updateMorale, hierarchyTier } from './engine/state.js';
+         getMapProf, isRivalMatch, updateMorale, hierarchyTier, tickInjuries } from './engine/state.js';
 import { playSeries, applyActivity, rollRandomEvent } from './engine/match.js';
 import { generateProspect, developProspect, autoSimWeeks, aiWeekActivity,
          snapshotEventStats } from './engine/activity.js';
@@ -18,7 +18,7 @@ import { swissRound, swissRoundMini, swissDone, nextSwissFix, resolveSwissFix,
          seedPlayoff, resolvePlayoffAI, nextPlayoffFix, newTournament, newMiniTournament,
          placementOf, prizeMoney, miniPlacement, miniPrizeMoney,
          decayFormBetweenEvents, tickContracts, bracketElim } from './engine/tournament.js';
-import { computeFinances } from './engine/finance.js';
+import { computeFinances, brandValue, sponsorBrandFactor } from './engine/finance.js';
 
 // UI
 import { C, sans, mono, GRAD } from './ui/theme.js';
@@ -451,6 +451,7 @@ export default function App(){
       scoutTeam(mapChoice);
     }
     applyActivity(season.simState,myTeam,activity,activity==="scout"?null:mapChoice,season.facilities);
+    const injMsg=tickInjuries(season.simState,myTeam,activity,season.facilities);
     aiWeekActivity(season.simState);
     const evMsg=rollRandomEvent(season.simState,myTeam);
     rollChoiceEvent();
@@ -478,14 +479,18 @@ export default function App(){
         {brand:"Logitech",monthly:rank<=10?35:18,duration:5,condition:"Make a Major",checkMajor:true},
       ];
       const offer=offers[Math.floor(Math.random()*offers.length)];
-      season.sponsorships.push({...offer,active:false,offered:true,weeksLeft:offer.duration*4,startWeek:season.week});
-      season.weekLog.push({week:season.week,activity:"news",event:`[>] ${offer.brand} offers ${offer.monthly}K/month for ${offer.duration} months (${offer.condition})`});
+      // Bigger brands command bigger sponsorship cheques.
+      const bf=sponsorBrandFactor(brandValue(season,season.simState,myTeam));
+      const monthly=Math.round(offer.monthly*bf);
+      season.sponsorships.push({...offer,monthly,active:false,offered:true,weeksLeft:offer.duration*4,startWeek:season.week});
+      season.weekLog.push({week:season.week,activity:"news",event:`[>] ${offer.brand} offers ${monthly}K/month for ${offer.duration} months (${offer.condition})`});
     }
     // Tick active sponsorships
     (season.sponsorships||[]).forEach(sp=>{
       if(sp.active){sp.weeksLeft--;if(sp.weeksLeft<=0)sp.active=false;}
     });
     season.weekLog.push({week:season.week,activity,mapChoice,event:evMsg||null});
+    if(injMsg) season.weekLog.push({week:season.week,activity:"news",event:injMsg});
     season.week++;
     tickContractWeeks(1);
     const salMsg=paySalary(season.week);
@@ -498,7 +503,7 @@ export default function App(){
     const startWk=season.week;
     const nextEv=EVENTS.find(e=>e.week>=season.week);
     const target=nextEv?nextEv.week:SEASON_WEEKS+1;
-    const log=autoSimWeeks(season.simState,myTeam,season.week,target);
+    const log=autoSimWeeks(season.simState,myTeam,season.week,target,season.facilities);
     // Inject salary deductions into the log for each payday week
     const enriched=[];
     for(const entry of log){
@@ -763,7 +768,7 @@ export default function App(){
       const role=roles[Math.floor(Math.random()*roles.length)];
       const name=rookieNames[Math.floor(Math.random()*rookieNames.length)]+(yr-2025)+"_"+i;
       const base=55+Math.floor(Math.random()*25);
-      const p={team:"FA",name,role,aim:base+Math.floor(Math.random()*15),gameSense:base+Math.floor(Math.random()*10),util:base+Math.floor(Math.random()*10),igl:role==="IGL"?base+20:base-10,mentality:50+Math.floor(Math.random()*30),consistency:40+Math.floor(Math.random()*30),traits:Math.random()<0.2?["boom"]:Math.random()<0.1?["clutch"]:[],salary:5+Math.floor(Math.random()*5),contract:0,age:17+Math.floor(Math.random()*2),era:"current",form:0,fatigue:10,
+      const p={team:"FA",name,role,aim:base+Math.floor(Math.random()*15),gameSense:base+Math.floor(Math.random()*10),util:base+Math.floor(Math.random()*10),igl:role==="IGL"?base+20:base-10,mentality:50+Math.floor(Math.random()*30),consistency:40+Math.floor(Math.random()*30),traits:Math.random()<0.2?["boom"]:Math.random()<0.1?["clutch"]:[],salary:5+Math.floor(Math.random()*5),contract:0,age:17+Math.floor(Math.random()*2),era:"current",form:0,fatigue:10,injury:null,
         rifle:base+Math.floor(Math.random()*12),pistol:base+Math.floor(Math.random()*12),awp:role==="AWP"?base+15:base-5,clutch:40+Math.floor(Math.random()*20),entry:role==="Entry"?base+15:base,stamina:60+Math.floor(Math.random()*25),composure:40+Math.floor(Math.random()*25),experience:30+Math.floor(Math.random()*10),
       };
       season.simState.players.push(p);

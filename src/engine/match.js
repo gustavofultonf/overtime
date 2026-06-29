@@ -402,6 +402,7 @@ export function resolveMap(state,map,A,B,ctx,rng,startFrom=null){
 
 export function driftForm(state,teamA,teamB,results){
   const winner=results.filter(r=>r.winnerName===teamA).length>results.filter(r=>r.winnerName===teamB).length?teamA:teamB;
+  if(!state.momentum) state.momentum={};
   [teamA,teamB].forEach(team=>{
     const won=team===winner;
     rosterOf(state,team).forEach(p=>{
@@ -411,6 +412,10 @@ export function driftForm(state,teamA,teamB,results){
       // Experience grows from playing matches
       if(p.experience!==undefined&&p.experience<99) p.experience=Math.min(99,p.experience+(Math.random()<0.15?1:0));
     });
+    // Team momentum: a win extends a hot streak (capped +5), a loss extends a
+    // cold one (capped -5). Either result flips a streak running the other way.
+    const m=state.momentum[team]||0;
+    state.momentum[team]=won?(m>=0?Math.min(5,m+1):1):(m<=0?Math.max(-5,m-1):-1);
     if(won)state.chemistry[team]=Math.min(100,(state.chemistry[team]||70)+2);
     else state.chemistry[team]=Math.max(40,(state.chemistry[team]||70)-3);
   });

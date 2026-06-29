@@ -1,6 +1,6 @@
 import React from 'react';
 import { C, sans, mono } from './theme.js';
-import { computeFinances, INCOME_LABELS } from '../engine/finance.js';
+import { computeFinances, INCOME_LABELS, brandTier } from '../engine/finance.js';
 import { SL, MiniStat, Empty } from './primitives.jsx';
 
 const fmt = v => `${v < 0 ? "-" : ""}$${Math.abs(Math.round(v))}K`;
@@ -153,6 +153,24 @@ export function FinanceView({ season, myTeam }) {
         <MiniStat label="MONTHLY IN" value={`${fin.income.total}K`} color={C.win} />
         <MiniStat label="MONTHLY OUT" value={`${fin.expenses.total}K`} color={C.red} />
         <MiniStat label="WORLD RANK" value={`#${fin.rank}`} color={C.live} />
+        <MiniStat label="BRAND" value={brandTier(fin.brand).label} color={brandTier(fin.brand).color} />
+      </div>
+
+      {/* ── Brand value ── */}
+      <SL n="BRD" t="BRAND VALUE" />
+      <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 12, padding: '14px 18px', marginBottom: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 8, flexWrap: 'wrap' }}>
+          <span style={{ fontFamily: mono, fontSize: 26, fontWeight: 800, color: brandTier(fin.brand).color }}>{fin.brand}</span>
+          <span style={{ fontFamily: mono, fontSize: 11, color: C.faint }}>/ 100</span>
+          <span style={{ fontWeight: 700, fontSize: 14, color: brandTier(fin.brand).color }}>{brandTier(fin.brand).label}</span>
+          <span style={{ fontFamily: mono, fontSize: 10, color: C.faint, marginLeft: 'auto' }}>drives merch & sponsor offers</span>
+        </div>
+        <div style={{ height: 8, borderRadius: 4, background: C.panel2, overflow: 'hidden', marginBottom: 8 }}>
+          <div style={{ width: `${Math.min(100, fin.brand)}%`, height: '100%', background: brandTier(fin.brand).color, transition: 'width .3s ease' }} />
+        </div>
+        <div style={{ fontFamily: mono, fontSize: 10.5, color: C.dim, lineHeight: 1.5 }}>
+          Built from ranking, trophies, roster star power and content investment. Higher brand means fatter merch revenue (now <span style={{ color: C.win }}>+{fin.income.merch}K/mo</span>) and bigger sponsorship cheques.
+        </div>
       </div>
 
       {(inDebt || (losing && fin.runwayWeeks <= 8)) && (

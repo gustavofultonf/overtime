@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { C, sans, mono } from './theme.js';
 import { playerOvr } from '../engine/player.js';
-import { rosterOf, teamBase } from '../engine/state.js';
+import { rosterOf, teamBase, momentumOf } from '../engine/state.js';
 import { Overlay, SL, Intro, Pill, TraitPill, Stat, MiniStat, FormArrow, TeamCrest } from './primitives.jsx';
 import { contractLabel } from '../constants/events.js';
 
@@ -66,6 +66,9 @@ export function RosterView2({state,myTeam,onNegotiate,onChangeRole}){
   const [negoResult,setNegoResult]=useState(null);
   const r=rosterOf(state,myTeam);const base=teamBase(state,myTeam);const chem=state.chemistry[myTeam]||55;
   const roleColor={IGL:C.live,AWP:"#e05050",Entry:C.acc,Lurk:C.gold,Support:C.win};
+  const mom=momentumOf(state,myTeam);
+  const momLabel=mom>0?`W${mom}`:mom<0?`L${-mom}`:"—";
+  const momColor=mom>=2?C.win:mom>0?"#8bc99a":mom<=-2?C.red:mom<0?"#c98b8b":C.faint;
 
   return(<div>
     {/* Team overview header */}
@@ -78,6 +81,7 @@ export function RosterView2({state,myTeam,onNegotiate,onChangeRole}){
       <div style={{display:"flex",gap:16,justifyContent:"center",marginTop:12}}>
         <MiniStat label="RATING" value={base.toFixed(1)} color={C.acc}/>
         <MiniStat label="CHEMISTRY" value={chem} color={chem>=80?C.win:chem>=60?C.gold:C.red}/>
+        <MiniStat label="MOMENTUM" value={momLabel} color={momColor}/>
       </div>
     </div>
 
@@ -127,6 +131,12 @@ export function RosterView2({state,myTeam,onNegotiate,onChangeRole}){
                 </div>
               </div>
             </div>
+            {/* Injury flag */}
+            {p.injury&&(
+              <div style={{margin:"0 0 6px",background:"rgba(240,89,107,.12)",border:`1px solid ${C.red}55`,borderRadius:5,padding:"3px 6px",fontFamily:mono,fontSize:8.5,color:C.red,fontWeight:700,letterSpacing:.3}}>
+                INJ · {p.injury.kind} · {p.injury.weeks}wk
+              </div>
+            )}
             {/* Contract + salary */}
             <div style={{fontFamily:mono,fontSize:9,color:C.faint}}>
               ${p.salary}K/mo · {p.contract<=16?<span style={{color:C.red}}>{contractLabel(p.contract)}</span>:<span>{contractLabel(p.contract)}</span>}
@@ -252,6 +262,7 @@ export function PlayerProfile({p,state,onClose}){
     <div style={{display:"flex",gap:16,marginBottom:20,flexWrap:"wrap"}}>
       <MiniStat label="FORM" value={p.form>0?"+"+p.form.toFixed(1):p.form.toFixed(1)} color={p.form>3?C.win:p.form<-3?C.red:C.faint}/>
       <MiniStat label="FATIGUE" value={p.fatigue} color={p.fatigue>70?C.red:p.fatigue>50?C.gold:C.win}/>
+      <MiniStat label="HEALTH" value={p.injury?`${p.injury.kind} (${p.injury.weeks}wk)`:"Fit"} color={p.injury?C.red:C.win}/>
     </div>
     {c&&c.totalMaps>0&&(<>
       <SL n="CAR" t="CAREER STATS"/>
