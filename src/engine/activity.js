@@ -1,7 +1,7 @@
 import { AI_TEAMS, MAPS } from '../constants/data.js';
 import { ACTIVITIES, EVENTS } from '../constants/events.js';
 import { playerOvr } from './utils.js';
-import { rosterOf, getMapProf, tickInjuries } from './state.js';
+import { rosterOf, getMapProf, tickInjuries, currentMapPool, teamActivePool } from './state.js';
 import { getTeamOrder } from './player.js';
 import { applyActivity, rollRandomEvent } from './match.js';
 
@@ -50,7 +50,8 @@ export function autoSimWeeks(state,team,fromWeek,toWeek,facilities){
     else if(weeksToEvent<=2&&avgFat>40) act="rest"; // taper before event
     else if(weeksToEvent<=3) act=Math.random()<0.5?"scrim":"vod"; // light prep
     else act=["practice","bootcamp","scrim","vod"][Math.floor(Math.random()*4)];
-    if(act==="practice") mc=MAPS[Math.floor(Math.random()*MAPS.length)];
+    const simPool=teamActivePool(state,team)||currentMapPool(state);
+    if(act==="practice") mc=simPool[Math.floor(Math.random()*simPool.length)];
     applyActivity(state,team,act,mc,facilities);
     const injMsg=tickInjuries(state,team,act,facilities);
     aiWeekActivity(state);
@@ -62,16 +63,23 @@ export function autoSimWeeks(state,team,fromWeek,toWeek,facilities){
 }
 
 export function aiWeekActivity(state){
-  // AI teams auto-manage each week
+  const pool=currentMapPool(state);
   AI_TEAMS.forEach(team=>{
     const roster=rosterOf(state,team);
     if(roster.length===0) return;
+    // AI auto-sets active pool if missing: top 4 maps by proficiency
+    if(!state.activePool) state.activePool={};
+    if(!state.activePool[team]){
+      const prof=getMapProf(state,team);
+      state.activePool[team]=[...pool].sort((a,b)=>(prof[b]||50)-(prof[a]||50)).slice(0,4);
+    }
     const avgFat=roster.reduce((s,p)=>s+p.fatigue,0)/roster.length;
     let act;
     if(avgFat>75) act="rest";
     else if(avgFat>60) act=Math.random()<0.5?"rest":"vod";
     else act=["practice","bootcamp","scrim","vod"][Math.random()*4|0];
-    const mapChoice=act==="practice"?MAPS[Math.random()*MAPS.length|0]:null;
+    const ap=state.activePool[team]||pool;
+    const mapChoice=act==="practice"?ap[Math.random()*ap.length|0]:null;
     applyActivity(state,team,act,mapChoice);
     tickInjuries(state,team,act,null);
   });

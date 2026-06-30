@@ -1,7 +1,7 @@
 import { MAPS } from '../constants/data.js';
 import { ACTIVITIES, RANDOM_EVENTS } from '../constants/events.js';
 import { playerOvr } from './utils.js';
-import { rosterOf, getMapProf, nervesModifier, isRivalMatch, recordMatch, autoVeto, mapRating, styleModifier } from './state.js';
+import { rosterOf, getMapProf, nervesModifier, isRivalMatch, recordMatch, autoVeto, mapRating, styleModifier, decayMapProf, currentMapPool } from './state.js';
 
 export function resolveMap(state,map,A,B,ctx,rng,startFrom=null){
   // ── Round-by-round CS economy engine ──
@@ -181,7 +181,9 @@ export function resolveMap(state,map,A,B,ctx,rng,startFrom=null){
     const lStar=starOf(loser);
     const bestClutcher=(t)=>{const r=t===A?perfA:perfB;return [...r].sort((a,b)=>(b.clutch||50)-(a.clutch||50))[0];};
     const clutcher=bestClutcher(winner);
-    const isClutch=rng()<((clutcher.clutch||50)/100)*0.18;
+    const clutcherPlayer=rosterOf(state,winner).find(p=>p.name===clutcher.name);
+    const clutchMoraleMod=clutcherPlayer?((clutcherPlayer.morale??60)-60)/200:0;
+    const isClutch=rng()<((clutcher.clutch||50)/100)*0.18+clutchMoraleMod;
     const isAce=rng()<0.04;
     const isEcoUpset=(btA==="eco"&&(btB==="full"||btB==="awp_buy")&&aWins)||(btB==="eco"&&(btA==="full"||btA==="awp_buy")&&!aWins);
     const isEntryPlay=rng()<((entryPlayer.entry||60)/100)*0.20;
@@ -487,7 +489,8 @@ export function applyActivity(state,team,activity,mapChoice,facilities){
   } else if(activity==="bootcamp"){
     const bcExtra=[0,1,2,3][bcTier]||0;
     roster.forEach(p=>{
-      const gain=()=>1+(bcExtra>0?1:0)+(Math.random()|0);
+      const moraleMult=(p.morale??60)>=75?1.25:(p.morale??60)<=35?0.6:1;
+      const gain=()=>Math.round((1+(bcExtra>0?1:0)+(Math.random()|0))*moraleMult);
       p.aim=Math.min(99,p.aim+gain());p.gameSense=Math.min(99,p.gameSense+gain()+(cb==="tactical"?1:0));
       p.util=Math.min(99,p.util+gain());
       p.rifle=Math.min(99,(p.rifle||70)+gain());
@@ -538,12 +541,21 @@ export function applyActivity(state,team,activity,mapChoice,facilities){
     }
   });
   // Morale drift: slow regression toward 60, boosted by rest/scrim
+  const avgMorale=roster.length?roster.reduce((s,p)=>s+(p.morale??60),0)/roster.length:60;
   roster.forEach(p=>{
     const cur=p.morale??60;
     let delta=(60-cur)*0.05;
     if(activity==="rest"||activity==="vacation") delta+=3;
     else if(activity==="scrim") delta+=1;
     else if(activity==="bootcamp") delta-=1;
+    // Salary jealousy: players paid 30%+ below roster avg lose morale
+    const avgSalary=roster.reduce((s,x)=>s+x.salary,0)/roster.length;
+    if(p.salary<avgSalary*0.7&&playerOvr(p)>=roster.reduce((s,x)=>s+playerOvr(x),0)/roster.length) delta-=2;
+    // Morale contagion: team mood pulls individuals
+    delta+=(avgMorale-cur)*0.03;
+    // Form-morale feedback: sustained bad form erodes morale
+    if(p.form<=-5) delta-=1;
+    else if(p.form>=5) delta+=0.5;
     p.morale=Math.max(5,Math.min(100,Math.round(cur+delta)));
   });
   // Low-morale leaders erode team chemistry
@@ -551,6 +563,13 @@ export function applyActivity(state,team,activity,mapChoice,facilities){
   if(lowMoraleLeaders.length>0){
     state.chemistry[team]=Math.max(30,(state.chemistry[team]||70)-lowMoraleLeaders.length);
   }
+  // High-morale leaders boost chemistry slightly
+  const highMoraleLeaders=roster.filter(p=>(p.morale??60)>=80&&(p.traits.includes("leader")||p.igl>=88));
+  if(highMoraleLeaders.length>0){
+    state.chemistry[team]=Math.min(100,(state.chemistry[team]||70)+0.5*highMoraleLeaders.length);
+  }
+  // Maps outside the active pool slowly decay
+  decayMapProf(state,team);
 }
 
 export function rollRandomEvent(state,team){

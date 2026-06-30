@@ -17,6 +17,21 @@ function ObjRow({obj}){
   </div>);
 }
 
+function AwardRow({icon,label,player,team,detail,color,myTeam}){
+  const isOwn=team===myTeam;
+  return(
+  <div style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",
+    background:isOwn?"rgba(99,102,241,.08)":"rgba(243,194,91,.04)",
+    border:`1px solid ${isOwn?C.acc+"44":color+"33"}`,borderRadius:8}}>
+    <span style={{fontFamily:mono,fontWeight:800,fontSize:11,color,minWidth:32,textAlign:"center",
+      background:color+"18",borderRadius:5,padding:"3px 6px"}}>{icon}</span>
+    <div style={{flex:1}}>
+      <div style={{fontSize:13,fontWeight:700,color:isOwn?C.acc:C.ink}}>{player} <span style={{fontFamily:mono,fontSize:10,color:C.dim,fontWeight:400}}>{team}</span></div>
+      <div style={{fontFamily:mono,fontSize:10,color:C.faint}}>{label} — {detail}</div>
+    </div>
+  </div>);
+}
+
 export function BoardReview({season,myTeam,onBeginNewYear,onMenu}){
   const objectives=season.boardObjectives||[];
   const summary=season.boardSummary;
@@ -64,6 +79,33 @@ export function BoardReview({season,myTeam,onBeginNewYear,onMenu}){
           <span style={{fontFamily:mono,fontSize:16,fontWeight:800,color:C.gold}}>${summary.newBudget}K</span>
         </div>
       </div>
+    </div>)}
+
+    {/* Season Awards */}
+    {summary?.awards&&(
+    <div style={{marginBottom:20}}>
+      <div style={{fontFamily:mono,fontSize:9,color:C.faint,letterSpacing:1.5,marginBottom:8}}>SEASON AWARDS</div>
+      <div style={{display:"flex",flexDirection:"column",gap:6}}>
+        {summary.awards.mvp&&<AwardRow icon="MVP" label="Season MVP" player={summary.awards.mvp.name} team={summary.awards.mvp.team} detail={`${summary.awards.mvp.rating.toFixed(2)} rating · ${summary.awards.mvp.maps} maps`} color={C.gold} myTeam={myTeam}/>}
+        {summary.awards.bestAWP&&<AwardRow icon="AWP" label="Best AWPer" player={summary.awards.bestAWP.name} team={summary.awards.bestAWP.team} detail={`${summary.awards.bestAWP.rating.toFixed(2)} rating`} color="#7dd3fc" myTeam={myTeam}/>}
+        {summary.awards.rookie&&<AwardRow icon="ROY" label="Rookie of the Year" player={summary.awards.rookie.name} team={summary.awards.rookie.team} detail={`${summary.awards.rookie.rating.toFixed(2)} rating · age ${summary.awards.rookie.age}`} color={C.win} myTeam={myTeam}/>}
+        {summary.awards.mostImproved&&<AwardRow icon="+OVR" label="Most Improved" player={summary.awards.mostImproved.name} team={summary.awards.mostImproved.team} detail={`+${summary.awards.mostImproved.gain} OVR growth`} color={C.acc} myTeam={myTeam}/>}
+        {summary.awards.clutchKing&&<AwardRow icon="CLT" label="Clutch King" player={summary.awards.clutchKing.name} team={summary.awards.clutchKing.team} detail={`${summary.awards.clutchKing.clutches} clutch rounds`} color="#f472b6" myTeam={myTeam}/>}
+      </div>
+      {summary.awards.allStar&&summary.awards.allStar.length>0&&(
+      <div style={{marginTop:12}}>
+        <div style={{fontFamily:mono,fontSize:9,color:C.faint,letterSpacing:1.5,marginBottom:6}}>ALL-STAR TEAM</div>
+        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+          {summary.awards.allStar.map((p,i)=>{
+            const isOwn=p.team===myTeam;
+            return(
+            <div key={i} style={{background:isOwn?"rgba(99,102,241,.10)":C.panel,border:`1px solid ${isOwn?C.acc+"55":C.line}`,borderRadius:8,padding:"8px 12px",minWidth:100}}>
+              <div style={{fontWeight:700,fontSize:13,color:isOwn?C.acc:C.ink}}>{p.name}</div>
+              <div style={{fontFamily:mono,fontSize:9,color:C.dim}}>{p.team} · {p.role}</div>
+              <div style={{fontFamily:mono,fontSize:11,color:C.gold,marginTop:2}}>{p.rating.toFixed(2)} avg</div>
+            </div>);})}
+        </div>
+      </div>)}
     </div>)}
 
     {/* Season results */}

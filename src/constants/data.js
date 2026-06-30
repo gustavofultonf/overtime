@@ -1,4 +1,5 @@
 export const MAPS = ["Mirage","Inferno","Nuke","Ancient","Dust2","Anubis","Train"];
+export const RESERVE_MAPS = ["Vertigo","Overpass","Cache","Cobblestone","Tuscan","Mills"];
 export const AI_TEAMS = ["Vitality","Spirit","FaZe","G2","MOUZ","NAVI","FURIA","Falcons","Liquid","Astralis","Heroic","Complexity","paiN","3DMAX","GamerLegion","Eternal Fire","TheMongolz","NIP","Cloud9","Virtus.pro","ENCE","BIG","Fnatic","OG","MIBR","Imperial","Monte","Lynn Vision","Apeks","SAW","Wildcard"];
 
 export const PLAYERS_INIT = [

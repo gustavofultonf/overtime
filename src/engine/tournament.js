@@ -177,21 +177,38 @@ export function tickContracts(simState,myTeam){
 }
 
 // ── A/B tier tournaments (also Swiss) ────────────────────────────────
-export function newMiniTournament(myTeam,simState,eventInfo){
+// A-tier is now a 16-team invitational (top-12 ranked + 4 organizer wildcards)
+// run as a 3W/3L Swiss → top-8 playoffs, mirroring the Major structure but with
+// smaller prizes. B-tier remains an open 8-team Swiss (2W/2L) → top-4 playoffs.
+// `field` (optional) lets the caller fix the participant list — used so a team
+// that doesn't register / isn't invited can be excluded entirely.
+export function newMiniTournament(myTeam,simState,eventInfo,field){
   snapshotEventStats(simState,simState._eventCounter||0);simState._eventCounter=(simState._eventCounter||0)+1;
   Object.keys(simState.stats).forEach(k=>{simState.stats[k]={maps:0,rating:0,mvps:0,clutches:0};});
   const rng=Math.random;
-  const n=eventInfo.teams||8;
-  // Pick top N teams by rating (user always included)
-  const ranked=getTeamOrder(myTeam,simState).filter(t=>t===myTeam||rosterOf(simState,t).length>=3);
-  const participants=[myTeam,...ranked.filter(t=>t!==myTeam).slice(0,n-1)];
   const isATier=eventInfo.tier==="A";
-  // Both A and B tier: 8 teams Swiss (2W/2L) → top 4 playoffs
-  // A-tier: Bo3 playoffs, B-tier: Bo1 swiss + Bo3 playoffs
+  const n=isATier?16:(eventInfo.teams||8);
+  const ranked=getTeamOrder(myTeam,simState).filter(t=>t===myTeam||rosterOf(simState,t).length>=3);
+  const participants=field||[myTeam,...ranked.filter(t=>t!==myTeam).slice(0,n-1)];
   const swiss=newSwiss(myTeam,simState,participants);
-  swiss._advanceAt=2;swiss._elimAt=2;
+  swiss._advanceAt=isATier?3:2;swiss._elimAt=isATier?3:2;
   swissRoundMini(swiss);
-  return {myTeam,swiss,stage:"swiss",bracket:null,champion:null,simState,rng,isMajor:false,tier:eventInfo.tier,label:eventInfo.label,location:eventInfo.location,advanceCount:4,prizeTable:eventInfo.prize,participants,bo:eventInfo.bo||3};
+  return {myTeam,swiss,stage:"swiss",bracket:null,champion:null,simState,rng,isMajor:false,bigField:isATier,tier:eventInfo.tier,label:eventInfo.label,location:eventInfo.location,advanceCount:isATier?8:4,prizeTable:eventInfo.prize,participants,bo:eventInfo.bo||3};
+}
+
+// A-tier field: 12 direct slots by ranking + 4 organizer wildcards. The user is
+// included only when `includeUser` is true (caller decides via the invite rules).
+export function buildATierField(myTeam,simState,includeUser){
+  const ranked=getTeamOrder(myTeam,simState).filter(t=>t===myTeam||rosterOf(simState,t).length>=3);
+  const top12=ranked.slice(0,12);
+  const userInTop12=top12.includes(myTeam);
+  const pool=ranked.slice(12).filter(t=>t!==myTeam);
+  const shuffled=[...pool].sort(()=>Math.random()-0.5);
+  const out=top12.filter(t=>t!==myTeam||includeUser); // drop user from direct slots if not eligible
+  let wc=16-out.length, i=0;
+  if(includeUser&&!userInTop12){out.push(myTeam);wc--;}
+  while(wc>0&&i<shuffled.length){out.push(shuffled[i++]);wc--;}
+  return out.slice(0,16);
 }
 
 export function swissRoundMini(s){
@@ -224,4 +241,6 @@ export function miniPlacement(t){
   if(br.sf){for(const s of br.sf||[])if(s.done&&s.res?.loserName===t.myTeam)return 3;}
   return t.swiss?.eliminated?.includes(t.myTeam)?t.participants?.length||8:4;
 }
-export function miniPrizeMoney(t,place){const tbl=t.prizeTable||{};return tbl[place]||tbl[Object.keys(tbl).sort((a,b)=>b-a).pop()]||10;}
+// Exact-placement lookup. No prize for placements outside the table (e.g. an
+// eliminated team earns nothing) — losers shouldn't bank the winner's cheque.
+export function miniPrizeMoney(t,place){const tbl=t.prizeTable||{};return tbl[place]||0;}

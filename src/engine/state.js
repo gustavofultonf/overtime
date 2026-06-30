@@ -1,4 +1,4 @@
-import { MAPS, AI_TEAMS, PLAYERS_INIT } from '../constants/data.js';
+import { MAPS, AI_TEAMS, PLAYERS_INIT, RESERVE_MAPS } from '../constants/data.js';
 import { SEASON_WEEKS, TUNING } from '../constants/events.js';
 import { playerOvr, marketValue, desiredSalary } from './utils.js';
 import { computeValveRankings, prizeForPlace } from './valveRanking.js';
@@ -127,11 +127,16 @@ export function initState(eras){
     else tactics[team]="Utility";
   });
 
-  return {players,chemistry,momentum,stats,career,mapProf,rivalries,rankings,matchLog,prizeLog,valveBounty:{},coach:null,pendingBonus:null,tactics};
+  const mapPool=[...MAPS];
+  const activePool={};
+
+  return {players,chemistry,momentum,stats,career,mapProf,rivalries,rankings,matchLog,prizeLog,valveBounty:{},coach:null,pendingBonus:null,tactics,mapPool,activePool};
 }
 
 export function rosterOf(state,team){return state.players.filter(p=>p.team===team);}
 export function freeAgents(state){return state.players.filter(p=>p.team==="FA");}
+export function currentMapPool(state){return state.mapPool&&state.mapPool.length?state.mapPool:[...MAPS];}
+export function teamActivePool(state,team){return state.activePool?.[team]||null;}
 
 export function teamBase(state,team){
   const r=rosterOf(state,team);
@@ -195,10 +200,11 @@ export function tickInjuries(state,team,activity,facilities,rng=Math.random){
 // ── Momentum ─────────────────────────────────────────────────────────
 export function momentumOf(state,team){return state.momentum?.[team]||0;}
 
-export function profileFor(team){
+export function profileFor(team,pool){
   let s=0;for(const c of team)s=(s*31+c.charCodeAt(0))>>>0;
   const rng=()=>{s=(s*1664525+1013904223)>>>0;return s/4294967296;};
-  const p={};MAPS.forEach(m=>{p[m]=Math.round(45+rng()*50);});return p;
+  const maps=pool||MAPS;
+  const p={};maps.forEach(m=>{p[m]=Math.round(45+rng()*50);});return p;
 }
 
 export function getMapProf(state,team){
@@ -244,6 +250,12 @@ export function nervesModifier(state,A,B,ctx){
 // ── Tactical styles ──────────────────────────────────────────────────
 // Matchup cycle: Aggressive → beats Utility → AWP-Dependent → Structured → Aggressive
 const STYLE_BEATS={"Aggressive":"Utility","Utility":"AWP-Dependent","AWP-Dependent":"Structured","Structured":"Aggressive"};
+export const TACTICS_INFO={
+  "Aggressive":{desc:"High-variance T-side rushes. +30% perf variance, beats Utility.",fatigue:"+2/match",beats:"Utility",icon:"A"},
+  "Utility":{desc:"Map knowledge wins rounds. Map prof bonus, beats AWP-Dependent.",fatigue:"normal",beats:"AWP-Dependent",icon:"U"},
+  "AWP-Dependent":{desc:"Build around your AWPer. AWP bonus ×1.6, beats Structured.",fatigue:"normal",beats:"Structured",icon:"W"},
+  "Structured":{desc:"IGL-led discipline. IGL influence ×1.5, lower variance, beats Aggressive.",fatigue:"normal",beats:"Aggressive",icon:"S"},
+};
 export function styleModifier(state,A,B){
   const tA=state.tactics?.[A]||null,tB=state.tactics?.[B]||null;
   if(!tA||!tB||tA===tB) return 0;
@@ -280,7 +292,7 @@ export function updateMorale(state,myTeam,place){
 }
 
 export function autoVeto(state,A,B,bo){
-  let rem=[...MAPS];
+  let rem=[...currentMapPool(state)];
   const steps=bo===5
     ?[[A,"ban"],[B,"ban"],[A,"pick"],[B,"pick"],[A,"pick"],[B,"pick"]]
     :[[A,"ban"],[B,"ban"],[A,"pick"],[B,"pick"],[A,"ban"],[B,"ban"]];
@@ -294,4 +306,55 @@ export function autoVeto(state,A,B,bo){
   }
   picks.push(rem[0]);
   return picks;
+}
+
+// ── Map Pool Management ─────────────────────────────────────────────
+export function rotateMapPool(state,rng){
+  const pool=currentMapPool(state);
+  const dropIdx=Math.floor((rng||Math.random)()*pool.length);
+  const dropped=pool[dropIdx];
+  const available=(RESERVE_MAPS||[]).filter(m=>!pool.includes(m));
+  if(!available.length) return null;
+  const newMap=available[Math.floor((rng||Math.random)()*available.length)];
+  const newPool=pool.filter(m=>m!==dropped);
+  newPool.push(newMap);
+  state.mapPool=newPool;
+  // Init proficiency for the new map across all teams
+  const allTeams=Object.keys(state.mapProf);
+  allTeams.forEach(t=>{
+    if(state.mapProf[t]){
+      state.mapProf[t][newMap]=Math.round(35+Math.random()*15);
+      delete state.mapProf[t][dropped];
+    }
+  });
+  // Remove dropped map from any active pools
+  if(state.activePool){
+    Object.keys(state.activePool).forEach(t=>{
+      const ap=state.activePool[t];
+      if(ap){
+        state.activePool[t]=ap.filter(m=>m!==dropped);
+        if(!state.activePool[t].includes(newMap)&&state.activePool[t].length<3){
+          state.activePool[t].push(newMap);
+        }
+      }
+    });
+  }
+  return {dropped,newMap};
+}
+
+export function decayMapProf(state,team){
+  const pool=currentMapPool(state);
+  const active=teamActivePool(state,team);
+  if(!active||!active.length) return;
+  const prof=getMapProf(state,team);
+  pool.forEach(m=>{
+    if(!active.includes(m)){
+      prof[m]=Math.max(30,(prof[m]||50)-2);
+    }
+  });
+}
+
+export function setActivePool(state,team,maps){
+  if(!state.activePool) state.activePool={};
+  state.activePool[team]=maps.slice(0,5);
 }

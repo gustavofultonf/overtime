@@ -33,14 +33,14 @@ export function isSalaryWeek(week){
 // Real CS 2026 calendar (approximate real schedule)
 export const EVENTS = [
   {week:4, tier:"B", label:"DreamHack Open",     location:"Leipzig", teams:8,  bo:1, prize:{1:80,2:40,3:25,4:25,5:10}},
-  {week:7, tier:"A", label:"IEM Katowice",        location:"Katowice",teams:8,  bo:3, prize:{1:200,2:100,3:50,4:30,5:15}},
+  {week:7, tier:"A", label:"IEM Katowice",        location:"Katowice",teams:16, bo:3, prize:{1:200,2:100,4:50,9:20,16:10}},
   {week:13,tier:"B", label:"BLAST Bounty",        location:"Online",  teams:8,  bo:1, prize:{1:80,2:40,3:25,4:25,5:10}},
   {week:18,tier:"Major",label:"PGL SHANGHAI MAJOR",location:"Shanghai",teams:16,bo:0, prize:{1:500,2:300,4:180,8:100,12:50,16:30}},
   {week:24,tier:"B", label:"ESL Challenger",      location:"Malta",   teams:8,  bo:1, prize:{1:80,2:40,3:25,4:25,5:10}},
-  {week:30,tier:"A", label:"ESL Pro League S22",  location:"Malta",   teams:8,  bo:3, prize:{1:200,2:100,3:50,4:30,5:15}},
+  {week:30,tier:"A", label:"ESL Pro League S22",  location:"Malta",   teams:16, bo:3, prize:{1:200,2:100,4:50,9:20,16:10}},
   {week:35,tier:"B", label:"Elisa Masters",       location:"Helsinki",teams:8,  bo:1, prize:{1:80,2:40,3:25,4:25,5:10}},
   {week:41,tier:"Major",label:"BLAST FALL MAJOR", location:"Copenhagen",teams:16,bo:0,prize:{1:500,2:300,4:180,8:100,12:50,16:30}},
-  {week:48,tier:"A", label:"BLAST Premier Finals",location:"Abu Dhabi",teams:8, bo:3, prize:{1:200,2:100,3:50,4:30,5:15}},
+  {week:48,tier:"A", label:"BLAST Premier Finals",location:"Abu Dhabi",teams:16,bo:3, prize:{1:200,2:100,4:50,9:20,16:10}},
 ];
 export const MAJOR_WEEKS = EVENTS.filter(e=>e.tier==="Major").map(e=>e.week);
 export const EVENT_WEEKS = EVENTS.map(e=>e.week);

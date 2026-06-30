@@ -8,15 +8,16 @@ import { EVENTS, SEASON_WEEKS, SALARY_WEEKS, ACTIVITIES, COACHES, FACILITIES,
 // Engine
 import { playerOvr, draftCost, marketValue, getTeamOrder, getSeed,
          getRankedTeams, addEventToLog, computeValveRankings, aiRosterMoves,
-         transferPremium, buyoutPrice, desiredSalary } from './engine/player.js';
+         transferPremium, buyoutPrice, desiredSalary, computeSeasonAwards } from './engine/player.js';
 import { initState, rosterOf, freeAgents, teamBase, profileFor,
-         getMapProf, isRivalMatch, updateMorale, hierarchyTier, tickInjuries } from './engine/state.js';
+         getMapProf, isRivalMatch, updateMorale, hierarchyTier, tickInjuries,
+         currentMapPool, rotateMapPool, setActivePool, teamActivePool } from './engine/state.js';
 import { playSeries, applyActivity, rollRandomEvent } from './engine/match.js';
 import { generateProspect, developProspect, autoSimWeeks, aiWeekActivity,
          snapshotEventStats } from './engine/activity.js';
 import { swissRound, swissRoundMini, swissDone, nextSwissFix, resolveSwissFix,
          seedPlayoff, resolvePlayoffAI, nextPlayoffFix, newTournament, newMiniTournament,
-         placementOf, prizeMoney, miniPlacement, miniPrizeMoney,
+         placementOf, prizeMoney, miniPlacement, miniPrizeMoney, buildATierField,
          decayFormBetweenEvents, tickContracts, bracketElim } from './engine/tournament.js';
 import { computeFinances, brandValue, sponsorBrandFactor } from './engine/finance.js';
 
@@ -169,9 +170,9 @@ export default function App(){
     if(!simState.mapProf[teamName]) simState.mapProf[teamName]=profileFor(teamName);
     simState.rankings[teamName]=200;
     if(!simState.tactics) simState.tactics={};
-    simState.tactics[teamName]=null;
+    simState.tactics[teamName]="Utility";
     const boardObjectives=genBoardObjectives(30); // new team starts unranked
-    const s={simState,budget:remaining,boardObjectives,boardSummary:null,eventNum:1,week:1,year:2026,history:[],weekLog:[],phase:"calendar",facilities:{},yearHistory:[],pendingEvent:null,pendingDebrief:null,pendingContracts:[],sponsorships:[],scoutedTeams:{}};
+    const s={simState,budget:remaining,boardObjectives,boardSummary:null,eventNum:1,week:1,year:2026,history:[],weekLog:[],phase:"calendar",facilities:{},yearHistory:[],pendingEvent:null,pendingDebrief:null,pendingContracts:[],pendingEntry:null,sponsorships:[],scoutedTeams:{}};
     setSeason(s);setPhase("season");setTab("calendar");
     // Auto-save after draft
     setTimeout(()=>{const data=buildSaveData();if(data){const cur=[...saves];cur[0]={...data,season:s,simState};writeSaves(cur);}},100);
@@ -198,7 +199,7 @@ export default function App(){
 
   function beginVeto(fx,bo){
     const opp=fx.a===myTeam?fx.b:fx.a;
-    setVeto({fixture:fx,bo:bo||fx.bo||1,remaining:[...MAPS],picked:[],log:[],opp});
+    setVeto({fixture:fx,bo:bo||fx.bo||1,remaining:[...currentMapPool(season.simState)],picked:[],log:[],opp});
   }
 
   function afterResult(){
@@ -295,7 +296,8 @@ export default function App(){
     }
     const ev=season.currentEvent||{tier:"Major"};
     const isMajor=t.isMajor;
-    const place=isMajor?placementOf(t):miniPlacement(t);
+    // A-tier uses the 16-team/top-8 bracket, so it reads placements like a Major.
+    const place=(isMajor||t.bigField)?placementOf(t):miniPlacement(t);
     const prize=isMajor?prizeMoney(place):miniPrizeMoney(t,place);
 
     // Capture per-player event stats before snapshot + reset
@@ -350,6 +352,12 @@ export default function App(){
       season.simState.players.forEach(p=>{if(Math.random()<0.33)p.age++;});
       const moves=aiRosterMoves(season.simState,myTeam);
       moves.forEach(m=>season.weekLog.push({week:season.week,activity:"news",event:m}));
+      // Map pool rotation after every Major
+      const rotation=rotateMapPool(season.simState,Math.random);
+      if(rotation){
+        season.weekLog.push({week:season.week,activity:"news",event:`[MAP] ${rotation.dropped} removed from the competitive map pool.`});
+        season.weekLog.push({week:season.week,activity:"news",event:`[MAP] ${rotation.newMap} added to the competitive map pool!`});
+      }
     }
 
     const chemAfter=season.simState.chemistry[myTeam]||70;
@@ -372,6 +380,17 @@ export default function App(){
           {label:"Emergency team meeting",desc:"$10K · +8 chemistry · +15 morale (all)"},
           {label:"1-on-1 with player",    desc:"$5K · +20 morale (player) · +3 chem"},
           {label:"Ignore it",             desc:"-8 chemistry · -5 morale (all)"},
+        ]};
+    }
+    // Transfer request: very unhappy non-leader wants out
+    const unhappyPlayer=roster.find(p=>(p.morale||60)<=25&&!p.traits.includes("leader")&&(p.igl||0)<88);
+    if(unhappyPlayer&&!season.pendingEvent){
+      season.pendingEvent={id:"transfer_request",title:"Transfer Request",playerName:unhappyPlayer.name,
+        text:`${unhappyPlayer.name} has formally requested a transfer — morale is at rock bottom.`,
+        choices:[
+          {label:"Promise changes",desc:"+15 morale · -$15K bonus · +3 chemistry"},
+          {label:"Bench & fine",   desc:"-5 form · -3 chemistry · +$5K"},
+          {label:"Grant request",  desc:"Player released to free agency"},
         ]};
     }
 
@@ -573,9 +592,35 @@ export default function App(){
         setT(newTournament(myTeam,season.simState));
         setTab("hub");
       } else {
-        setSeason({...season});
-        setT(newMiniTournament(myTeam,season.simState,ev));
-        setTab("hub");
+        // ── A/B tier access ──────────────────────────────────────────
+        // B-tier: open qualifier — the manager opts in (or skips). A-tier:
+        // invitational — direct slot for top-12 ranked teams, otherwise a
+        // chance at one of 4 organizer wildcards (better odds with strong
+        // recent B-tier form). Either way it becomes a decision card on the
+        // calendar; a team that isn't invited has the event simmed without it.
+        const ranked=getRankedTeams(season.simState,myTeam);
+        const myRank=ranked.findIndex(x=>x.team===myTeam)+1;
+        if(ev.tier==="A"){
+          const directSlot=myRank<=12;
+          let wildcard=false;
+          if(!directSlot&&myRank<=24){
+            const recentB=[...season.history].reverse().find(h=>h.tier==="B");
+            const goodForm=recentB&&recentB.place<=4;
+            const chance=goodForm?0.85:myRank<=16?0.40:0.15;
+            wildcard=Math.random()<chance;
+          }
+          if(directSlot||wildcard){
+            season.pendingEntry={ev,tier:"A",directSlot,wildcard,myRank};
+            setSeason({...season});setTab("calendar");
+          } else {
+            const field=buildATierField(myTeam,season.simState,false);
+            simSkippedEvent(ev,field,`[X] ${myTeam} (ranked #${myRank}) didn't receive an invite to ${ev.label}.`);
+          }
+        } else {
+          // B-tier — always eligible, manager chooses to register
+          season.pendingEntry={ev,tier:"B",myRank};
+          setSeason({...season});setTab("calendar");
+        }
       }
     } else if(season.week>SEASON_WEEKS){
       const finalRank=(()=>{const r=getRankedTeams(season.simState,myTeam);return r.findIndex(x=>x.team===myTeam)+1;})();
@@ -591,11 +636,86 @@ export default function App(){
       }
       const totalReward=(season.boardObjectives||[]).filter(o=>o.met).reduce((s,o)=>s+(o.reward||0),0);
       const carryover=Math.max(0,Math.round(season.budget*0.5));
-      season.boardSummary={finalRank,totalReward,carryover,oldBudget:season.budget,newBudget:400+totalReward+carryover};
+      const awards=computeSeasonAwards(season.simState,myTeam);
+      season.boardSummary={finalRank,totalReward,carryover,oldBudget:season.budget,newBudget:400+totalReward+carryover,awards};
+      // Award winners get a form/morale boost
+      if(awards){
+        const roster=rosterOf(season.simState,myTeam);
+        roster.forEach(p=>{
+          if(awards.mvp?.name===p.name){p.form=Math.min(12,p.form+4);p.morale=Math.min(100,(p.morale||60)+10);}
+          if(awards.bestAWP?.name===p.name){p.form=Math.min(12,p.form+2);p.morale=Math.min(100,(p.morale||60)+5);}
+          if(awards.rookie?.name===p.name){p.form=Math.min(12,p.form+3);p.morale=Math.min(100,(p.morale||60)+8);}
+          if(awards.allStar?.some(a=>a.name===p.name)){p.morale=Math.min(100,(p.morale||60)+5);}
+        });
+      }
       season.phase="done";setSeason({...season});setTab("season");
     } else {
       setSeason({...season});redraw();
     }
+  }
+
+  // ── Event entry (register / accept invite) ────────────────────────
+  function acceptEntry(){
+    const pe=season.pendingEntry;if(!pe)return;
+    const ev=pe.ev;
+    season.pendingEntry=null;
+    season.currentEvent=ev;season.phase="event";
+    const field=ev.tier==="A"?buildATierField(myTeam,season.simState,true):null;
+    setSeason({...season});
+    setT(newMiniTournament(myTeam,season.simState,ev,field));
+    setTab("hub");
+  }
+  function declineEntry(){
+    const pe=season.pendingEntry;if(!pe)return;
+    const ev=pe.ev;
+    season.pendingEntry=null;
+    const field=ev.tier==="A"
+      ?buildATierField(myTeam,season.simState,false)
+      :getTeamOrder(myTeam,season.simState).filter(t=>t!==myTeam&&rosterOf(season.simState,t).length>=3).slice(0,ev.teams||8);
+    simSkippedEvent(ev,field,`[--] ${myTeam} sat out ${ev.label}.`);
+  }
+
+  // Simulate an A/B tier event the user isn't taking part in (declined or not
+  // invited). Mirrors the Major DNQ path: full sim, then rankings/log upkeep.
+  function simSkippedEvent(ev,field,newsLine){
+    const tourn=newMiniTournament(myTeam,season.simState,ev,field);
+    const swissComplete=()=>tourn.swiss.teams.every(tm=>tourn.swiss.records[tm].w>=(tourn.swiss._advanceAt||3)||tourn.swiss.records[tm].l>=(tourn.swiss._elimAt||3));
+    let si=0;while(!swissComplete()&&si<40){si++;swissRoundMini(tourn.swiss);}
+    const advancers=tourn.swiss.advanced.slice(0,tourn.advanceCount||4);
+    tourn.bracket=seedPlayoff(advancers,3,false);
+    let pi=0;
+    while(!tourn.bracket.final.done&&pi<25){pi++;
+      const allFx=[...(tourn.bracket.qf||[]),...(tourn.bracket.sf||[]),tourn.bracket.final].filter(Boolean);
+      allFx.forEach(fx=>{if(!fx.done&&fx.a&&fx.b){fx.res=playSeries(tourn.simState,fx.a,fx.b,3,{stage:"playoffs"},Math.random);fx.done=true;}});
+      resolvePlayoffAI(tourn.bracket,null,tourn.simState,Math.random);
+    }
+    const champ=tourn.bracket.final.done?tourn.bracket.final.res.winnerName:"Unknown";
+    const placements={};
+    const br=tourn.bracket,fr=br.final?.res;
+    if(fr){placements[fr.winnerName]=1;placements[fr.loserName]=2;}
+    (br.sf||[]).forEach(s=>{if(s.done&&s.res&&!placements[s.res.loserName])placements[s.res.loserName]=ev.tier==="A"?4:3;});
+    (br.qf||[]).forEach(q=>{if(q.done&&q.res&&!placements[q.res.loserName])placements[q.res.loserName]=9;});
+    tourn.swiss.eliminated.forEach(tm=>{if(!placements[tm])placements[tm]=field.length;});
+    addEventToLog(season.simState,tourn,ev,placements,season.week,season.year||2026);
+    computeValveRankings(season.simState,season.week,season.year||2026);
+    decayFormBetweenEvents(season.simState);tickContracts(season.simState,myTeam);
+    season.history.push({eventNum:season.eventNum,place:99,champion:champ,prize:0,salary:0,budgetAfter:season.budget,tier:ev.tier,label:ev.label+" (DNP)"});
+    season.weekLog.push({week:season.week,activity:"news",event:newsLine});
+    season.weekLog.push({week:season.week,activity:"news",event:`[W] ${champ} won ${ev.label}.`});
+    season.eventNum++;season.week++;season.currentEvent=null;season.phase="calendar";
+    setSeason({...season});setT(null);setTab("calendar");autoSave();
+  }
+
+  function onSetActivePool(maps){
+    setActivePool(season.simState,myTeam,maps);
+    setSeason({...season});redraw();
+  }
+
+  function setTactic(tactic){
+    if(!season.simState.tactics) season.simState.tactics={};
+    season.simState.tactics[myTeam]=tactic;
+    season.weekLog.push({week:season.week,activity:"news",event:`[T] Tactical style changed to ${tactic}.`});
+    setSeason({...season});redraw();
   }
 
   function hireCoach(coach){
@@ -941,6 +1061,11 @@ export default function App(){
         else if(choiceIdx===1){season.budget-=5;if(player)player.morale=Math.min(100,(player.morale||60)+20);season.simState.chemistry[myTeam]=Math.min(100,(season.simState.chemistry[myTeam]||70)+3);}
         else{season.simState.chemistry[myTeam]=Math.max(30,(season.simState.chemistry[myTeam]||70)-8);roster2.forEach(p=>{p.morale=Math.max(5,(p.morale||60)-5);});}
         break;}
+      case "transfer_request":{
+        if(choiceIdx===0){season.budget-=15;if(player)player.morale=Math.min(100,(player.morale||60)+15);season.simState.chemistry[myTeam]=Math.min(100,(season.simState.chemistry[myTeam]||70)+3);}
+        else if(choiceIdx===1){if(player){player.form=Math.max(-12,player.form-5);}season.simState.chemistry[myTeam]=Math.max(40,(season.simState.chemistry[myTeam]||70)-3);season.budget+=5;}
+        else if(player){player.team="FA";player.contract=0;season.simState.chemistry[myTeam]=Math.max(40,(season.simState.chemistry[myTeam]||70)-4);season.weekLog.push({week:season.week,activity:"news",event:`[--] ${player.name} released after transfer request.`});}
+        break;}
       default:break;
     }
     const choice=ev.choices[choiceIdx];
@@ -1003,10 +1128,10 @@ export default function App(){
       <Gstyle/><Header season={season} myTeam={myTeam} onReset={resetAll} onSave={saveToSlot} stageLabel={`${weekToLabel(season.week,season.year)} ${season.year||2026} · W${season.week}`}/>
       <Tabs tab={tab} setTab={setTab} calMode/>
       <main style={{maxWidth:1100,margin:"0 auto",padding:"22px 18px 80px"}}>
-        {tab==="calendar"&&<CalendarView season={season} myTeam={myTeam} onAdvance={advanceWeek} onSim={simToNextEvent} onAcceptSponsor={acceptSponsorship} onDeclineSponsor={declineSponsorship} onResolveEvent={resolveChoiceEvent} onResolveContract={resolveContract}/>}
+        {tab==="calendar"&&<CalendarView season={season} myTeam={myTeam} onAdvance={advanceWeek} onSim={simToNextEvent} onAcceptSponsor={acceptSponsorship} onDeclineSponsor={declineSponsorship} onResolveEvent={resolveChoiceEvent} onResolveContract={resolveContract} onAcceptEntry={acceptEntry} onDeclineEntry={declineEntry} onSetTactic={setTactic}/>}
         {tab==="roster"&&<RosterView2 state={season.simState} myTeam={myTeam} onNegotiate={negotiateContract} onChangeRole={changeRole}/>}
         {tab==="market"&&<TransferMarket season={season} myTeam={myTeam} onNegotiateFA={doNegotiateFA} onBuyoutOffer={doBuyoutOffer} onTradeOffer={doTradeOffer} onSellPlayer={doSellPlayer} onRelease={p=>doTransfer("release",p)}/>}
-        {tab==="maps"&&<MapProfView state={season.simState} myTeam={myTeam}/>}
+        {tab==="maps"&&<MapProfView state={season.simState} myTeam={myTeam} onSetActivePool={onSetActivePool}/>}
         {tab==="facility"&&<FacilitiesView season={season} myTeam={myTeam} onUpgrade={upgradeFacility} onHireCoach={hireCoach} onFireCoach={fireCoach} onInitAcademy={initAcademy} onPromoteProspect={promoteProspect} onSellProspect={sellProspect}/>}
         {tab==="finance"&&<FinanceView season={season} myTeam={myTeam}/>}
         {tab==="rankings"&&<RankingsView state={season.simState} myTeam={myTeam} week={season.week} year={season.year||2026}/>}

@@ -75,3 +75,65 @@ export function aiRosterMoves(state,myTeam){
   });
   return moves;
 }
+
+export function computeSeasonAwards(simState, myTeam) {
+  const allTeams = [...AI_TEAMS, myTeam];
+  const candidates = [];
+  allTeams.forEach(team => {
+    rosterOf(simState, team).forEach(p => {
+      const c = simState.career?.[p.name];
+      if (!c || c.totalMaps < 3) return;
+      candidates.push({ ...p, team, career: c, ovr: playerOvr(p) });
+    });
+  });
+  if (!candidates.length) return null;
+
+  // MVP: best average rating (min 5 maps)
+  const mvpPool = candidates.filter(p => p.career.totalMaps >= 5);
+  const mvp = mvpPool.length
+    ? mvpPool.sort((a, b) => b.career.avgRating - a.career.avgRating)[0]
+    : candidates.sort((a, b) => b.career.avgRating - a.career.avgRating)[0];
+
+  // Best AWPer: AWP role players sorted by rating
+  const awpPool = candidates.filter(p => p.role === "AWP" && p.career.totalMaps >= 3);
+  const bestAWP = awpPool.length
+    ? awpPool.sort((a, b) => b.career.avgRating - a.career.avgRating)[0]
+    : null;
+
+  // Rookie of the Year: age <= 21
+  const rookiePool = candidates.filter(p => p.age <= 21 && p.career.totalMaps >= 3);
+  const rookie = rookiePool.length
+    ? rookiePool.sort((a, b) => b.career.avgRating - a.career.avgRating)[0]
+    : null;
+
+  // Most Improved: biggest OVR gain from orig stats
+  const improved = candidates
+    .filter(p => p.career.origStats)
+    .map(p => {
+      const orig = p.career.origStats;
+      const origOvr = Math.round(0.40 * orig.aim + 0.25 * orig.gameSense + 0.20 * orig.util + 0.10 * (orig.igl || 50) + 0.05 * (orig.mentality || 60));
+      return { ...p, gain: p.ovr - origOvr };
+    })
+    .filter(p => p.gain > 0)
+    .sort((a, b) => b.gain - a.gain);
+  const mostImproved = improved.length ? improved[0] : null;
+
+  // All-Star Team: top 5 by rating
+  const allStar = [...candidates]
+    .sort((a, b) => b.career.avgRating - a.career.avgRating)
+    .slice(0, 5);
+
+  // Clutch King: most clutches
+  const clutchKing = [...candidates]
+    .filter(p => p.career.totalClutches > 0)
+    .sort((a, b) => b.career.totalClutches - a.career.totalClutches)[0] || null;
+
+  return {
+    mvp: mvp ? { name: mvp.name, team: mvp.team, rating: mvp.career.avgRating, maps: mvp.career.totalMaps } : null,
+    bestAWP: bestAWP ? { name: bestAWP.name, team: bestAWP.team, rating: bestAWP.career.avgRating } : null,
+    rookie: rookie ? { name: rookie.name, team: rookie.team, rating: rookie.career.avgRating, age: rookie.age } : null,
+    mostImproved: mostImproved ? { name: mostImproved.name, team: mostImproved.team, gain: mostImproved.gain } : null,
+    clutchKing: clutchKing ? { name: clutchKing.name, team: clutchKing.team, clutches: clutchKing.career.totalClutches } : null,
+    allStar: allStar.map(p => ({ name: p.name, team: p.team, rating: p.career.avgRating, role: p.role })),
+  };
+}

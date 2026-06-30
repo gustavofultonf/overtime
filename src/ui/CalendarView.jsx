@@ -2,14 +2,15 @@ import React, { useState } from 'react';
 import { C, sans, mono } from './theme.js';
 import { MAPS, AI_TEAMS } from '../constants/data.js';
 import { EVENTS, SALARY_WEEKS, ACTIVITIES, weekToLabel, contractLabel } from '../constants/events.js';
-import { playerOvr } from '../engine/player.js';
-import { rosterOf, getMapProf } from '../engine/state.js';
+import { playerOvr, getRankedTeams } from '../engine/player.js';
+import { rosterOf, getMapProf, TACTICS_INFO, currentMapPool, teamActivePool } from '../engine/state.js';
 import { SL, Banner, Pill, MiniStat, Stat, FormArrow } from './primitives.jsx';
 
 const tierColor = t => t === "Major" ? C.gold : t === "A" ? C.live : C.dim;
 const tierLabel = t => t === "Major" ? "MAJOR" : t === "A" ? "A-TIER" : "B-TIER";
+const ordinal = n => { const s = ["th","st","nd","rd"]; const v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); };
 
-export function CalendarView({ season, myTeam, onAdvance, onSim, onAcceptSponsor, onDeclineSponsor, onResolveEvent, onResolveContract }) {
+export function CalendarView({ season, myTeam, onAdvance, onSim, onAcceptSponsor, onDeclineSponsor, onResolveEvent, onResolveContract, onAcceptEntry, onDeclineEntry, onSetTactic }) {
   const [act, setAct] = useState(null);
   const [mapChoice, setMapChoice] = useState(MAPS[0]);
   const [scoutChoice, setScoutChoice] = useState(null);
@@ -21,10 +22,13 @@ export function CalendarView({ season, myTeam, onAdvance, onSim, onAcceptSponsor
   const weeksUntil = nextEvent ? nextEvent.week - season.week : 99;
   const totalSalary = roster.reduce((s, p) => s + p.salary, 0);
   const pendingContracts = season.pendingContracts || [];
-  const blocked = !!(season.pendingEvent || pendingContracts.length);
+  const pendingEntry = season.pendingEntry || null;
+  const blocked = !!(season.pendingEvent || pendingContracts.length || pendingEntry);
   const upcoming = EVENTS.filter(e => e.week >= season.week).slice(0, 4);
   const sponsorOffers = (season.sponsorships || []).filter(sp => sp.offered);
 
+  const ranked = getRankedTeams(season.simState, myTeam);
+  const myRank = ranked.findIndex(x => x.team === myTeam) + 1;
   const nextPay = SALARY_WEEKS.find(w => w >= season.week);
   const wksToPay = nextPay ? nextPay - season.week : 0;
   const coachPay = season.simState.coach ? season.simState.coach.salary : 0;
@@ -48,8 +52,36 @@ export function CalendarView({ season, myTeam, onAdvance, onSim, onAcceptSponsor
       <MiniStat label="BUDGET" value={`$${season.budget}K`} color={season.budget > 0 ? C.gold : C.red} />
       <MiniStat label="CHEMISTRY" value={chem} color={chem >= 70 ? C.win : chem >= 50 ? C.gold : C.red} />
       <MiniStat label="AVG FATIGUE" value={avgFatigue} color={avgFatigue > 70 ? C.red : avgFatigue > 50 ? C.gold : C.win} />
+      <MiniStat label="AVG MORALE" value={Math.round(roster.reduce((s, p) => s + (p.morale ?? 60), 0) / (roster.length || 1))} color={(() => { const m = Math.round(roster.reduce((s, p) => s + (p.morale ?? 60), 0) / (roster.length || 1)); return m >= 70 ? C.win : m >= 45 ? C.gold : C.red; })()} />
       <MiniStat label={wksToPay === 0 ? "PAYDAY" : "NEXT PAY"} value={wksToPay === 0 ? `${payDue}K due!` : `${wksToPay}wk · ${payDue}K`} color={wksToPay === 0 ? C.red : wksToPay <= 1 ? C.gold : C.dim} />
     </div>
+
+    {/* ── Tactical style selector ── */}
+    {(() => {
+      const curTactic = season.simState.tactics?.[myTeam] || "Utility";
+      const tacticKeys = Object.keys(TACTICS_INFO);
+      return (
+        <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 10, padding: "12px 16px", marginBottom: 16 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+            <span style={{ fontFamily: mono, fontWeight: 700, fontSize: 10, color: C.acc, letterSpacing: 1 }}>TACTIC</span>
+            <span style={{ fontFamily: mono, fontSize: 10, color: C.faint }}>Beats {TACTICS_INFO[curTactic]?.beats}</span>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 7 }}>
+            {tacticKeys.map(tac => {
+              const info = TACTICS_INFO[tac];
+              const sel = tac === curTactic;
+              return (
+                <button key={tac} onClick={() => !sel && onSetTactic && onSetTactic(tac)}
+                  style={{ background: sel ? C.acc + "1f" : C.panel2, border: `1px solid ${sel ? C.acc : C.line}`, borderRadius: 8, padding: "8px 10px", textAlign: "left", cursor: sel ? "default" : "pointer" }}>
+                  <div style={{ fontWeight: 700, fontSize: 12, color: sel ? C.acc : C.ink, marginBottom: 3 }}>{tac}</div>
+                  <div style={{ fontSize: 9, color: C.dim, lineHeight: 1.3 }}>{info.desc}</div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      );
+    })()}
 
     {/* ── Time-sensitive alerts ── */}
     {season.pendingEvent && (
@@ -128,7 +160,62 @@ export function CalendarView({ season, myTeam, onAdvance, onSim, onAcceptSponsor
       </div>
     )}
 
-    {weeksUntil === 0 && nextEvent ? (
+    {pendingEntry && (() => {
+      const ev = pendingEntry.ev;
+      const tc = tierColor(ev.tier);
+      const isA = ev.tier === "A";
+      const reason = isA
+        ? (pendingEntry.directSlot
+            ? `Direct invite — you're ranked #${pendingEntry.myRank} (top 12).`
+            : `Organizer wildcard invite — you're ranked #${pendingEntry.myRank}, outside the top 12.`)
+        : `Open qualifier — register to compete. You're free to sit it out and keep developing.`;
+      const recentB = [...(season.history || [])].reverse().find(h => h.tier === "B" && h.place !== 99);
+      const recentBDNP = !recentB ? [...(season.history || [])].reverse().find(h => h.tier === "B") : null;
+      return (
+        <div style={{ background: "rgba(155,140,255,.08)", border: `1px solid ${tc}66`, borderRadius: 12, padding: "16px 18px", marginBottom: 16 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
+            <span style={{ fontFamily: mono, fontWeight: 700, fontSize: 10, color: tc, letterSpacing: 1 }}>{isA ? "A-TIER INVITATIONAL" : "B-TIER OPEN QUALIFIER"}</span>
+            <span style={{ fontWeight: 700, fontSize: 15, color: C.ink }}>{ev.label}</span>
+            <span style={{ fontFamily: mono, fontSize: 10, color: C.faint, marginLeft: "auto" }}>{ev.location} · {ev.teams} teams · winner ${ev.prize?.[1] || 0}K</span>
+          </div>
+          <div style={{ fontSize: 13, color: C.dim, marginBottom: 14 }}>{reason}</div>
+          {isA && (
+            <div style={{ background: "rgba(99,102,241,.06)", border: `1px solid ${C.live}33`, borderRadius: 8, padding: "8px 12px", marginBottom: 14, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              <span style={{ fontFamily: mono, fontWeight: 700, fontSize: 9, color: C.live, letterSpacing: 1 }}>CIRCUIT FORM</span>
+              {recentB ? (
+                <>
+                  <span style={{ fontFamily: mono, fontSize: 11, color: recentB.place <= 4 ? C.win : C.dim }}>
+                    Last B-tier: {ordinal(recentB.place)} at {recentB.label?.replace(" (DNP)", "") || "event"}
+                  </span>
+                  {!pendingEntry.directSlot && (
+                    <span style={{ fontFamily: mono, fontSize: 10, color: recentB.place <= 4 ? C.win : C.gold, marginLeft: "auto" }}>
+                      {recentB.place <= 4 ? "Strong form — high invite odds" : "Moderate form — lower invite odds"}
+                    </span>
+                  )}
+                </>
+              ) : recentBDNP ? (
+                <span style={{ fontFamily: mono, fontSize: 11, color: C.faint }}>No B-tier results yet (sat out {recentBDNP.label?.replace(" (DNP)", "") || "last event"})</span>
+              ) : (
+                <span style={{ fontFamily: mono, fontSize: 11, color: C.faint }}>No B-tier results this season</span>
+              )}
+            </div>
+          )}
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button onClick={() => onAcceptEntry && onAcceptEntry()}
+              style={{ flex: 1, minWidth: 150, background: tc, color: "#0a0c10", border: "none", borderRadius: 8, padding: "11px 16px", fontWeight: 800, fontSize: 14 }}>
+              {isA ? "Accept invite →" : "Register & compete →"}
+            </button>
+            <button onClick={() => onDeclineEntry && onDeclineEntry()}
+              style={{ minWidth: 110, background: "transparent", border: `1px solid ${C.line}`, color: C.dim, borderRadius: 8, padding: "11px 16px", fontWeight: 700, fontSize: 13 }}>
+              {isA ? "Decline" : "Skip event"}
+            </button>
+          </div>
+          <div style={{ fontFamily: mono, fontSize: 9, color: C.faint, marginTop: 10 }}>Decide before advancing the week.</div>
+        </div>
+      );
+    })()}
+
+    {weeksUntil === 0 && nextEvent && !pendingEntry ? (
       <Banner c={tierColor(nextEvent.tier)}>
         <span style={{ fontSize: 15, fontWeight: 700, color: tierColor(nextEvent.tier) }}>
           {nextEvent.label} — {weekToLabel(season.week, season.year)}, {nextEvent.location || ""}
@@ -166,18 +253,22 @@ export function CalendarView({ season, myTeam, onAdvance, onSim, onAcceptSponsor
               })}
             </div>
 
-            {act === "practice" && (
+            {act === "practice" && (() => {
+              const pool = currentMapPool(season.simState);
+              const activeP = teamActivePool(season.simState, myTeam) || [];
+              return (
               <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${C.line}` }}>
                 <div style={{ fontFamily: mono, fontSize: 10, color: C.faint, letterSpacing: 1, marginBottom: 8 }}>MAP TO DRILL</div>
                 <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>
-                  {MAPS.map(m => { const prof = getMapProf(season.simState, myTeam)[m] || 50; return (
+                  {pool.map(m => { const prof = getMapProf(season.simState, myTeam)[m] || 50; const inPool = activeP.includes(m); return (
                     <button key={m} onClick={() => setMapChoice(m)}
-                      style={{ background: mapChoice === m ? C.acc : C.panel2, color: mapChoice === m ? "#0a0c10" : C.ink, border: `1px solid ${mapChoice === m ? C.acc : C.line}`, borderRadius: 7, padding: "7px 13px", fontFamily: mono, fontSize: 12 }}>
+                      style={{ background: mapChoice === m ? C.acc : C.panel2, color: mapChoice === m ? "#0a0c10" : C.ink, border: `1px solid ${mapChoice === m ? C.acc : inPool ? C.acc + "55" : C.line}`, borderRadius: 7, padding: "7px 13px", fontFamily: mono, fontSize: 12 }}>
                       {m} <span style={{ fontSize: 10, color: mapChoice === m ? "#0a0c10aa" : C.faint }}>{prof}</span>
+                      {!inPool && activeP.length > 0 && <span style={{ fontSize: 8, color: C.red, marginLeft: 4 }}>decay</span>}
                     </button>); })}
                 </div>
-              </div>
-            )}
+              </div>);
+            })()}
 
             {act === "scout" && (
               <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${C.line}` }}>
@@ -227,12 +318,24 @@ export function CalendarView({ season, myTeam, onAdvance, onSim, onAcceptSponsor
         const wk = ev.week - season.week;
         const tc = tierColor(ev.tier);
         const isNext = i === 0;
+        const accessInfo = (() => {
+          if (ev.tier === "B") return { text: "Open — register to enter", color: C.win };
+          if (ev.tier === "Major") return myRank <= 16 ? { text: `Qualified — ranked #${myRank}`, color: C.win } : { text: `Not qualified — ranked #${myRank} (need top 16)`, color: C.red };
+          if (myRank <= 12) return { text: `Direct invite — ranked #${myRank}`, color: C.win };
+          if (myRank <= 24) {
+            const lastB = [...(season.history || [])].reverse().find(h => h.tier === "B" && h.place !== 99);
+            const goodForm = lastB && lastB.place <= 4;
+            return { text: goodForm ? `Wildcard likely — ${ordinal(lastB.place)} at ${lastB.label?.replace(" (DNP)","")}`  : lastB ? `Wildcard possible — ${ordinal(lastB.place)} at ${lastB.label?.replace(" (DNP)","")}` : "Wildcard unlikely — no B-tier results", color: goodForm ? C.gold : C.faint };
+          }
+          return { text: `Out of range — ranked #${myRank} (need top 24)`, color: C.red };
+        })();
         return (
           <div key={ev.week} className="lift" style={{ background: isNext ? "linear-gradient(135deg,#13171f,#1a1f29)" : C.panel, border: `1px solid ${isNext ? tc : C.line}`, borderLeft: `3px solid ${tc}`, borderRadius: 10, padding: "12px 16px", display: "flex", alignItems: "center", gap: 14, animation: "risePop .4s ease both", animationDelay: `${i * 0.06}s`, ...(isNext ? { boxShadow: `0 0 18px -6px ${tc}66` } : {}) }}>
             <div style={{ background: tc + "22", border: `1px solid ${tc}`, borderRadius: 6, padding: "3px 9px", fontFamily: mono, fontSize: 9, color: tc, fontWeight: 700, flexShrink: 0 }}>{tierLabel(ev.tier)}</div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontWeight: 700, fontSize: 14, color: isNext ? C.ink : C.dim }}>{ev.label}</div>
               <div style={{ fontFamily: mono, fontSize: 10, color: C.faint, marginTop: 2 }}>{ev.location} · {weekToLabel(ev.week, season.year)} · {ev.teams} teams</div>
+              <div style={{ fontFamily: mono, fontSize: 9, color: accessInfo.color, marginTop: 3 }}>{accessInfo.text}</div>
             </div>
             <div style={{ textAlign: "right", flexShrink: 0 }}>
               <div style={{ fontFamily: mono, fontSize: 15, fontWeight: 800, color: wk === 0 ? C.red : wk <= 2 ? C.gold : C.live }}>{wk === 0 ? "NOW" : `${wk}wk`}</div>
