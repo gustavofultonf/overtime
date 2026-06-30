@@ -62,6 +62,8 @@ export function DraftScreen({onComplete}){
   const [filter,setFilter]=useState("ALL");
   const [sort,setSort]=useState("ovr");
   const [profilePlayer,setProfilePlayer]=useState(null);
+  const [page,setPage]=useState(0);
+  const PAGE_SIZE=20;
   const teamName=name.trim()||"MY TEAM";
 
   const ERA_OPTIONS=[
@@ -97,6 +99,11 @@ export function DraftScreen({onComplete}){
   const avail=simState?simState.players.filter(p=>p.team!==teamName):[];
   const filtered=filter==="ALL"?avail:filter==="FA"?avail.filter(p=>p.team==="FA"):filter==="LEGEND"?avail.filter(p=>(p.era||"current")!=="current"):avail.filter(p=>p.role===filter);
   const sorted=[...filtered].sort((a,b)=>sort==="ovr"?playerOvr(b)-playerOvr(a):sort==="aim"?b.aim-a.aim:sort==="cost"?draftCost(a)-draftCost(b):b.gameSense-a.gameSense);
+  const pageCount=Math.max(1,Math.ceil(sorted.length/PAGE_SIZE));
+  const curPage=Math.min(page,pageCount-1);
+  const pageSlice=sorted.slice(curPage*PAGE_SIZE,curPage*PAGE_SIZE+PAGE_SIZE);
+  function setFilterAndReset(f){setFilter(f);setPage(0);}
+  function setSortAndReset(s){setSort(s);setPage(0);}
 
   if(!named)return(
     <div style={{minHeight:"100vh",background:GRAD,color:C.ink,fontFamily:sans,display:"flex",alignItems:"center",justifyContent:"center"}}>
@@ -198,17 +205,18 @@ export function DraftScreen({onComplete}){
         <span style={{display:"flex",alignItems:"center",gap:5}}><span style={{width:8,height:8,borderRadius:2,background:C.live,display:"inline-block"}}/>BUY — under contract elsewhere, costs 1.5× value (poaching premium)</span>
         <span style={{color:C.faint}}>· click a player to view full stats</span>
       </div>
-      <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:14}}>
+      <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:14,alignItems:"center"}}>
         {["ALL","FA","LEGEND","IGL","AWP","Entry","Lurk","Support"].map(f=>(
-          <button key={f} onClick={()=>setFilter(f)} style={{background:filter===f?C.acc:C.panel,color:filter===f?"#0a0c10":C.dim,border:`1px solid ${filter===f?C.acc:C.line}`,borderRadius:6,padding:"5px 10px",fontFamily:mono,fontSize:10,fontWeight:700}}>{f}</button>
+          <button key={f} onClick={()=>setFilterAndReset(f)} style={{background:filter===f?C.acc:C.panel,color:filter===f?"#0a0c10":C.dim,border:`1px solid ${filter===f?C.acc:C.line}`,borderRadius:6,padding:"5px 10px",fontFamily:mono,fontSize:10,fontWeight:700}}>{f}</button>
         ))}
         <span style={{width:1,background:C.line,margin:"0 4px"}}/>
         {[["ovr","OVR"],["aim","AIM"],["cost","COST"]].map(([k,l])=>(
-          <button key={k} onClick={()=>setSort(k)} style={{background:sort===k?C.live:C.panel,color:sort===k?"#0a0c10":C.dim,border:`1px solid ${sort===k?C.live:C.line}`,borderRadius:6,padding:"5px 10px",fontFamily:mono,fontSize:10,fontWeight:700}}>↕ {l}</button>
+          <button key={k} onClick={()=>setSortAndReset(k)} style={{background:sort===k?C.live:C.panel,color:sort===k?"#0a0c10":C.dim,border:`1px solid ${sort===k?C.live:C.line}`,borderRadius:6,padding:"5px 10px",fontFamily:mono,fontSize:10,fontWeight:700}}>↕ {l}</button>
         ))}
+        <span style={{marginLeft:"auto",fontFamily:mono,fontSize:10.5,color:C.faint}}>{sorted.length} players</span>
       </div>
       <div style={{display:"flex",flexDirection:"column",gap:4}}>
-        {sorted.slice(0,40).map(p=>{const cost=draftCost(p);const canBuy=budget>=cost&&roster.length<5;const isFA=p.team==="FA";return(
+        {pageSlice.map(p=>{const cost=draftCost(p);const canBuy=budget>=cost&&roster.length<5;const isFA=p.team==="FA";return(
           <div key={p.name} className="lift" onClick={()=>setProfilePlayer(p)} style={{background:(p.era&&p.era!=="current")?C.panel2+"":C.panel2,border:`1px solid ${p.era&&p.era!=="current"?C.gold+"44":isFA?C.win+"33":C.line}`,borderRadius:8,padding:"9px 13px",display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",cursor:"pointer"}}>
             <div style={{minWidth:85}}>
               <div style={{fontWeight:600,fontSize:13}}>{p.name}</div>
@@ -234,6 +242,13 @@ export function DraftScreen({onComplete}){
             </button>
           </div>);})}
       </div>
+      {pageCount>1&&<div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:12,padding:"16px 0 4px"}}>
+        <button onClick={()=>setPage(p=>Math.max(0,p-1))} disabled={curPage===0}
+          style={{background:C.panel,border:`1px solid ${C.line}`,color:C.ink,borderRadius:6,padding:"6px 12px",fontFamily:mono,fontSize:11,fontWeight:700}}>← PREV</button>
+        <span style={{fontFamily:mono,fontSize:11,color:C.dim}}>Page {curPage+1} / {pageCount}</span>
+        <button onClick={()=>setPage(p=>Math.min(pageCount-1,p+1))} disabled={curPage>=pageCount-1}
+          style={{background:C.panel,border:`1px solid ${C.line}`,color:C.ink,borderRadius:6,padding:"6px 12px",fontFamily:mono,fontSize:11,fontWeight:700}}>NEXT →</button>
+      </div>}
     </main>
     {profilePlayer&&<PlayerProfile p={profilePlayer} state={simState} onClose={()=>setProfilePlayer(null)}/>}
   </div>);

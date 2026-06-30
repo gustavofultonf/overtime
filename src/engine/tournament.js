@@ -188,8 +188,9 @@ export function newMiniTournament(myTeam,simState,eventInfo,field){
   const rng=Math.random;
   const isATier=eventInfo.tier==="A";
   const n=isATier?16:(eventInfo.teams||8);
-  const ranked=getTeamOrder(myTeam,simState).filter(t=>t===myTeam||rosterOf(simState,t).length>=3);
-  const participants=field||[myTeam,...ranked.filter(t=>t!==myTeam).slice(0,n-1)];
+  const participants=field||(isATier
+    ?[myTeam,...getTeamOrder(myTeam,simState).filter(t=>t!==myTeam&&rosterOf(simState,t).length>=3).slice(0,n-1)]
+    :buildBTierField(myTeam,simState,n,true));
   const swiss=newSwiss(myTeam,simState,participants);
   swiss._advanceAt=isATier?3:2;swiss._elimAt=isATier?3:2;
   swissRoundMini(swiss);
@@ -209,6 +210,20 @@ export function buildATierField(myTeam,simState,includeUser){
   if(includeUser&&!userInTop12){out.push(myTeam);wc--;}
   while(wc>0&&i<shuffled.length){out.push(shuffled[i++]);wc--;}
   return out.slice(0,16);
+}
+
+// B-tier field: drawn from teams OUTSIDE the top tier (rank >12), so elite teams
+// that belong in A-tier/Majors don't also clog the lower-tier open. The user's own
+// team is exempt from this cutoff — B-tier registration stays "always eligible"
+// regardless of rank.
+const B_TIER_TOP_CUT=12;
+export function buildBTierField(myTeam,simState,n,includeUser){
+  const ranked=getTeamOrder(myTeam,simState).filter(t=>t===myTeam||rosterOf(simState,t).length>=3);
+  const pool=ranked.filter(t=>t!==myTeam).slice(B_TIER_TOP_CUT);
+  const shuffled=[...pool].sort(()=>Math.random()-0.5);
+  const out=includeUser?[myTeam]:[];
+  for(const t of shuffled){if(out.length>=n)break;out.push(t);}
+  return out.slice(0,n);
 }
 
 export function swissRoundMini(s){

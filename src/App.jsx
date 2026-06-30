@@ -1,5 +1,8 @@
 import React, { useState, useCallback } from "react";
 
+// Cloud save mirror (no-op if no Firebase config — see src/cloud/firebase.js)
+import { cloudEnabled, pullCloudSaves, pushCloudSaves } from "./cloud/firebase.js";
+
 // Constants
 import { MAPS, AI_TEAMS } from "./constants/data.js";
 import {
@@ -21,7 +24,6 @@ import {
   playerOvr,
   draftCost,
   marketValue,
-  getTeamOrder,
   getSeed,
   getRankedTeams,
   addEventToLog,
@@ -72,6 +74,7 @@ import {
   miniPlacement,
   miniPrizeMoney,
   buildATierField,
+  buildBTierField,
   decayFormBetweenEvents,
   tickContracts,
   bracketElim,
@@ -117,24 +120,51 @@ export default function App() {
   const [veto, setVeto] = useState(null);
   const [reveal, setReveal] = useState(null);
   const [saves, setSaves] = useState([null, null, null, null]); // [auto, slot1, slot2, slot3]
+  const [cloudStatus, setCloudStatus] = useState(
+    cloudEnabled ? "connecting" : "off",
+  ); // off | connecting | synced | error
   const [, force] = useState(0);
   const redraw = useCallback(() => force((n) => n + 1), []);
 
   // ── Save/Load System ──────────────────────────────────────────────
   const SAVE_KEY = "overtime-saves";
 
+  // Slot-by-slot: newer `savedAt` wins. An empty local slot is filled from cloud (e.g.
+  // first load on a new device); an empty cloud slot doesn't erase a local save.
+  function mergeSaves(local, cloud) {
+    if (!cloud) return local;
+    return local.map((l, i) => {
+      const c = cloud[i];
+      if (!c) return l;
+      if (!l) return c;
+      return c.savedAt > l.savedAt ? c : l;
+    });
+  }
+
   async function loadSaves() {
+    let local = [null, null, null, null];
     try {
       const result = await window.storage.get(SAVE_KEY);
-      if (result && result.value) {
-        const parsed = JSON.parse(result.value);
-        setSaves(parsed);
-        return parsed;
-      }
+      if (result && result.value) local = JSON.parse(result.value);
     } catch (e) {
-      console.log("No saves found");
+      console.log("No local saves found");
     }
-    return [null, null, null, null];
+    if (!cloudEnabled) {
+      setSaves(local);
+      return local;
+    }
+    const cloud = await pullCloudSaves();
+    const merged = mergeSaves(local, cloud);
+    setSaves(merged);
+    try {
+      await window.storage.set(SAVE_KEY, JSON.stringify(merged));
+    } catch (e) {
+      console.error("Local save write failed:", e);
+    }
+    // Push back so a slot that only existed locally (or only in the cloud) ends up
+    // mirrored on both sides after the merge.
+    pushCloudSaves(merged).then((ok) => setCloudStatus(ok ? "synced" : "error"));
+    return merged;
   }
 
   async function writeSaves(newSaves) {
@@ -144,15 +174,40 @@ export default function App() {
     } catch (e) {
       console.error("Save failed:", e);
     }
+    if (cloudEnabled) {
+      setCloudStatus("connecting");
+      pushCloudSaves(newSaves).then((ok) => setCloudStatus(ok ? "synced" : "error"));
+    }
   }
 
-  function buildSaveData() {
+  // Strip non-serializable refs (rng functions, duplicate simState pointer) so an
+  // in-progress tournament can round-trip through JSON without losing match progress.
+  function tournamentForSave(tt) {
+    if (!tt) return null;
+    const { simState: _s, rng: _r, swiss, ...rest } = tt;
+    let swissOut = null;
+    if (swiss) {
+      const { simState: _s2, rng: _r2, ...swissRest } = swiss;
+      swissOut = swissRest;
+    }
+    return { ...rest, swiss: swissOut };
+  }
+  function tournamentFromSave(saved, simState) {
+    if (!saved) return null;
+    const tt = { ...saved, simState, rng: Math.random };
+    if (tt.swiss) tt.swiss = { ...tt.swiss, simState, rng: Math.random };
+    return tt;
+  }
+
+  // overrideT lets callers pass a tournament object that was just created via setT()
+  // this render — the `t` state variable itself won't reflect it until next render.
+  function buildSaveData(overrideT) {
     if (!season || !myTeam) return null;
     return {
       myTeam,
       season: { ...season, simState: undefined }, // simState saved separately
       simState: season.simState,
-      // Tournament state NOT saved — too complex. Auto-save happens between events.
+      tournament: tournamentForSave(overrideT !== undefined ? overrideT : t), // in-progress event, if any
       savedAt: new Date().toISOString(),
       summary: {
         week: season.week,
@@ -169,8 +224,8 @@ export default function App() {
     };
   }
 
-  async function autoSave() {
-    const data = buildSaveData();
+  async function autoSave(overrideT) {
+    const data = buildSaveData(overrideT);
     if (!data) return;
     const cur = [...saves];
     cur[0] = data;
@@ -188,12 +243,17 @@ export default function App() {
   function loadFromSave(save) {
     if (!save) return;
     const s = { ...save.season, simState: save.simState };
-    if (s.phase === "event") s.phase = "calendar";
+    const restoredT = save.tournament
+      ? tournamentFromSave(save.tournament, s.simState)
+      : null;
+    // Older saves (pre-tournament-persistence) or a save with no in-progress event
+    // fall back to the calendar instead of rendering a phantom event screen.
+    if (!restoredT && s.phase === "event") s.phase = "calendar";
     setMyTeam(save.myTeam);
     setSeason(s);
-    setT(null);
+    setT(restoredT);
     setPhase("season");
-    setTab("calendar");
+    setTab(restoredT ? "hub" : "calendar");
   }
 
   async function deleteSave(slot) {
@@ -432,6 +492,7 @@ export default function App() {
         t.stage = "done";
         setT({ ...t });
         redraw();
+        autoSave();
         return;
       }
 
@@ -497,6 +558,7 @@ export default function App() {
         t.stage = "done";
         setT({ ...t });
         redraw();
+        autoSave();
         return;
       }
       resolvePlayoffAI(t.bracket, myTeam, t.simState, t.rng);
@@ -507,6 +569,7 @@ export default function App() {
     }
     setT({ ...t });
     redraw();
+    autoSave();
   }
 
   // Snapshot complete tournament state into a serializable shape for the season page.
@@ -820,7 +883,9 @@ export default function App() {
     setSeason({ ...season });
     setT(null);
     setTab("calendar");
-    autoSave();
+    // setT(null) above won't be visible on the `t` closure until next render —
+    // pass null explicitly so we don't re-save the just-finished tournament.
+    autoSave(null);
   }
 
   function dismissDebrief() {
@@ -1032,8 +1097,8 @@ export default function App() {
         activity: "salary",
         event: salMsg,
       });
-    checkWeekTransition();
-    autoSave();
+    const newT = checkWeekTransition();
+    autoSave(newT);
   }
 
   function simToNextEvent() {
@@ -1068,8 +1133,8 @@ export default function App() {
     season.weekLog.push(...enriched);
     season.week = target;
     tickContractWeeks(target - startWk);
-    checkWeekTransition();
-    autoSave();
+    const newT = checkWeekTransition();
+    autoSave(newT);
   }
 
   function checkWeekTransition() {
@@ -1217,9 +1282,11 @@ export default function App() {
           activity: "news",
           event: `[TK] Major sticker revenue: +${stickerMoney}K`,
         });
+        const newT = newTournament(myTeam, season.simState);
         setSeason({ ...season });
-        setT(newTournament(myTeam, season.simState));
+        setT(newT);
         setTab("hub");
+        return newT;
       } else {
         // ── A/B tier access ──────────────────────────────────────────
         // B-tier: open qualifier — the manager opts in (or skips). A-tier:
@@ -1333,9 +1400,11 @@ export default function App() {
     season.phase = "event";
     const field =
       ev.tier === "A" ? buildATierField(myTeam, season.simState, true) : null;
+    const newT = newMiniTournament(myTeam, season.simState, ev, field);
     setSeason({ ...season });
-    setT(newMiniTournament(myTeam, season.simState, ev, field));
+    setT(newT);
     setTab("hub");
+    autoSave(newT);
   }
   function declineEntry() {
     const pe = season.pendingEntry;
@@ -1345,11 +1414,7 @@ export default function App() {
     const field =
       ev.tier === "A"
         ? buildATierField(myTeam, season.simState, false)
-        : getTeamOrder(myTeam, season.simState)
-            .filter(
-              (t) => t !== myTeam && rosterOf(season.simState, t).length >= 3,
-            )
-            .slice(0, ev.teams || 8);
+        : buildBTierField(myTeam, season.simState, ev.teams || 8, false);
     simSkippedEvent(ev, field, `[--] ${myTeam} sat out ${ev.label}.`);
   }
 
@@ -2522,15 +2587,54 @@ export default function App() {
           </button>
           <div
             style={{
-              fontFamily: mono,
-              fontSize: 11,
-              color: C.dim,
-              letterSpacing: 1.5,
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
               marginBottom: 12,
-              textTransform: "uppercase",
             }}
           >
-            Saved Games
+            <div
+              style={{
+                fontFamily: mono,
+                fontSize: 11,
+                color: C.dim,
+                letterSpacing: 1.5,
+                textTransform: "uppercase",
+              }}
+            >
+              Saved Games
+            </div>
+            {cloudEnabled && (
+              <span
+                style={{
+                  fontFamily: mono,
+                  fontSize: 9.5,
+                  letterSpacing: 0.5,
+                  marginLeft: "auto",
+                  padding: "3px 8px",
+                  borderRadius: 999,
+                  color:
+                    cloudStatus === "synced"
+                      ? C.win
+                      : cloudStatus === "error"
+                        ? C.red
+                        : C.dim,
+                  border: `1px solid ${
+                    cloudStatus === "synced"
+                      ? C.win + "55"
+                      : cloudStatus === "error"
+                        ? C.red + "55"
+                        : C.line
+                  }`,
+                }}
+              >
+                {cloudStatus === "synced"
+                  ? "☁ Cloud synced"
+                  : cloudStatus === "error"
+                    ? "☁ Cloud sync failed"
+                    : "☁ Connecting…"}
+              </span>
+            )}
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {["Auto-Save", "Slot 1", "Slot 2", "Slot 3"].map((label, i) => {

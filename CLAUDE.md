@@ -12,6 +12,7 @@ CS Major team management simulator. React + Vite, no external UI libraries, all 
 - **React 18** (functional components, hooks only)
 - **Vite 5** build
 - **window.storage** for saves (polyfilled to localStorage in main.jsx)
+- **Firebase (Firestore + Anonymous Auth)** mirrors saves to the cloud, optionally — see `src/cloud/firebase.js`. No-op with zero config; enabled by populating `.env.local` from `.env.local.example`. Local storage remains the source of truth; cloud is best-effort sync.
 - All styles: inline `style={{}}` objects using constants from `ui/theme.js`
 
 ## Repo layout
