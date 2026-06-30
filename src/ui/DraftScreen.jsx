@@ -7,6 +7,50 @@ import { initState } from '../engine/state.js';
 import { rosterOf, freeAgents, profileFor } from '../engine/state.js';
 import { Pill, TraitPill, MiniStat, Intro, SL, Empty, Stat, Wordmark } from './primitives.jsx';
 import { Gstyle } from './Gstyle.jsx';
+import { PlayerProfile } from './RosterView.jsx';
+
+// Mirrors the role/tactic identity used in TacticsView.jsx and the AI auto-assignment
+// in engine/state.js, so the draft preview foreshadows real mid-season mechanics.
+const IDENTITY_FIT={
+  "Aggressive":{color:C.acc,fit:p=>p.role==="Entry"?p.aim:0,desc:"Entry fraggers lead every round"},
+  "Structured":{color:C.live,fit:p=>p.role==="IGL"?p.igl:0,desc:"IGL-driven, disciplined setups"},
+  "AWP-Dependent":{color:"#e05050",fit:p=>p.role==="AWP"?p.awp:0,desc:"Built around your AWPer"},
+};
+function suggestedIdentity(roster){
+  let best=null,bestScore=0;
+  for(const style of Object.keys(IDENTITY_FIT)){
+    const scores=roster.map(IDENTITY_FIT[style].fit).filter(v=>v>0);
+    const score=scores.length?Math.max(...scores):0;
+    if(score>bestScore){bestScore=score;best=style;}
+  }
+  return best?{style:best,score:bestScore,...IDENTITY_FIT[best]}:null;
+}
+function synergyPreview(roster){
+  const counts={};roster.forEach(p=>{counts[p.role]=(counts[p.role]||0)+1;});
+  const leaders=roster.filter(p=>p.traits.includes("leader")).length;
+  const checks=[];let pts=0;
+  const igl=counts.IGL||0;
+  if(igl===1){pts+=25;checks.push({ok:true,t:"In-game leader set"});}
+  else if(igl>=2)checks.push({ok:false,t:"Two callers — only one voice should run rounds"});
+  else checks.push({ok:false,t:"No IGL — nobody calling the game"});
+  const awp=counts.AWP||0;
+  if(awp===1){pts+=25;checks.push({ok:true,t:"Dedicated AWPer"});}
+  else if(awp>=2)checks.push({ok:false,t:"Two AWPs — one rifle budget is wasted"});
+  else checks.push({ok:false,t:"No AWPer — no long-range pick power"});
+  const entry=counts.Entry||0;
+  if(entry>=1){pts+=15;checks.push({ok:true,t:"Entry fragger ready"});}
+  else checks.push({ok:false,t:"No entry fragger"});
+  const support=counts.Support||0;
+  if(support>=1){pts+=10;checks.push({ok:true,t:"Utility/support covered"});}
+  else checks.push({ok:false,t:"No support player"});
+  const lurk=counts.Lurk||0;
+  if(lurk>=1){pts+=10;checks.push({ok:true,t:"Lurker for flanks & info"});}
+  else checks.push({ok:false,t:"No lurker"});
+  pts+=Math.min(10,Object.keys(counts).length*2);
+  if(leaders===1)pts+=5;
+  else if(leaders>=2){pts-=5;checks.push({ok:false,t:"Two leader-trait players — egos may clash"});}
+  return {score:Math.max(0,Math.min(100,pts)),checks,identity:suggestedIdentity(roster)};
+}
 
 export function DraftScreen({onComplete}){
   const [name,setName]=useState("");
@@ -17,6 +61,7 @@ export function DraftScreen({onComplete}){
   const [roster,setRoster]=useState([]);
   const [filter,setFilter]=useState("ALL");
   const [sort,setSort]=useState("ovr");
+  const [profilePlayer,setProfilePlayer]=useState(null);
   const teamName=name.trim()||"MY TEAM";
 
   const ERA_OPTIONS=[
@@ -110,7 +155,7 @@ export function DraftScreen({onComplete}){
       {roster.length===0?<Empty text="No players drafted yet. Browse the market below."/>:(
         <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:8}}>
           {roster.map(p=>(
-            <div key={p.name} style={{background:C.panel,border:`1px solid ${C.acc}33`,borderRadius:9,padding:"10px 14px",display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+            <div key={p.name} className="lift" onClick={()=>setProfilePlayer(p)} style={{background:C.panel,border:`1px solid ${C.acc}33`,borderRadius:9,padding:"10px 14px",display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",cursor:"pointer"}}>
               <div style={{minWidth:100}}>
                 <div style={{fontWeight:700,fontSize:14}}>{p.name}</div>
                 <div style={{display:"flex",gap:4,marginTop:2}}><Pill c={C.dim}>{p.role}</Pill>{p.traits.map(tr=><TraitPill key={tr} t={tr}/>)}</div>
@@ -118,14 +163,41 @@ export function DraftScreen({onComplete}){
               <Stat l="OVR" v={playerOvr(p)}/><Stat l="AIM" v={p.aim}/><Stat l="SENSE" v={p.gameSense}/>
               <span style={{fontFamily:mono,fontSize:11,color:C.gold}}>${p.salary}K/mo</span>
               <span style={{fontFamily:mono,fontSize:9,color:C.faint}}>age {p.age}</span>
-              <button onClick={()=>releasePlayer(p)} style={{marginLeft:"auto",background:"transparent",border:`1px solid ${C.red}`,color:C.red,borderRadius:6,padding:"5px 10px",fontFamily:mono,fontSize:10,fontWeight:700}}>DROP</button>
+              <button onClick={e=>{e.stopPropagation();releasePlayer(p);}} style={{marginLeft:"auto",background:"transparent",border:`1px solid ${C.red}`,color:C.red,borderRadius:6,padding:"5px 10px",fontFamily:mono,fontSize:10,fontWeight:700}}>DROP</button>
             </div>))}
         </div>)}
+      {roster.length>0&&(()=>{const syn=synergyPreview(roster);const col=syn.score>=70?C.win:syn.score>=40?C.gold:C.red;return(
+        <div style={{background:C.panel2,border:`1px solid ${C.line}`,borderRadius:10,padding:"14px 16px",marginBottom:16,display:"flex",gap:18,flexWrap:"wrap",alignItems:"flex-start"}}>
+          <div style={{minWidth:90,textAlign:"center"}}>
+            <div style={{fontFamily:mono,fontSize:9,color:C.faint,letterSpacing:1,marginBottom:4}}>SYNERGY</div>
+            <div style={{fontFamily:mono,fontSize:30,fontWeight:800,color:col,lineHeight:1}}>{syn.score}</div>
+            <div style={{height:5,background:C.line,borderRadius:3,overflow:"hidden",marginTop:6}}>
+              <div style={{width:`${syn.score}%`,height:"100%",background:col,borderRadius:3}}/>
+            </div>
+          </div>
+          <div style={{flex:1,minWidth:220,display:"flex",flexDirection:"column",gap:3}}>
+            {syn.checks.map((c,i)=>(
+              <span key={i} style={{fontFamily:mono,fontSize:11,color:c.ok?C.dim:C.faint,display:"flex",alignItems:"center",gap:6}}>
+                <span style={{color:c.ok?C.win:C.red,fontWeight:700}}>{c.ok?"✓":"✗"}</span>{c.t}
+              </span>
+            ))}
+          </div>
+          {syn.identity&&<div style={{minWidth:150,padding:"8px 12px",background:syn.identity.color+"14",border:`1px solid ${syn.identity.color}44`,borderRadius:8}}>
+            <div style={{fontFamily:mono,fontSize:9,color:C.faint,letterSpacing:1,marginBottom:3}}>SUGGESTED IDENTITY</div>
+            <div style={{fontFamily:mono,fontSize:13,fontWeight:800,color:syn.identity.color}}>{syn.identity.style}</div>
+            <div style={{fontSize:10.5,color:C.dim,marginTop:3,lineHeight:1.4}}>{syn.identity.desc}</div>
+          </div>}
+        </div>);})()}
       {roster.length===5&&<div style={{display:"flex",justifyContent:"center",padding:"16px 0 24px"}}>
         <button onClick={startSeason} style={{background:C.acc,color:"#0a0c10",border:"none",borderRadius:10,padding:"16px 36px",fontWeight:800,fontSize:17,letterSpacing:.5}}>START SEASON →</button>
       </div>}
       {roster.length>0&&roster.length<5&&<div style={{textAlign:"center",padding:"10px 0 20px",fontFamily:mono,fontSize:12,color:C.dim}}>Need {5-roster.length} more · ${budget}K remaining</div>}
       <SL n="MKT" t="PLAYER MARKET"/>
+      <div style={{display:"flex",gap:14,alignItems:"center",flexWrap:"wrap",marginBottom:10,fontFamily:mono,fontSize:10.5,color:C.dim}}>
+        <span style={{display:"flex",alignItems:"center",gap:5}}><span style={{width:8,height:8,borderRadius:2,background:C.win,display:"inline-block"}}/>SIGN — free agent, costs market value</span>
+        <span style={{display:"flex",alignItems:"center",gap:5}}><span style={{width:8,height:8,borderRadius:2,background:C.live,display:"inline-block"}}/>BUY — under contract elsewhere, costs 1.5× value (poaching premium)</span>
+        <span style={{color:C.faint}}>· click a player to view full stats</span>
+      </div>
       <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:14}}>
         {["ALL","FA","LEGEND","IGL","AWP","Entry","Lurk","Support"].map(f=>(
           <button key={f} onClick={()=>setFilter(f)} style={{background:filter===f?C.acc:C.panel,color:filter===f?"#0a0c10":C.dim,border:`1px solid ${filter===f?C.acc:C.line}`,borderRadius:6,padding:"5px 10px",fontFamily:mono,fontSize:10,fontWeight:700}}>{f}</button>
@@ -137,7 +209,7 @@ export function DraftScreen({onComplete}){
       </div>
       <div style={{display:"flex",flexDirection:"column",gap:4}}>
         {sorted.slice(0,40).map(p=>{const cost=draftCost(p);const canBuy=budget>=cost&&roster.length<5;const isFA=p.team==="FA";return(
-          <div key={p.name} style={{background:(p.era&&p.era!=="current")?C.panel2+"":C.panel2,border:`1px solid ${p.era&&p.era!=="current"?C.gold+"44":C.line}`,borderRadius:8,padding:"9px 13px",display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+          <div key={p.name} className="lift" onClick={()=>setProfilePlayer(p)} style={{background:(p.era&&p.era!=="current")?C.panel2+"":C.panel2,border:`1px solid ${p.era&&p.era!=="current"?C.gold+"44":isFA?C.win+"33":C.line}`,borderRadius:8,padding:"9px 13px",display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",cursor:"pointer"}}>
             <div style={{minWidth:85}}>
               <div style={{fontWeight:600,fontSize:13}}>{p.name}</div>
               <div style={{display:"flex",gap:3,marginTop:1}}>
@@ -149,19 +221,20 @@ export function DraftScreen({onComplete}){
             <Stat l="OVR" v={playerOvr(p)}/><Stat l="AIM" v={p.aim}/><Stat l="SENSE" v={p.gameSense}/><Stat l="CON" v={p.consistency}/>
             <span style={{fontFamily:mono,fontSize:9,color:C.faint}}>age {p.age}</span>
             <div style={{display:"flex",flexDirection:"column",alignItems:"center",minWidth:55}}>
-              <span style={{fontFamily:mono,fontSize:9,color:C.faint}}>{isFA?"TEAM":"FROM"}</span>
+              <span style={{fontFamily:mono,fontSize:9,color:C.faint}}>{isFA?"STATUS":"FROM"}</span>
               <span style={{fontFamily:mono,fontSize:11,color:isFA?C.win:C.dim}}>{isFA?"Free Agent":p.team}</span>
             </div>
             <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",marginLeft:"auto",minWidth:80}}>
-              <span style={{fontFamily:mono,fontSize:9,color:C.faint}}>{isFA?"SIGN":"BUYOUT"}</span>
+              <span style={{fontFamily:mono,fontSize:9,color:isFA?C.win:C.live,fontWeight:700}}>{isFA?"SIGN":"BUY · 1.5×"}</span>
               <span style={{fontFamily:mono,fontSize:13,fontWeight:700,color:canBuy?C.gold:C.red}}>${cost}K</span>
             </div>
-            <button onClick={()=>buyPlayer(p)} disabled={!canBuy}
+            <button onClick={e=>{e.stopPropagation();buyPlayer(p);}} disabled={!canBuy}
               style={{background:canBuy?(isFA?C.win:C.live):"#333",color:canBuy?"#0a0c10":C.faint,border:"none",borderRadius:6,padding:"6px 14px",fontFamily:mono,fontSize:11,fontWeight:700}}>
               {isFA?"SIGN":"BUY"}
             </button>
           </div>);})}
       </div>
     </main>
+    {profilePlayer&&<PlayerProfile p={profilePlayer} state={simState} onClose={()=>setProfilePlayer(null)}/>}
   </div>);
 }
