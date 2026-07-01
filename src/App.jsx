@@ -157,12 +157,14 @@ export default function App() {
           onSave={saveSystem.saveToSlot}
           stageLabel={`${weekToLabel(season.week, season.year)} ${season.year || 2026} · W${season.week}`}
         />
+        <div className="shell">
         <Tabs tab={tab} setTab={setTab} calMode />
         <main
           style={{
+            flex: 1,
+            minWidth: 0,
             maxWidth: 1100,
-            margin: "0 auto",
-            padding: "22px 18px 80px",
+            padding: "22px 26px 80px",
           }}
         >
           {tab === "calendar" && (
@@ -244,6 +246,7 @@ export default function App() {
             <SeasonHistory season={season} myTeam={myTeam} />
           )}
         </main>
+        </div>
         {season.pendingDebrief && (
           <EventDebrief
             debrief={season.pendingDebrief}
@@ -325,9 +328,10 @@ export default function App() {
         onSave={saveSystem.saveToSlot}
         stageLabel={`${evLabel} · ${stageLabel}`}
       />
+      <div className="shell">
       <Tabs tab={tab} setTab={setTab} miniMode={!isMajor} />
       <main
-        style={{ maxWidth: 1200, margin: "0 auto", padding: "16px 18px 80px" }}
+        style={{ flex: 1, minWidth: 0, maxWidth: 1200, padding: "16px 26px 80px" }}
       >
         {tab === "roster" ? (
           <RosterView2
@@ -361,6 +365,7 @@ export default function App() {
           />
         )}
       </main>
+      </div>
       {veto && (
         <VetoOverlay
           session={veto}

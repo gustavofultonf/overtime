@@ -32,7 +32,7 @@ function MapCard({
     <div
       onClick={onToggle}
       style={{
-        background: isActive ? "rgba(99,102,241,.08)" : C.panel,
+        background: isActive ? C.live+"14" : C.panel,
         border: `2px solid ${isActive ? C.acc : C.line}`,
         borderRadius: 10,
         padding: "14px",
@@ -362,7 +362,7 @@ export function MapProfView({ state, myTeam, onSetActivePool }) {
       {!hasPool ? (
         <div
           style={{
-            background: "rgba(243,194,91,.07)",
+            background: C.gold+"12",
             border: `1px solid ${C.gold}44`,
             borderRadius: 9,
             padding: "10px 14px",

@@ -95,7 +95,7 @@ function MomentumBar({ momentum, myTeam }) {
 // ── Round-by-round history (HLTV-style icon strip) ───────────────────
 // Orange = round won on the T side, blue = won on the CT side. Icon shape
 // tells you how it ended: kills (skull), bomb detonation, defuse, or time.
-const SIDE_COL = { T: '#f0883e', CT: '#5aa9e6' };
+const SIDE_COL = { T: C.tSide, CT: C.ctSide };
 
 function RoundIcon({ method, color, size = 13 }) {
   const fill = { fill: color };
@@ -194,7 +194,7 @@ function halftimeOptions(ctx) {
   const ecoGain = flushEco ? 1500 : 4500;
 
   return [
-    { label: 'Tactical Reset', color: '#a78bfa',
+    { label: 'Tactical Reset', color: C.acc,
       pro: 'Fresh strats — steady +4 strength for the half',
       con: 'Safe, but no big surge',
       fx: { str: 4, clearTilt: true } },
@@ -439,8 +439,8 @@ export function MatchReveal({ reveal, myTeam, t, onDone }) {
     return (
       <Overlay onClose={() => { setHalftimeDone(true); setShowHalftime(false); setPaused(false); }}
         title={`HALF-TIME · ${mp.map} · ${myScore}–${oppScore}`} wide>
-        <div style={{ background: 'rgba(80,60,180,0.15)', border: '1px solid #7c3aed', borderRadius: 10, padding: '18px 20px', marginBottom: 16 }}>
-          <div style={{ fontFamily: mono, fontSize: 13, color: '#a78bfa', marginBottom: 6, letterSpacing: 1 }}>
+        <div style={{ background: C.acc + '26', border: `1px solid ${C.acc}`, borderRadius: 10, padding: '18px 20px', marginBottom: 16 }}>
+          <div style={{ fontFamily: mono, fontSize: 13, color: C.acc, marginBottom: 6, letterSpacing: 1 }}>
             HALF-TIME TEAM TALK
           </div>
           <div style={{ color: C.ink, fontSize: 14, marginBottom: 2 }}>
@@ -573,11 +573,11 @@ export function MatchReveal({ reveal, myTeam, t, onDone }) {
         {/* Last interaction badge */}
         {lastInteraction && (
           <div style={{
-            background: 'rgba(124,58,237,0.15)',
-            border: '1px solid #7c3aed',
+            background: C.acc + '26',
+            border: `1px solid ${C.acc}`,
             borderRadius: 6, padding: '6px 12px', marginBottom: 8,
             fontFamily: mono, fontSize: 10,
-            color: '#a78bfa',
+            color: C.acc,
             display: 'flex', gap: 8, alignItems: 'center',
           }}>
             <span style={{ fontWeight: 700 }}>HALF-TIME</span>
@@ -630,7 +630,7 @@ export function MatchReveal({ reveal, myTeam, t, onDone }) {
             return (
               <div key={i} style={{
                 fontFamily: mono, fontSize: 11, padding: '4px 8px', borderRadius: 4,
-                background: isOT ? `${C.gold}18` : rd.isEcoUpset ? 'rgba(155,140,255,.1)' : rd.isClutch ? 'rgba(61,220,132,.1)' : rd.isAce ? 'rgba(243,194,91,.1)' : 'transparent',
+                background: isOT ? `${C.gold}18` : rd.isEcoUpset ? C.acc + '1a' : rd.isClutch ? C.win + '1a' : rd.isAce ? C.gold + '1a' : 'transparent',
                 color: isOT ? C.gold : rd.isEcoUpset ? C.acc : rd.isClutch ? C.win : rd.isAce ? C.gold : C.dim,
                 border: isOT ? `1px solid ${C.gold}33` : 'none',
               }}>
@@ -651,7 +651,7 @@ export function MatchReveal({ reveal, myTeam, t, onDone }) {
           <button onClick={() => { setMapIdx(res.maps.length - 1); setRoundIdx(res.maps[res.maps.length - 1]?.rounds?.length || 0); setDone(true); }} style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 6, padding: '6px 12px', fontFamily: mono, fontSize: 11, color: C.dim, cursor: 'pointer' }}>Skip All</button>
         </>)}
         {done && (
-          <button onClick={onDone} style={{ background: C.acc, color: '#0a0c10', border: 'none', borderRadius: 9, padding: '13px 26px', fontWeight: 800, fontSize: 15, cursor: 'pointer' }}>
+          <button onClick={onDone} style={{ background: C.acc, color: C.onAcc, border: 'none', borderRadius: 9, padding: '13px 26px', fontWeight: 800, fontSize: 15, cursor: 'pointer' }}>
             {res.winnerName === myTeam ? 'VICTORY — Continue' : 'Continue →'}
           </button>
         )}

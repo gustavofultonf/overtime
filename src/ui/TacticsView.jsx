@@ -8,7 +8,7 @@ const STYLES = ["Aggressive","Structured","Utility","AWP-Dependent"];
 const STYLE_META = {
   "Aggressive": {
     color: C.acc,
-    bg: "rgba(155,140,255,.10)",
+    bg: C.acc+"1a",
     short: "Rush and pressure. Entry fraggers lead every round.",
     beats: "Utility",
     beatenBy: "Structured",
@@ -19,7 +19,7 @@ const STYLE_META = {
   },
   "Structured": {
     color: C.live,
-    bg: "rgba(20,184,166,.10)",
+    bg: C.live+"1a",
     short: "IGL-driven. Disciplined setups and counterstrategy.",
     beats: "Aggressive",
     beatenBy: "AWP-Dependent",
@@ -30,7 +30,7 @@ const STYLE_META = {
   },
   "Utility": {
     color: C.win,
-    bg: "rgba(34,197,94,.10)",
+    bg: C.win+"1a",
     short: "Grenade-heavy setup. Map knowledge is multiplied.",
     beats: "AWP-Dependent",
     beatenBy: "Aggressive",
@@ -40,8 +40,8 @@ const STYLE_META = {
     fitKey: "util",
   },
   "AWP-Dependent": {
-    color: "#e05050",
-    bg: "rgba(224,80,80,.10)",
+    color: C.awp,
+    bg: C.awp+"1a",
     short: "AWP carries rounds. Lower threshold, higher ceiling.",
     beats: "Structured",
     beatenBy: "Utility",
@@ -96,7 +96,7 @@ export function TacticsView({season, myTeam, onSetStyle}){
   <div>
     {/* Current style banner */}
     <div style={{background:currentStyle?STYLE_META[currentStyle]?.bg:C.panel,border:`1px solid ${currentStyle?STYLE_META[currentStyle]?.color+"55":C.line}`,borderRadius:12,padding:"16px 20px",marginBottom:16}}>
-      <div style={{fontFamily:mono,fontSize:9,color:C.faint,letterSpacing:1.5,marginBottom:4}}>CURRENT TEAM STYLE</div>
+      <div style={{fontFamily:sans,fontSize:9.5,fontWeight:700,color:C.faint,letterSpacing:.7,marginBottom:4}}>CURRENT TEAM STYLE</div>
       {currentStyle
         ? <div style={{fontFamily:mono,fontSize:20,fontWeight:800,color:STYLE_META[currentStyle]?.color}}>{currentStyle.toUpperCase()}</div>
         : <div style={{fontFamily:mono,fontSize:14,color:C.faint}}>No style set — pick one below. Defaulting to no tactical advantage.</div>
@@ -126,22 +126,22 @@ export function TacticsView({season, myTeam, onSetStyle}){
       <div style={{fontSize:14,color:C.dim,marginBottom:14,lineHeight:1.6}}>{meta.short}</div>
       <div style={{display:"flex",gap:24,flexWrap:"wrap",marginBottom:14}}>
         <div>
-          <div style={{fontFamily:mono,fontSize:9,color:C.faint,letterSpacing:1,marginBottom:3}}>BEATS</div>
+          <div style={{fontFamily:sans,fontSize:9.5,fontWeight:700,color:C.faint,letterSpacing:.7,marginBottom:3}}>BEATS</div>
           <div style={{fontFamily:mono,fontSize:12,color:C.win}}>✓ {meta.beats}</div>
         </div>
         <div>
-          <div style={{fontFamily:mono,fontSize:9,color:C.faint,letterSpacing:1,marginBottom:3}}>COUNTERED BY</div>
+          <div style={{fontFamily:sans,fontSize:9.5,fontWeight:700,color:C.faint,letterSpacing:.7,marginBottom:3}}>COUNTERED BY</div>
           <div style={{fontFamily:mono,fontSize:12,color:C.red}}>✗ {meta.beatenBy}</div>
         </div>
         <div style={{flex:1}}>
-          <div style={{fontFamily:mono,fontSize:9,color:C.faint,letterSpacing:1,marginBottom:3}}>MATCH BONUS</div>
+          <div style={{fontFamily:sans,fontSize:9.5,fontWeight:700,color:C.faint,letterSpacing:.7,marginBottom:3}}>MATCH BONUS</div>
           <div style={{fontFamily:mono,fontSize:11,color:C.dim}}>{meta.bonus}</div>
         </div>
       </div>
 
       {/* Roster fit */}
       <div style={{background:"rgba(0,0,0,.2)",borderRadius:8,padding:"10px 14px",marginBottom:14}}>
-        <div style={{fontFamily:mono,fontSize:9,color:C.faint,letterSpacing:1,marginBottom:6}}>ROSTER FIT — {meta.fitLabel.toUpperCase()}</div>
+        <div style={{fontFamily:sans,fontSize:9.5,fontWeight:700,color:C.faint,letterSpacing:.7,marginBottom:6}}>ROSTER FIT — {meta.fitLabel.toUpperCase()}</div>
         {preview==="Utility"
           ? <FitBar score={fitScore("Utility")} max={95}/>
           : (()=>{const bp=bestFit(preview);return bp?(
@@ -154,7 +154,7 @@ export function TacticsView({season, myTeam, onSetStyle}){
       </div>
 
       <button onClick={()=>onSetStyle(preview)}
-        style={{background:preview===currentStyle?C.panel:meta.color,color:preview===currentStyle?C.dim:"#0a0c10",border:`1px solid ${meta.color}`,borderRadius:8,padding:"10px 20px",fontFamily:mono,fontWeight:800,fontSize:13,cursor:"pointer"}}>
+        style={{background:preview===currentStyle?C.panel:meta.color,color:preview===currentStyle?C.dim:C.onAcc,border:`1px solid ${meta.color}`,borderRadius:8,padding:"10px 20px",fontFamily:mono,fontWeight:800,fontSize:13,cursor:"pointer"}}>
         {preview===currentStyle?"CURRENT STYLE":"SET STYLE: "+preview.toUpperCase()+" →"}
       </button>
     </div>)}
@@ -162,7 +162,7 @@ export function TacticsView({season, myTeam, onSetStyle}){
     {/* Matchup cycle */}
     <div style={{background:C.panel2,border:`1px solid ${C.line}`,borderRadius:8,padding:"12px 16px",fontFamily:mono,fontSize:10,color:C.faint,lineHeight:2}}>
       <div style={{color:C.dim,fontWeight:700,marginBottom:4}}>MATCHUP CYCLE</div>
-      <div><span style={{color:C.acc}}>Aggressive</span> → beats <span style={{color:C.win}}>Utility</span> → beats <span style={{color:"#e05050"}}>AWP-Dependent</span> → beats <span style={{color:C.live}}>Structured</span> → beats <span style={{color:C.acc}}>Aggressive</span></div>
+      <div><span style={{color:C.acc}}>Aggressive</span> → beats <span style={{color:C.win}}>Utility</span> → beats <span style={{color:C.awp}}>AWP-Dependent</span> → beats <span style={{color:C.live}}>Structured</span> → beats <span style={{color:C.acc}}>Aggressive</span></div>
       <div style={{marginTop:4}}>Winning matchup = ~+3% win rate per map · Style change takes effect next event.</div>
     </div>
   </div>);

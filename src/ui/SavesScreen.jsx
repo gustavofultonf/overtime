@@ -212,7 +212,7 @@ export function SavesScreen({
                     style={{
                       flex: 1,
                       background: C.win,
-                      color: "#0a0c10",
+                      color: C.onAcc,
                       border: "none",
                       borderRadius: 7,
                       padding: "9px",

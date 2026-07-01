@@ -14,7 +14,7 @@ import { PlayerProfile } from './RosterView.jsx';
 const IDENTITY_FIT={
   "Aggressive":{color:C.acc,fit:p=>p.role==="Entry"?p.aim:0,desc:"Entry fraggers lead every round"},
   "Structured":{color:C.live,fit:p=>p.role==="IGL"?p.igl:0,desc:"IGL-driven, disciplined setups"},
-  "AWP-Dependent":{color:"#e05050",fit:p=>p.role==="AWP"?p.awp:0,desc:"Built around your AWPer"},
+  "AWP-Dependent":{color:C.awp,fit:p=>p.role==="AWP"?p.awp:0,desc:"Built around your AWPer"},
 };
 function suggestedIdentity(roster){
   let best=null,bestScore=0;
@@ -70,7 +70,7 @@ export function DraftScreen({onComplete}){
     {id:"current",label:"Current",desc:"2024-25 rosters",color:C.acc},
     {id:"2018",label:"2018-21",desc:"s1mple, Astralis era, coldzera",color:C.live},
     {id:"2015",label:"2015-17",desc:"olof, kennyS, FalleN, fnatic",color:C.gold},
-    {id:"2013",label:"2013-14",desc:"GeT_RiGhT, f0rest, NiP, VP",color:"#c9d2e0"},
+    {id:"2013",label:"2013-14",desc:"GeT_RiGhT, f0rest, NiP, VP",color:C.silver},
   ];
 
   function toggleEra(id){
@@ -142,17 +142,17 @@ export function DraftScreen({onComplete}){
   return(
   <div style={{minHeight:"100vh",background:GRAD,color:C.ink,fontFamily:sans}}>
     <Gstyle/>
-    <header style={{borderBottom:`1px solid ${C.line}`,padding:"11px 22px",display:"flex",alignItems:"center",gap:14,flexWrap:"wrap",position:"sticky",top:0,background:"rgba(11,14,23,.82)",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",zIndex:20}}>
+    <header style={{borderBottom:`1px solid ${C.line}`,padding:"11px 22px",display:"flex",alignItems:"center",gap:14,flexWrap:"wrap",position:"sticky",top:0,background:"rgba(15,20,29,.85)",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",zIndex:20}}>
       <Wordmark size={15}/>
       <span style={{width:1,height:18,background:C.line}}/>
       <span style={{fontFamily:sans,fontSize:12,color:C.dim,fontWeight:600}}>Draft · <span style={{color:C.ink,fontWeight:700}}>{teamName}</span></span>
       <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:10}}>
         <div style={{display:"flex",alignItems:"center",gap:6,background:C.panel,border:`1px solid ${C.line}`,borderRadius:9,padding:"5px 11px"}}>
-          <span style={{fontFamily:mono,fontSize:9,color:C.faint,letterSpacing:1}}>BUDGET</span>
+          <span style={{fontFamily:sans,fontSize:9.5,fontWeight:700,color:C.faint,letterSpacing:.7}}>BUDGET</span>
           <span style={{fontFamily:mono,fontSize:12,color:C.gold,fontWeight:700}}>${budget}K</span>
         </div>
         <div style={{display:"flex",alignItems:"center",gap:6,background:C.panel,border:`1px solid ${C.line}`,borderRadius:9,padding:"5px 11px"}}>
-          <span style={{fontFamily:mono,fontSize:9,color:C.faint,letterSpacing:1}}>ROSTER</span>
+          <span style={{fontFamily:sans,fontSize:9.5,fontWeight:700,color:C.faint,letterSpacing:.7}}>ROSTER</span>
           <span style={{fontFamily:mono,fontSize:12,color:roster.length===5?C.win:C.ink,fontWeight:700}}>{roster.length}/5</span>
         </div>
       </div>
@@ -176,7 +176,7 @@ export function DraftScreen({onComplete}){
       {roster.length>0&&(()=>{const syn=synergyPreview(roster);const col=syn.score>=70?C.win:syn.score>=40?C.gold:C.red;return(
         <div style={{background:C.panel2,border:`1px solid ${C.line}`,borderRadius:10,padding:"14px 16px",marginBottom:16,display:"flex",gap:18,flexWrap:"wrap",alignItems:"flex-start"}}>
           <div style={{minWidth:90,textAlign:"center"}}>
-            <div style={{fontFamily:mono,fontSize:9,color:C.faint,letterSpacing:1,marginBottom:4}}>SYNERGY</div>
+            <div style={{fontFamily:sans,fontSize:9.5,fontWeight:700,color:C.faint,letterSpacing:.7,marginBottom:4}}>SYNERGY</div>
             <div style={{fontFamily:mono,fontSize:30,fontWeight:800,color:col,lineHeight:1}}>{syn.score}</div>
             <div style={{height:5,background:C.line,borderRadius:3,overflow:"hidden",marginTop:6}}>
               <div style={{width:`${syn.score}%`,height:"100%",background:col,borderRadius:3}}/>
@@ -190,13 +190,13 @@ export function DraftScreen({onComplete}){
             ))}
           </div>
           {syn.identity&&<div style={{minWidth:150,padding:"8px 12px",background:syn.identity.color+"14",border:`1px solid ${syn.identity.color}44`,borderRadius:8}}>
-            <div style={{fontFamily:mono,fontSize:9,color:C.faint,letterSpacing:1,marginBottom:3}}>SUGGESTED IDENTITY</div>
+            <div style={{fontFamily:sans,fontSize:9.5,fontWeight:700,color:C.faint,letterSpacing:.7,marginBottom:3}}>SUGGESTED IDENTITY</div>
             <div style={{fontFamily:mono,fontSize:13,fontWeight:800,color:syn.identity.color}}>{syn.identity.style}</div>
             <div style={{fontSize:10.5,color:C.dim,marginTop:3,lineHeight:1.4}}>{syn.identity.desc}</div>
           </div>}
         </div>);})()}
       {roster.length===5&&<div style={{display:"flex",justifyContent:"center",padding:"16px 0 24px"}}>
-        <button onClick={startSeason} style={{background:C.acc,color:"#0a0c10",border:"none",borderRadius:10,padding:"16px 36px",fontWeight:800,fontSize:17,letterSpacing:.5}}>START SEASON →</button>
+        <button onClick={startSeason} style={{background:C.acc,color:C.onAcc,border:"none",borderRadius:10,padding:"16px 36px",fontWeight:800,fontSize:17,letterSpacing:.5}}>START SEASON →</button>
       </div>}
       {roster.length>0&&roster.length<5&&<div style={{textAlign:"center",padding:"10px 0 20px",fontFamily:mono,fontSize:12,color:C.dim}}>Need {5-roster.length} more · ${budget}K remaining</div>}
       <SL n="MKT" t="PLAYER MARKET"/>
@@ -207,11 +207,11 @@ export function DraftScreen({onComplete}){
       </div>
       <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:14,alignItems:"center"}}>
         {["ALL","FA","LEGEND","IGL","AWP","Entry","Lurk","Support"].map(f=>(
-          <button key={f} onClick={()=>setFilterAndReset(f)} style={{background:filter===f?C.acc:C.panel,color:filter===f?"#0a0c10":C.dim,border:`1px solid ${filter===f?C.acc:C.line}`,borderRadius:6,padding:"5px 10px",fontFamily:mono,fontSize:10,fontWeight:700}}>{f}</button>
+          <button key={f} onClick={()=>setFilterAndReset(f)} style={{background:filter===f?C.acc:C.panel,color:filter===f?C.onAcc:C.dim,border:`1px solid ${filter===f?C.acc:C.line}`,borderRadius:6,padding:"5px 10px",fontFamily:mono,fontSize:10,fontWeight:700}}>{f}</button>
         ))}
         <span style={{width:1,background:C.line,margin:"0 4px"}}/>
         {[["ovr","OVR"],["aim","AIM"],["cost","COST"]].map(([k,l])=>(
-          <button key={k} onClick={()=>setSortAndReset(k)} style={{background:sort===k?C.live:C.panel,color:sort===k?"#0a0c10":C.dim,border:`1px solid ${sort===k?C.live:C.line}`,borderRadius:6,padding:"5px 10px",fontFamily:mono,fontSize:10,fontWeight:700}}>↕ {l}</button>
+          <button key={k} onClick={()=>setSortAndReset(k)} style={{background:sort===k?C.live:C.panel,color:sort===k?C.onAcc:C.dim,border:`1px solid ${sort===k?C.live:C.line}`,borderRadius:6,padding:"5px 10px",fontFamily:mono,fontSize:10,fontWeight:700}}>↕ {l}</button>
         ))}
         <span style={{marginLeft:"auto",fontFamily:mono,fontSize:10.5,color:C.faint}}>{sorted.length} players</span>
       </div>
@@ -223,7 +223,7 @@ export function DraftScreen({onComplete}){
               <div style={{display:"flex",gap:3,marginTop:1}}>
                 <Pill c={C.dim}>{p.role}</Pill>
                 {p.traits.map(tr=><TraitPill key={tr} t={tr}/>)}
-                {p.era&&p.era!=="current"&&<Pill c={p.era==="2018"?C.live:p.era==="2015"?C.gold:"#c9d2e0"}>{p.era}</Pill>}
+                {p.era&&p.era!=="current"&&<Pill c={p.era==="2018"?C.live:p.era==="2015"?C.gold:C.silver}>{p.era}</Pill>}
               </div>
             </div>
             <Stat l="OVR" v={playerOvr(p)}/><Stat l="AIM" v={p.aim}/><Stat l="SENSE" v={p.gameSense}/><Stat l="CON" v={p.consistency}/>
@@ -237,7 +237,7 @@ export function DraftScreen({onComplete}){
               <span style={{fontFamily:mono,fontSize:13,fontWeight:700,color:canBuy?C.gold:C.red}}>${cost}K</span>
             </div>
             <button onClick={e=>{e.stopPropagation();buyPlayer(p);}} disabled={!canBuy}
-              style={{background:canBuy?(isFA?C.win:C.live):"#333",color:canBuy?"#0a0c10":C.faint,border:"none",borderRadius:6,padding:"6px 14px",fontFamily:mono,fontSize:11,fontWeight:700}}>
+              style={{background:canBuy?(isFA?C.win:C.live):"#333",color:canBuy?C.onAcc:C.faint,border:"none",borderRadius:6,padding:"6px 14px",fontFamily:mono,fontSize:11,fontWeight:700}}>
               {isFA?"SIGN":"BUY"}
             </button>
           </div>);})}

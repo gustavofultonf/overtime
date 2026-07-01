@@ -28,7 +28,7 @@ export function BankruptcyScreen({ season, myTeam, onNewOrg }) {
         </div>
 
         <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 12, padding: '18px 22px', marginBottom: 22 }}>
-          <div style={{ fontFamily: mono, fontSize: 9, color: C.faint, letterSpacing: 1.5, marginBottom: 12 }}>FINAL RECORD</div>
+          <div style={{ fontFamily: sans, fontSize: 9.5, fontWeight: 700, color: C.faint, letterSpacing: .7, marginBottom: 12 }}>FINAL RECORD</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div>
               <div style={{ fontFamily: mono, fontSize: 9, color: C.faint }}>SEASONS PLAYED</div>
@@ -52,7 +52,7 @@ export function BankruptcyScreen({ season, myTeam, onNewOrg }) {
         <div style={{ display: 'flex', justifyContent: 'center' }}>
           <button
             onClick={onNewOrg}
-            style={{ background: C.acc, color: '#0a0c10', border: 'none', borderRadius: 10, padding: '14px 32px', fontFamily: mono, fontWeight: 800, fontSize: 15 }}
+            style={{ background: C.acc, color: C.onAcc, border: 'none', borderRadius: 10, padding: '14px 32px', fontFamily: mono, fontWeight: 800, fontSize: 15 }}
           >
             START A NEW ORGANIZATION →
           </button>

@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { C, sans, mono } from './theme.js';
+import { C, sans, mono, ratingColor, rating2Color } from './theme.js';
 import { playerOvr, desiredSalary } from '../engine/player.js';
 import { rosterOf, teamBase, momentumOf } from '../engine/state.js';
-import { Overlay, SL, Intro, Pill, TraitPill, Stat, MiniStat, FormArrow, TeamCrest, MoodTag } from './primitives.jsx';
+import { Overlay, SL, Intro, Pill, TraitPill, MiniStat, TeamCrest, MoodTag, Table, RatingBadge, AttrBar, Btn, Card } from './primitives.jsx';
 import { contractLabel } from '../constants/events.js';
 
 // Per-player rating across events, from career.eventHistory (real recorded match
@@ -106,124 +106,95 @@ export function RosterView2({state,myTeam,onNegotiate,onChangeRole,onAdjustPay})
   const [adjustingPay,setAdjustingPay]=useState(null);
   const [payResult,setPayResult]=useState(null);
   const r=rosterOf(state,myTeam);const base=teamBase(state,myTeam);const chem=state.chemistry[myTeam]||55;
-  const roleColor={IGL:C.live,AWP:"#e05050",Entry:C.acc,Lurk:C.gold,Support:C.win};
+  const roleColor={IGL:C.live,AWP:C.awp,Entry:C.acc,Lurk:C.gold,Support:C.win};
   const mom=momentumOf(state,myTeam);
   const momLabel=mom>0?`W${mom}`:mom<0?`L${-mom}`:"—";
-  const momColor=mom>=2?C.win:mom>0?"#8bc99a":mom<=-2?C.red:mom<0?"#c98b8b":C.faint;
+  const momColor=mom>=2?C.win:mom>0?C.winSoft:mom<=-2?C.red:mom<0?C.redSoft:C.faint;
+
+  const curRating=p=>{
+    const st=state.stats[p.name],career=state.career?.[p.name];
+    if(st&&st.maps>0) return st.rating;
+    if(career&&career.totalMaps>0) return career.avgRating;
+    return null;
+  };
+  const ageColor=a=>a>=32?C.red:a>=29?C.gold:a>=23&&a<=26?C.win:a<=21?C.live:C.dim;
+
+  const cols=[
+    {key:"player",label:"Player",sort:p=>p.name,cell:p=>{
+      const rc=roleColor[p.role]||C.dim;
+      return(
+        <div style={{display:"flex",alignItems:"center",gap:9,minWidth:150}}>
+          <span style={{width:30,height:30,borderRadius:15,background:rc+"1f",border:`1.5px solid ${rc}66`,display:"inline-flex",alignItems:"center",justifyContent:"center",fontFamily:mono,fontSize:11,fontWeight:800,color:rc,flexShrink:0}}>{p.name.slice(0,2).toUpperCase()}</span>
+          <span style={{minWidth:0}}>
+            <span style={{display:"block",fontWeight:700,fontSize:13,color:C.ink,whiteSpace:"nowrap"}}>{p.name}</span>
+            <span style={{display:"flex",gap:4,alignItems:"center",marginTop:1}}>
+              <Pill c={rc}>{p.role}</Pill>
+              {p.traits.map(tr=><TraitPill key={tr} t={tr}/>)}
+              {p.injury&&<Pill c={C.red}>INJ {p.injury.weeks}wk</Pill>}
+              {!p.injury&&p.fatigue>80&&<Pill c={C.red}>EXHAUSTED</Pill>}
+            </span>
+          </span>
+        </div>);
+    }},
+    {key:"age",label:"Age",align:"right",mono,sort:p=>p.age,cell:p=><span style={{color:ageColor(p.age),fontWeight:600}}>{p.age}</span>},
+    {key:"ovr",label:"Ovr",align:"center",sort:p=>playerOvr(p),cell:p=><RatingBadge v={playerOvr(p)}/>},
+    ...[["aim","Aim",p=>p.aim],["gameSense","Sen",p=>p.gameSense],["rifle","Rif",p=>p.rifle||0],["clutch","Clt",p=>p.clutch||0]].map(([key,label,get])=>(
+      {key,label,align:"right",mono,sort:get,cell:p=>{const v=get(p);return <span style={{fontWeight:700,color:ratingColor(v)===C.dim?C.ink:ratingColor(v)}}>{v}</span>;}}
+    )),
+    {key:"form",label:"Form",align:"right",mono,sort:p=>p.form,cell:p=>(
+      <span style={{fontWeight:700,color:p.form>3?C.win:p.form>0?C.winSoft:p.form<-3?C.red:p.form<0?C.redSoft:C.faint}}>
+        {p.form>3?"▲▲":p.form>0?"▲":p.form<-3?"▼▼":p.form<0?"▼":"–"} {p.form>0?"+":""}{p.form.toFixed(1)}
+      </span>)},
+    {key:"fatigue",label:"Ftg",align:"right",sort:p=>p.fatigue,cell:p=>{
+      const fc=p.fatigue>80?C.red:p.fatigue>60?C.gold:p.fatigue>40?C.winSoft:C.win;
+      return(
+        <span style={{display:"inline-flex",alignItems:"center",gap:6}}>
+          <span style={{width:38,height:5,background:C.panel2,border:`1px solid ${C.line}`,borderRadius:3,overflow:"hidden",display:"inline-block"}}>
+            <span style={{display:"block",width:`${p.fatigue}%`,height:"100%",background:fc}}/>
+          </span>
+          <span style={{fontFamily:mono,fontSize:11,color:fc,width:20,textAlign:"right"}}>{p.fatigue}</span>
+        </span>);
+    }},
+    {key:"morale",label:"Mor",align:"right",mono,sort:p=>p.morale??60,cell:p=>{
+      const m=p.morale??60;
+      return <span style={{fontWeight:700,color:m>=70?C.win:m>=45?C.gold:C.red}}>{m}</span>;
+    }},
+    {key:"rtg",label:"Rtg",align:"right",mono,sort:p=>curRating(p)??-1,cell:p=>{
+      const v=curRating(p);
+      return v==null?<span style={{color:C.faint}}>—</span>:<span style={{fontWeight:700,color:rating2Color(v)}}>{v.toFixed(2)}</span>;
+    }},
+    {key:"trend",label:"Trend",align:"center",cell:p=><Sparkline history={state.career?.[p.name]?.eventHistory}/>},
+    {key:"salary",label:"Salary",align:"right",mono,sort:p=>p.salary,cell:p=><span style={{color:C.gold}}>${p.salary}K</span>},
+    {key:"deal",label:"Deal",align:"right",mono,sort:p=>p.contract,cell:p=><span style={{color:p.contract<=16?C.red:C.dim,fontSize:11}}>{contractLabel(p.contract)}</span>},
+    {key:"act",label:"",align:"right",cell:p=>(
+      <span style={{display:"inline-flex",gap:5}} onClick={e=>e.stopPropagation()}>
+        {onChangeRole&&<select value={p.role} onChange={e=>onChangeRole(p.name,e.target.value)} title="Change role"
+          style={{background:C.panel2,color:C.ink,border:`1px solid ${C.line}`,borderRadius:5,padding:"3px 5px",fontFamily:mono,fontSize:9.5}}>
+          {["IGL","AWP","Entry","Lurk","Support"].map(rl=><option key={rl} value={rl}>{rl}</option>)}
+        </select>}
+        {onAdjustPay&&<Btn size="sm" kind="soft" title="Adjust pay" onClick={()=>setAdjustingPay({player:p,offer:p.salary})} style={{fontFamily:mono,fontSize:9,padding:"4px 8px"}}>PAY</Btn>}
+        {p.contract<=16&&onNegotiate&&<Btn size="sm" kind="gold" title="Renew contract" onClick={()=>setNegotiating({player:p,offer:p.salary})} style={{fontFamily:mono,fontSize:9,padding:"4px 8px"}}>RENEW</Btn>}
+      </span>)},
+  ];
 
   return(<div>
-    {/* Team overview header */}
-    <div style={{background:`linear-gradient(180deg,${C.panel2},${C.panel})`,border:`1px solid ${C.line}`,borderRadius:12,padding:"20px 18px 14px",marginBottom:16,textAlign:"center"}}>
-      <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:12}}>
-        <TeamCrest name={myTeam} size={44}/>
-        <div style={{fontWeight:800,fontSize:20,color:C.acc,letterSpacing:1}}>{myTeam}</div>
+    {/* Club band — crest, name, headline numbers */}
+    <div style={{background:`linear-gradient(135deg,${C.panel2},${C.panel})`,border:`1px solid ${C.line}`,borderRadius:12,padding:"16px 20px",marginBottom:16,display:"flex",alignItems:"center",gap:16,flexWrap:"wrap",boxShadow:"0 1px 0 rgba(255,255,255,.03) inset, 0 8px 24px -16px rgba(0,0,0,.7)"}}>
+      <TeamCrest name={myTeam} size={48}/>
+      <div>
+        <div style={{fontWeight:800,fontSize:21,color:C.ink,letterSpacing:.5}}>{myTeam}</div>
+        <div style={{fontSize:11.5,color:C.faint,marginTop:2}}>First team · {r.length}/5 registered</div>
       </div>
-      <div style={{fontFamily:mono,fontSize:11,color:C.dim,marginTop:4}}>Team overview</div>
-      <div style={{display:"flex",gap:16,justifyContent:"center",marginTop:12}}>
+      <div style={{marginLeft:"auto",display:"flex",gap:22,flexWrap:"wrap"}}>
         <MiniStat label="RATING" value={base.toFixed(1)} color={C.acc}/>
         <MiniStat label="CHEMISTRY" value={chem} color={chem>=80?C.win:chem>=60?C.gold:C.red}/>
         <MiniStat label="MOMENTUM" value={momLabel} color={momColor}/>
       </div>
     </div>
 
-    {/* Player cards — HLTV fantasy style */}
-    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))",gap:10,marginBottom:16}}>
-      {r.map(p=>{
-        const ovr=playerOvr(p);const st=state.stats[p.name];const career=state.career?.[p.name];
-        const fc=p.fatigue>80?C.red:p.fatigue>60?C.gold:p.fatigue>40?"#8bc99a":C.win;
-        const rc=roleColor[p.role]||C.dim;
-        return(
-        <button key={p.name} onClick={()=>setProfilePlayer(p)}
-          style={{background:`linear-gradient(180deg,${rc}18,${C.panel})`,border:`1px solid ${rc}55`,borderRadius:10,padding:0,textAlign:"center",overflow:"hidden",animation:"risePop .42s ease both",animationDelay:`${r.indexOf(p)*0.06}s`}}>
-          {/* Role header */}
-          <div style={{background:rc+"33",padding:"6px 8px",borderBottom:`1px solid ${rc}44`}}>
-            <div style={{fontWeight:800,fontSize:11,color:rc,letterSpacing:1}}>{p.role}</div>
-          </div>
-          {/* Avatar placeholder */}
-          <div style={{padding:"12px 10px 8px"}}>
-            <div style={{width:56,height:56,borderRadius:28,background:C.panel2,border:`2px solid ${rc}66`,margin:"0 auto 8px",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:mono,fontSize:18,fontWeight:800,color:rc}}>
-              {p.name.slice(0,2).toUpperCase()}
-            </div>
-            {/* Name */}
-            <div style={{fontWeight:700,fontSize:14,color:C.ink,marginBottom:2}}>{p.name}</div>
-            {/* OVR badge */}
-            <div style={{display:"inline-block",background:ovr>=90?C.acc:ovr>=80?C.win:ovr>=70?C.live:C.dim,color:"#0a0c10",fontFamily:mono,fontSize:12,fontWeight:800,borderRadius:5,padding:"2px 10px",marginBottom:8}}>
-              {ovr} OVR
-            </div>
-            {/* Key stats grid */}
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:3,marginBottom:8}}>
-              {[["AIM",p.aim],["SENSE",p.gameSense],["RIFLE",p.rifle||0],["CLUTCH",p.clutch||0]].map(([l,v])=>(
-                <div key={l} style={{background:C.panel2,borderRadius:4,padding:"3px 0"}}>
-                  <div style={{fontFamily:mono,fontSize:7,color:C.faint,letterSpacing:1}}>{l}</div>
-                  <div style={{fontFamily:mono,fontSize:12,fontWeight:700,color:v>=90?C.acc:v>=75?C.win:C.ink}}>{v}</div>
-                </div>
-              ))}
-            </div>
-            {/* Status bar: form + fatigue */}
-            <div style={{display:"flex",gap:6,justifyContent:"center",marginBottom:6}}>
-              <div style={{textAlign:"center"}}>
-                <div style={{fontFamily:mono,fontSize:7,color:C.faint}}>FORM</div>
-                <div style={{fontFamily:mono,fontSize:11,fontWeight:700,color:p.form>3?C.win:p.form<-3?C.red:C.faint}}>{p.form>0?"+":""}{p.form.toFixed(1)}</div>
-              </div>
-              <div style={{textAlign:"center"}}>
-                <div style={{fontFamily:mono,fontSize:7,color:C.faint}}>FATIGUE</div>
-                <div style={{width:30,height:4,background:C.line,borderRadius:2,overflow:"hidden",margin:"3px auto 0"}}>
-                  <div style={{width:`${p.fatigue}%`,height:"100%",background:fc,borderRadius:2}}/>
-                </div>
-              </div>
-            </div>
-            {/* Injury flag */}
-            {p.injury&&(
-              <div style={{margin:"0 0 6px",background:"rgba(240,89,107,.12)",border:`1px solid ${C.red}55`,borderRadius:5,padding:"3px 6px",fontFamily:mono,fontSize:8.5,color:C.red,fontWeight:700,letterSpacing:.3}}>
-                INJ · {p.injury.kind} · {p.injury.weeks}wk
-              </div>
-            )}
-            {/* Contract + salary */}
-            <div style={{fontFamily:mono,fontSize:9,color:C.faint}}>
-              ${p.salary}K/mo · {p.contract<=16?<span style={{color:C.red}}>{contractLabel(p.contract)}</span>:<span>{contractLabel(p.contract)}</span>}
-            </div>
-            {/* Age + traits */}
-            <div style={{display:"flex",gap:3,justifyContent:"center",marginTop:4,flexWrap:"wrap",alignItems:"center"}}>
-              <span style={{fontFamily:mono,fontSize:8,color:p.age>=32?C.red:p.age>=29?C.gold:p.age>=23&&p.age<=26?C.win:p.age<=21?C.live:C.faint}}>
-                age {p.age}
-              </span>
-              {p.traits.map(tr=><TraitPill key={tr} t={tr}/>)}
-            </div>
-          </div>
-          {/* Sparkline + stats footer */}
-          <div style={{background:C.panel2,padding:"6px 8px",borderTop:`1px solid ${C.line}`,display:"flex",justifyContent:"space-between",alignItems:"center",gap:6}}>
-            <div style={{display:"flex",gap:8,alignItems:"center"}}>
-              {st&&st.maps>0&&<span style={{fontFamily:mono,fontSize:10,color:st.rating>=1.1?C.win:st.rating>=0.9?C.ink:C.red,fontWeight:700}}>{st.rating.toFixed(2)}</span>}
-              {(!st||st.maps===0)&&career&&career.totalMaps>0&&<span style={{fontFamily:mono,fontSize:10,color:career.avgRating>=1.1?C.win:career.avgRating>=0.9?C.ink:C.red}}>{career.avgRating.toFixed(2)}</span>}
-              {st&&st.maps>0&&<span style={{fontFamily:mono,fontSize:9,color:C.gold}}>{st.mvps}MVP</span>}
-            </div>
-            {career&&<Sparkline history={career.eventHistory}/>}
-          </div>
-        </button>);
-      })}
-    </div>
-
-    {/* Quick overview / actions */}
-    <div style={{background:C.panel,border:`1px solid ${C.line}`,borderRadius:10,padding:"14px 16px",marginBottom:16}}>
-      <div style={{fontWeight:700,fontSize:14,marginBottom:10}}>Quick actions</div>
-      <div style={{display:"flex",flexDirection:"column",gap:6}}>
-        {r.map(p=>(
-          <div key={p.name} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 0",borderTop:`1px solid ${C.line}`}}>
-            <span style={{fontWeight:600,fontSize:12,minWidth:90,color:C.ink}}>{p.name}</span>
-            {onChangeRole&&<select value={p.role} onChange={e=>onChangeRole(p.name,e.target.value)}
-              style={{background:C.panel2,color:C.ink,border:`1px solid ${C.line}`,borderRadius:5,padding:"4px 8px",fontFamily:mono,fontSize:10}}>
-              {["IGL","AWP","Entry","Lurk","Support"].map(rl=><option key={rl} value={rl}>{rl}</option>)}
-            </select>}
-            <div style={{marginLeft:"auto",display:"flex",gap:6}}>
-              {onAdjustPay&&<button onClick={()=>setAdjustingPay({player:p,offer:p.salary})}
-                style={{background:C.panel2,color:C.ink,border:`1px solid ${C.line}`,borderRadius:5,padding:"4px 10px",fontFamily:mono,fontSize:9,fontWeight:700}}>ADJUST PAY</button>}
-              {p.contract<=16&&onNegotiate&&<button onClick={()=>setNegotiating({player:p,offer:p.salary})}
-                style={{background:C.gold,color:"#0a0c10",border:"none",borderRadius:5,padding:"4px 10px",fontFamily:mono,fontSize:9,fontWeight:700}}>RENEW CONTRACT</button>}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
+    {/* FM-style squad table — sortable; click a row for the full profile */}
+    <Table cols={cols} rows={r} rowKey={p=>p.name} onRowClick={p=>setProfilePlayer(p)} style={{marginBottom:16}}/>
+    <div style={{fontSize:11.5,color:C.faint,margin:"-8px 2px 16px"}}>Click a column to sort · click a player for the full profile</div>
 
     {/* Negotiation modal */}
     {negotiating&&(
@@ -231,7 +202,7 @@ export function RosterView2({state,myTeam,onNegotiate,onChangeRole,onAdjustPay})
         {negoResult?(
           <div>
             <div style={{fontSize:14,color:negoResult.success?C.win:C.red,marginBottom:12}}>{negoResult.msg}</div>
-            <button onClick={()=>{setNegotiating(null);setNegoResult(null);}} style={{background:C.acc,color:"#0a0c10",border:"none",borderRadius:8,padding:"10px 20px",fontWeight:700}}>OK</button>
+            <button onClick={()=>{setNegotiating(null);setNegoResult(null);}} style={{background:C.acc,color:C.onAcc,border:"none",borderRadius:8,padding:"10px 20px",fontWeight:700}}>OK</button>
           </div>
         ):(
           <div>
@@ -244,7 +215,7 @@ export function RosterView2({state,myTeam,onNegotiate,onChangeRole,onAdjustPay})
               <span style={{fontFamily:mono,fontSize:20,fontWeight:700,color:C.gold,minWidth:60,textAlign:"center"}}>${negotiating.offer}</span>
               <button onClick={()=>setNegotiating(n=>({...n,offer:n.offer+2}))} style={{background:C.panel,border:`1px solid ${C.line}`,borderRadius:5,padding:"6px 10px",fontFamily:mono,color:C.ink}}>+</button>
             </div>
-            <button onClick={()=>{const res=onNegotiate(negotiating.player.name,negotiating.offer);setNegoResult(res);}} style={{width:"100%",background:C.acc,color:"#0a0c10",border:"none",borderRadius:8,padding:"12px",fontWeight:800,fontSize:14}}>SUBMIT OFFER</button>
+            <button onClick={()=>{const res=onNegotiate(negotiating.player.name,negotiating.offer);setNegoResult(res);}} style={{width:"100%",background:C.acc,color:C.onAcc,border:"none",borderRadius:8,padding:"12px",fontWeight:800,fontSize:14}}>SUBMIT OFFER</button>
           </div>
         )}
       </Overlay>
@@ -255,7 +226,7 @@ export function RosterView2({state,myTeam,onNegotiate,onChangeRole,onAdjustPay})
         {payResult?(
           <div>
             <div style={{fontSize:14,color:payResult.success?C.win:C.red,marginBottom:12}}>{payResult.msg}</div>
-            <button onClick={()=>{setAdjustingPay(null);setPayResult(null);}} style={{background:C.acc,color:"#0a0c10",border:"none",borderRadius:8,padding:"10px 20px",fontWeight:700}}>OK</button>
+            <button onClick={()=>{setAdjustingPay(null);setPayResult(null);}} style={{background:C.acc,color:C.onAcc,border:"none",borderRadius:8,padding:"10px 20px",fontWeight:700}}>OK</button>
           </div>
         ):(()=>{
           const desired=desiredSalary(adjustingPay.player);
@@ -277,7 +248,7 @@ export function RosterView2({state,myTeam,onNegotiate,onChangeRole,onAdjustPay})
               <span style={{fontFamily:mono,fontSize:16,fontWeight:700,color:C.gold,minWidth:60,textAlign:"center"}}>${adjustingPay.offer}K</span>
             </div>
             <div style={{fontFamily:mono,fontSize:9,color:C.faint,marginBottom:16}}>Cutting below what they want hurts morale and chemistry — bigger cuts hurt more. Raises don't cost you anything but the money.</div>
-            <button onClick={()=>{const res=onAdjustPay(adjustingPay.player.name,adjustingPay.offer);setPayResult(res);}} style={{width:"100%",background:C.acc,color:"#0a0c10",border:"none",borderRadius:8,padding:"12px",fontWeight:800,fontSize:14}}>CONFIRM</button>
+            <button onClick={()=>{const res=onAdjustPay(adjustingPay.player.name,adjustingPay.offer);setPayResult(res);}} style={{width:"100%",background:C.acc,color:C.onAcc,border:"none",borderRadius:8,padding:"12px",fontWeight:800,fontSize:14}}>CONFIRM</button>
           </div>
           );
         })()}
@@ -298,15 +269,7 @@ export function PlayerProfile({p,state,onClose}){
   const StatBars=({stats,label})=>(<>
     <SL n={label.slice(0,3).toUpperCase()} t={label}/>
     <div style={{display:"flex",flexDirection:"column",gap:5,marginBottom:16}}>
-      {stats.map(([key,lbl])=>{const val=p[key]||0;const d=statDiff(key);return(
-        <div key={key} style={{display:"flex",alignItems:"center",gap:8}}>
-          <span style={{fontFamily:mono,fontSize:10,color:C.faint,width:48}}>{lbl}</span>
-          <div style={{flex:1,height:7,background:C.line,borderRadius:4,overflow:"hidden"}}>
-            <div style={{width:`${val}%`,height:"100%",background:val>=90?C.acc:val>=75?C.win:val>=60?C.live:C.dim,borderRadius:4}}/>
-          </div>
-          <span style={{fontFamily:mono,fontSize:12,fontWeight:700,width:28,textAlign:"right",color:val>=90?C.acc:C.ink}}>{val}</span>
-          {d!==0?<span style={{fontFamily:mono,fontSize:10,color:d>0?C.win:C.red,width:30}}>{d>0?"+":""}{d}</span>:<span style={{width:30}}/>}
-        </div>);})}
+      {stats.map(([key,lbl])=><AttrBar key={key} l={lbl} v={p[key]||0} delta={statDiff(key)}/>)}
     </div>
   </>);
   return(
@@ -329,7 +292,7 @@ export function PlayerProfile({p,state,onClose}){
     {/* Radar + stat bars side by side */}
     <div style={{display:"flex",gap:16,marginBottom:4,alignItems:"flex-start",flexWrap:"wrap"}}>
       <div style={{flexShrink:0}}>
-        <div style={{fontFamily:mono,fontSize:9,color:C.faint,letterSpacing:1,marginBottom:4,textAlign:"center"}}>ATTRIBUTE RADAR</div>
+        <div style={{fontFamily:sans,fontSize:9.5,fontWeight:700,color:C.faint,letterSpacing:.7,marginBottom:4,textAlign:"center"}}>ATTRIBUTE RADAR</div>
         <StatRadar p={p}/>
       </div>
       <div style={{flex:1,minWidth:180}}>
@@ -388,22 +351,19 @@ export function PlayerProfile({p,state,onClose}){
   </Overlay>);}
 
 export function StatsView({t}){
-  const all=Object.entries(t.simState.stats).filter(([,s])=>s.maps>0).sort((a,b)=>b[1].rating-a[1].rating);
+  const all=Object.entries(t.simState.stats).filter(([,s])=>s.maps>0)
+    .sort((a,b)=>b[1].rating-a[1].rating).slice(0,30)
+    .map(([name,s],i)=>({name,...s,rank:i+1,team:t.simState.players.find(x=>x.name===name)?.team||"FA"}));
   return(<div>
-    <Intro text="Player performance this event."/>
-    <div style={{background:C.panel,border:`1px solid ${C.line}`,borderRadius:10,overflow:"hidden"}}>
-      <div style={{display:"grid",gridTemplateColumns:"30px 110px 1fr 55px 50px 45px 45px",gap:8,padding:"8px 14px",fontFamily:mono,fontSize:10,color:C.faint,letterSpacing:1}}>
-        <span>#</span><span>PLAYER</span><span>TEAM</span><span style={{textAlign:"right"}}>RTG</span><span style={{textAlign:"right"}}>MAPS</span><span style={{textAlign:"right"}}>MVP</span><span style={{textAlign:"right"}}>CLT</span>
-      </div>
-      {all.slice(0,30).map(([name,s],i)=>{const p=t.simState.players.find(x=>x.name===name);return(
-        <div key={name} style={{display:"grid",gridTemplateColumns:"30px 110px 1fr 55px 50px 45px 45px",gap:8,padding:"7px 14px",alignItems:"center",borderTop:`1px solid ${C.line}`}}>
-          <span style={{fontFamily:mono,fontSize:12,color:C.faint}}>{i+1}</span>
-          <span style={{fontWeight:600,fontSize:13}}>{name}</span>
-          <span style={{fontSize:12,color:C.dim}}>{p?.team||"FA"}</span>
-          <span style={{fontFamily:mono,fontSize:13,fontWeight:700,textAlign:"right",color:s.rating>=1.15?C.win:s.rating>=0.95?C.ink:C.red}}>{s.rating.toFixed(2)}</span>
-          <span style={{fontFamily:mono,fontSize:12,textAlign:"right",color:C.dim}}>{s.maps}</span>
-          <span style={{fontFamily:mono,fontSize:12,textAlign:"right",color:C.gold}}>{s.mvps}</span>
-          <span style={{fontFamily:mono,fontSize:12,textAlign:"right",color:C.live}}>{s.clutches}</span>
-        </div>);})}
-    </div>
+    <Intro text="Player performance this event — HLTV-style event leaderboard."/>
+    <Table rowKey={r=>r.name} rows={all} initialSort={{key:"rating",dir:"desc"}} cols={[
+      {key:"rank",label:"#",align:"right",mono,w:36,cell:r=><span style={{color:C.faint}}>{r.rank}</span>},
+      {key:"name",label:"Player",sort:r=>r.name,cell:r=><span style={{fontWeight:700,fontSize:13}}>{r.name}</span>},
+      {key:"team",label:"Team",sort:r=>r.team,cell:r=>(
+        <span style={{display:"inline-flex",alignItems:"center",gap:7,color:C.dim,fontSize:12}}><TeamCrest name={r.team!=="FA"?r.team:null} size={16}/>{r.team}</span>)},
+      {key:"rating",label:"Rating",align:"right",mono,sort:r=>r.rating,cell:r=><span style={{fontWeight:700,fontSize:13,color:rating2Color(r.rating)}}>{r.rating.toFixed(2)}</span>},
+      {key:"maps",label:"Maps",align:"right",mono,sort:r=>r.maps,cell:r=><span style={{color:C.dim}}>{r.maps}</span>},
+      {key:"mvps",label:"MVP",align:"right",mono,sort:r=>r.mvps,cell:r=><span style={{color:C.gold}}>{r.mvps}</span>},
+      {key:"clutches",label:"Clutch",align:"right",mono,sort:r=>r.clutches,cell:r=><span style={{color:C.live}}>{r.clutches}</span>},
+    ]}/>
   </div>);}

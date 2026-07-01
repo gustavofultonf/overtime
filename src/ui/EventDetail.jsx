@@ -85,11 +85,11 @@ function SwissStandings({ swiss, myTeam }) {
             padding: "9px 14px",
             alignItems: "center",
             background: me
-              ? "rgba(155,140,255,.06)"
+              ? C.acc+"0f"
               : st === "advanced"
-                ? "rgba(61,220,132,.04)"
+                ? C.win+"0a"
                 : st === "eliminated"
-                  ? "rgba(255,76,76,.04)"
+                  ? C.red+"0a"
                   : "transparent",
             borderLeft: `3px solid ${me ? C.acc : sc}`,
           }}
@@ -421,8 +421,8 @@ function PlayoffBracket({ bracket, myTeam }) {
                   alignItems: "center",
                   background: isMe
                     ? wA === (fx.a === myTeam)
-                      ? "rgba(61,220,132,.06)"
-                      : "rgba(255,76,76,.06)"
+                      ? C.win+"0f"
+                      : C.red+"0f"
                     : "transparent",
                   borderTop: `1px solid ${C.line}`,
                 }}

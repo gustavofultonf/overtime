@@ -1,5 +1,5 @@
 import React from 'react';
-import { C, sans, mono } from './theme.js';
+import { C, sans, mono, ACCENTS } from './theme.js';
 import { computeFinances, INCOME_LABELS, brandTier } from '../engine/finance.js';
 import { SL, MiniStat, Empty } from './primitives.jsx';
 import { DEBT_GAMEOVER_THRESHOLD, DEBT_SUSTAINED_WEEKS, DEBT_WARNING_WEEKS } from '../constants/events.js';
@@ -70,10 +70,10 @@ function BudgetChart({ history }) {
 // ── Income vs Expenses: two stacked bars side by side ──
 function CashflowBars({ fin }) {
   const segs = [
-    { k: 'content', v: fin.income.content, c: '#9d7cff' },
+    { k: 'content', v: fin.income.content, c: ACCENTS[7] },
     { k: 'merch',   v: fin.income.merch,   c: C.win },
     { k: 'stipend', v: fin.income.stipend, c: C.live },
-    { k: 'streams', v: fin.income.streams, c: '#2ee6c8' },
+    { k: 'streams', v: fin.income.streams, c: ACCENTS[5] },
     { k: 'sponsor', v: fin.income.sponsor, c: C.gold },
   ].filter(s => s.v > 0);
   const max = Math.max(fin.income.total, fin.expenses.total, 1);
@@ -83,7 +83,7 @@ function CashflowBars({ fin }) {
       <div style={{ height: BAR_H, width: 56, display: 'flex', flexDirection: 'column-reverse', borderRadius: 6, overflow: 'hidden', background: C.panel2, border: `1px solid ${C.line}` }}>
         {children}
       </div>
-      <span style={{ fontFamily: mono, fontSize: 10, color: C.faint, letterSpacing: 1 }}>{label}</span>
+      <span style={{ fontFamily: sans, fontSize: 10.5, fontWeight: 700, color: C.faint, letterSpacing: .7 }}>{label}</span>
       <span style={{ fontFamily: mono, fontSize: 14, fontWeight: 700, color: total === fin.income.total ? C.win : C.red }}>{fmt(total)}</span>
     </div>
   );
@@ -97,7 +97,7 @@ function CashflowBars({ fin }) {
       </Bar>
       {/* net arrow */}
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, paddingBottom: 30 }}>
-        <span style={{ fontFamily: mono, fontSize: 9, color: C.faint, letterSpacing: 1 }}>NET</span>
+        <span style={{ fontFamily: sans, fontSize: 9.5, fontWeight: 700, color: C.faint, letterSpacing: .7 }}>NET</span>
         <span style={{ fontFamily: mono, fontSize: 18, fontWeight: 800, color: fin.net >= 0 ? C.win : C.red }}>
           {fin.net >= 0 ? '+' : ''}{fin.net}K
         </span>
@@ -146,7 +146,7 @@ export function FinanceView({ season, myTeam }) {
   const incTotal = fin.income.total || 1;
   const incSegs = [
     { k: 'sponsor', c: C.gold }, { k: 'merch', c: C.win }, { k: 'stipend', c: C.live },
-    { k: 'streams', c: '#2ee6c8' }, { k: 'content', c: '#9d7cff' },
+    { k: 'streams', c: ACCENTS[5] }, { k: 'content', c: ACCENTS[7] },
   ];
   const activeSponsors = (season.sponsorships || []).filter(s => s.active);
 
@@ -155,11 +155,11 @@ export function FinanceView({ season, myTeam }) {
       {/* ── Top-line numbers ── */}
       <div style={{
         display: 'flex', gap: 18, flexWrap: 'wrap', marginBottom: 18, padding: '16px 20px',
-        background: inDebt ? 'rgba(255,76,76,.08)' : C.panel,
+        background: inDebt ? C.red + '14' : C.panel,
         border: `1px solid ${inDebt ? C.red : C.line}`, borderRadius: 12,
       }}>
         <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <span style={{ fontFamily: mono, fontSize: 10, color: C.faint, letterSpacing: 1 }}>IN THE BANK</span>
+          <span style={{ fontFamily: sans, fontSize: 10.5, fontWeight: 700, color: C.faint, letterSpacing: .7 }}>IN THE BANK</span>
           <span style={{ fontFamily: mono, fontSize: 30, fontWeight: 800, color: inDebt ? C.red : C.gold }}>{fmt(season.budget)}</span>
         </div>
         <div style={{ width: 1, background: C.line }} />
@@ -189,7 +189,7 @@ export function FinanceView({ season, myTeam }) {
       </div>
 
       {(inDebt || (losing && fin.runwayWeeks <= 8)) && (
-        <div style={{ background: 'rgba(255,76,76,.1)', border: `1px solid ${C.red}`, borderRadius: 8, padding: '10px 16px', marginBottom: 18, fontFamily: mono, fontSize: 12, color: C.red }}>
+        <div style={{ background: C.red + '1a', border: `1px solid ${C.red}`, borderRadius: 8, padding: '10px 16px', marginBottom: 18, fontFamily: mono, fontSize: 12, color: C.red }}>
           {inDebt
             ? (() => {
                 const weeks = season.debtWeeks || 0;

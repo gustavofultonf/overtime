@@ -82,7 +82,7 @@ export function VetoOverlay({session,myTeam,t,onClose,onResolved}){
     {/* Sequence strip */}
     <VetoStrip steps={steps} stepIdx={stepIdx} log={log} myTeam={myTeam} opp={opp} resolving={resolving||stepIdx>=steps.length}/>
     {/* Status banner */}
-    <div style={{background:isYour?"rgba(155,140,255,.12)":C.panel2,border:`1px solid ${isYour?C.acc:C.line}`,borderRadius:8,padding:"11px 14px",margin:"12px 0 16px",fontFamily:mono,fontSize:13,minHeight:18}}>
+    <div style={{background:isYour?C.acc+"1f":C.panel2,border:`1px solid ${isYour?C.acc:C.line}`,borderRadius:8,padding:"11px 14px",margin:"12px 0 16px",fontFamily:mono,fontSize:13,minHeight:18}}>
       {phaseText}
     </div>
     <MapBoard allMaps={allMaps} log={log} picked={picked} remaining={remaining} decider={decider}
@@ -121,7 +121,7 @@ function VetoStrip({steps,stepIdx,log,myTeam,opp,resolving}){
         return(
           <div key={i} style={{
             display:"flex",flexDirection:"column",alignItems:"center",minWidth:64,
-            background:done?(isBan?"rgba(255,76,76,.08)":"rgba(61,220,132,.08)"):active?C.acc+"18":C.panel2,
+            background:done?(isBan?C.red+"14":C.win+"14"):active?C.acc+"18":C.panel2,
             border:`1px solid ${active?C.acc:done?col+"55":C.line}`,borderRadius:6,padding:"4px 6px",
             opacity:done||active?1:0.5,transition:"all .25s ease",
           }}>
@@ -134,7 +134,7 @@ function VetoStrip({steps,stepIdx,log,myTeam,opp,resolving}){
         );
       })}
       {/* Decider slot */}
-      <div style={{display:"flex",flexDirection:"column",alignItems:"center",minWidth:64,background:resolving?"rgba(243,194,91,.1)":C.panel2,border:`1px solid ${resolving?C.gold:C.line}`,borderRadius:6,padding:"4px 6px",opacity:resolving?1:0.5,transition:"all .25s ease"}}>
+      <div style={{display:"flex",flexDirection:"column",alignItems:"center",minWidth:64,background:resolving?C.gold+"1a":C.panel2,border:`1px solid ${resolving?C.gold:C.line}`,borderRadius:6,padding:"4px 6px",opacity:resolving?1:0.5,transition:"all .25s ease"}}>
         <span style={{fontFamily:mono,fontSize:8,color:C.gold,letterSpacing:.5}}>LEFT</span>
         <span style={{fontFamily:mono,fontSize:9,fontWeight:700,color:C.gold}}>DECIDER</span>
         <span style={{fontFamily:mono,fontSize:8,color:C.faint}}>auto</span>
@@ -162,13 +162,13 @@ function MapBoard({allMaps,log,picked,remaining,decider,myTeam,opp,state,onPick,
         const banned=st.kind==="ban";
         const isPick=st.kind==="pick";
         const isDecider=st.kind==="decider";
-        const accent=banned?C.red:isPick?C.win:isDecider?C.gold:edge>0?"#2f6b45":C.line;
+        const accent=banned?C.red:isPick?C.win:isDecider?C.gold:edge>0?C.win+"55":C.line;
         const whoLabel=st.who===myTeam?"YOU":st.who===opp?opp:null;
         return(
           <button key={m} onClick={()=>clickable&&onPick(m)} disabled={!clickable}
             style={{
               position:"relative",overflow:"hidden",
-              background:banned?"rgba(255,76,76,.05)":isPick?"rgba(61,220,132,.07)":isDecider?"rgba(243,194,91,.08)":C.panel,
+              background:banned?C.red+"0d":isPick?C.win+"12":isDecider?C.gold+"14":C.panel,
               border:`1px solid ${accent}`,borderRadius:8,padding:"12px 13px",textAlign:"left",
               opacity:banned?0.5:1,transition:"all .4s ease",cursor:clickable?"pointer":"default",
               animation:isDecider?"deciderGlow 1.6s ease-in-out infinite":undefined,
@@ -185,7 +185,7 @@ function MapBoard({allMaps,log,picked,remaining,decider,myTeam,opp,state,onPick,
                 position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%) rotate(-8deg)",
                 animation:justActed?"stampIn .4s ease":undefined,
                 border:`2px solid ${accent}`,borderRadius:5,padding:"2px 10px",
-                background:"rgba(10,12,16,.55)",pointerEvents:"none",textAlign:"center",
+                background:"rgba(12,17,26,.55)",pointerEvents:"none",textAlign:"center",
               }}>
                 <div style={{fontFamily:mono,fontSize:13,fontWeight:800,color:accent,letterSpacing:1}}>
                   {banned?"BANNED":isPick?"PICK":"DECIDER"}
@@ -204,7 +204,7 @@ function MapBoard({allMaps,log,picked,remaining,decider,myTeam,opp,state,onPick,
 export function MapGrid({maps,myTeam,opp,state,onPick,disabled}){return(<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))",gap:10}}>
   {maps.map(m=>{const edge=mapRating(state,myTeam,m)-mapRating(state,opp,m);return(
     <button key={m} onClick={()=>onPick&&onPick(m)} disabled={disabled||!onPick}
-      style={{background:C.panel,border:`1px solid ${edge>0?"#2f6b45":C.line}`,borderRadius:8,padding:"12px 13px",textAlign:"left"}}>
+      style={{background:C.panel,border:`1px solid ${edge>0?C.win+"55":C.line}`,borderRadius:8,padding:"12px 13px",textAlign:"left"}}>
       <div style={{fontWeight:700,fontSize:14,marginBottom:4}}>{m}</div>
       <div style={{fontFamily:mono,fontSize:10,color:C.faint,marginBottom:4}}>prof: {getMapProf(state,myTeam)[m]||50}</div>
       <EdgeBar edge={edge}/>

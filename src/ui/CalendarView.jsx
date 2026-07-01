@@ -38,22 +38,24 @@ export function CalendarView({ season, myTeam, onAdvance, onSim, onAcceptSponsor
     setAct(null);
   }
 
+  // Engine event strings carry a legacy "[>] " prefix — presentation strips it.
+  const cleanEvent = (s) => (s || "").replace(/^\[>\]\s*/, "").replace(/^!!\s*/, "");
   const lastEvent = season.weekLog.length > 0 ? season.weekLog[season.weekLog.length - 1]?.event : null;
 
   return (<div>
     {/* ── Time-sensitive alerts ── */}
     {season.pendingEvent && (
-      <div style={{ background: "rgba(99,102,241,.10)", border: `1px solid #6366f155`, borderRadius: 12, padding: "16px 18px", marginBottom: 16 }}>
+      <div style={{ background: C.acc + "14", border: `1px solid ${C.acc}55`, borderRadius: 12, padding: "16px 18px", marginBottom: 16 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-          <span style={{ fontFamily: mono, fontWeight: 700, fontSize: 10, color: "#a5b4fc", letterSpacing: 1 }}>DECISION</span>
+          <span style={{ fontFamily: sans, fontWeight: 800, fontSize: 9.5, color: C.onAcc, background: C.acc, borderRadius: 5, padding: "2px 8px", letterSpacing: .5 }}>DECISION</span>
           <span style={{ fontWeight: 700, fontSize: 15, color: C.ink }}>{season.pendingEvent.title}</span>
         </div>
         <div style={{ fontSize: 13, color: C.dim, marginBottom: 14 }}>{season.pendingEvent.text}</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {season.pendingEvent.choices.map((c, i) => (
             <button key={i} onClick={() => onResolveEvent && onResolveEvent(i)}
-              style={{ background: C.panel, border: `1px solid #6366f144`, borderRadius: 8, padding: "10px 14px", textAlign: "left", display: "flex", gap: 10, alignItems: "flex-start", cursor: "pointer" }}>
-              <span style={{ fontFamily: mono, fontSize: 11, color: "#818cf8", minWidth: 14 }}>{i + 1}.</span>
+              style={{ background: C.panel, border: `1px solid ${C.acc}44`, borderRadius: 8, padding: "10px 14px", textAlign: "left", display: "flex", gap: 10, alignItems: "flex-start", cursor: "pointer" }}>
+              <span style={{ fontFamily: mono, fontSize: 11, color: C.acc, minWidth: 14 }}>{i + 1}.</span>
               <span>
                 <span style={{ fontWeight: 700, fontSize: 13, color: C.ink, display: "block" }}>{c.label}</span>
                 <span style={{ fontFamily: mono, fontSize: 10, color: C.dim }}>{c.desc}</span>
@@ -61,7 +63,7 @@ export function CalendarView({ season, myTeam, onAdvance, onSim, onAcceptSponsor
             </button>
           ))}
         </div>
-        <div style={{ fontFamily: mono, fontSize: 9, color: C.faint, marginTop: 10 }}>Resolve this before advancing the week.</div>
+        <div style={{ fontSize: 11, color: C.faint, marginTop: 10 }}>Resolve this before advancing the week.</div>
       </div>
     )}
 
@@ -70,9 +72,9 @@ export function CalendarView({ season, myTeam, onAdvance, onSim, onAcceptSponsor
       const extSalary = Math.max(c.currentSalary, Math.round(c.currentSalary * perf * 1.1));
       const urgent = c.contract <= 0;
       return (
-        <div key={c.playerName} style={{ background: urgent ? "rgba(239,68,68,.08)" : "rgba(243,194,91,.06)", border: `1px solid ${urgent ? C.red + "55" : C.gold + "44"}`, borderRadius: 12, padding: "14px 18px", marginBottom: 12 }}>
+        <div key={c.playerName} style={{ background: urgent ? C.red + "14" : C.gold + "0f", border: `1px solid ${urgent ? C.red + "55" : C.gold + "44"}`, borderRadius: 12, padding: "14px 18px", marginBottom: 12 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-            <span style={{ fontFamily: mono, fontWeight: 700, fontSize: 10, color: urgent ? C.red : C.gold, letterSpacing: 1 }}>{urgent ? "EXPIRED" : "CONTRACT"}</span>
+            <span style={{ fontFamily: sans, fontWeight: 800, fontSize: 9.5, color: C.onAcc, background: urgent ? C.red : C.gold, borderRadius: 5, padding: "2px 8px", letterSpacing: .5 }}>{urgent ? "EXPIRED" : "CONTRACT"}</span>
             <span style={{ fontWeight: 700, fontSize: 14, color: C.ink }}>{c.playerName}</span>
             <span style={{ fontFamily: mono, fontSize: 10, color: C.faint, marginLeft: "auto" }}>rating {c.avgRating} · ${c.currentSalary}K/mo</span>
           </div>
@@ -104,13 +106,13 @@ export function CalendarView({ season, myTeam, onAdvance, onSim, onAcceptSponsor
         {sponsorOffers.map((sp, i) => {
           const idx = (season.sponsorships || []).indexOf(sp);
           return (
-            <div key={i} style={{ background: "rgba(243,194,91,.06)", border: `1px solid ${C.gold}44`, borderRadius: 10, padding: "12px 16px", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-              <span style={{ fontFamily: mono, fontWeight: 700, fontSize: 10, color: C.gold, letterSpacing: 1 }}>SPONSOR</span>
+            <div key={i} style={{ background: C.gold + "0f", border: `1px solid ${C.gold}44`, borderRadius: 10, padding: "12px 16px", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              <span style={{ fontFamily: sans, fontWeight: 800, fontSize: 9.5, color: C.onAcc, background: C.gold, borderRadius: 5, padding: "2px 8px", letterSpacing: .5 }}>SPONSOR</span>
               <span style={{ fontWeight: 700, fontSize: 14, color: C.ink }}>{sp.brand}</span>
               <span style={{ fontFamily: mono, fontSize: 11, color: C.dim }}>${sp.monthly}K/mo × {sp.duration}mo</span>
               <span style={{ fontSize: 11, color: C.faint }}>{sp.condition !== "None" ? `Condition: ${sp.condition}` : "No conditions"}</span>
               <div style={{ marginLeft: "auto", display: "flex", gap: 6 }}>
-                <button onClick={() => onAcceptSponsor(idx)} style={{ background: C.win, color: "#0a0c10", border: "none", borderRadius: 6, padding: "6px 14px", fontFamily: mono, fontSize: 10, fontWeight: 700 }}>ACCEPT</button>
+                <button onClick={() => onAcceptSponsor(idx)} style={{ background: C.win, color: C.onAcc, border: "none", borderRadius: 6, padding: "6px 14px", fontFamily: mono, fontSize: 10, fontWeight: 700 }}>ACCEPT</button>
                 <button onClick={() => onDeclineSponsor(idx)} style={{ background: "transparent", border: `1px solid ${C.line}`, color: C.dim, borderRadius: 6, padding: "6px 12px", fontFamily: mono, fontSize: 10, fontWeight: 700 }}>DECLINE</button>
               </div>
             </div>);
@@ -130,15 +132,15 @@ export function CalendarView({ season, myTeam, onAdvance, onSim, onAcceptSponsor
       const recentB = [...(season.history || [])].reverse().find(h => h.tier === "B" && h.place !== 99);
       const recentBDNP = !recentB ? [...(season.history || [])].reverse().find(h => h.tier === "B") : null;
       return (
-        <div style={{ background: "rgba(155,140,255,.08)", border: `1px solid ${tc}66`, borderRadius: 12, padding: "16px 18px", marginBottom: 16 }}>
+        <div style={{ background: C.acc + "14", border: `1px solid ${tc}66`, borderRadius: 12, padding: "16px 18px", marginBottom: 16 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
-            <span style={{ fontFamily: mono, fontWeight: 700, fontSize: 10, color: tc, letterSpacing: 1 }}>{isA ? "A-TIER INVITATIONAL" : "B-TIER OPEN QUALIFIER"}</span>
+            <span style={{ fontFamily: sans, fontWeight: 800, fontSize: 9.5, color: C.onAcc, background: tc, borderRadius: 5, padding: "2px 8px", letterSpacing: .5 }}>{isA ? "A-TIER INVITATIONAL" : "B-TIER OPEN QUALIFIER"}</span>
             <span style={{ fontWeight: 700, fontSize: 15, color: C.ink }}>{ev.label}</span>
             <span style={{ fontFamily: mono, fontSize: 10, color: C.faint, marginLeft: "auto" }}>{ev.location} · {ev.teams} teams · winner ${ev.prize?.[1] || 0}K</span>
           </div>
           <div style={{ fontSize: 13, color: C.dim, marginBottom: 14 }}>{reason}</div>
           {isA && (
-            <div style={{ background: "rgba(99,102,241,.06)", border: `1px solid ${C.live}33`, borderRadius: 8, padding: "8px 12px", marginBottom: 14, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            <div style={{ background: C.live + "0f", border: `1px solid ${C.live}33`, borderRadius: 8, padding: "8px 12px", marginBottom: 14, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
               <span style={{ fontFamily: mono, fontWeight: 700, fontSize: 9, color: C.live, letterSpacing: 1 }}>CIRCUIT FORM</span>
               {recentB ? (
                 <>
@@ -160,7 +162,7 @@ export function CalendarView({ season, myTeam, onAdvance, onSim, onAcceptSponsor
           )}
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <button onClick={() => onAcceptEntry && onAcceptEntry()}
-              style={{ flex: 1, minWidth: 150, background: tc, color: "#0a0c10", border: "none", borderRadius: 8, padding: "11px 16px", fontWeight: 800, fontSize: 14 }}>
+              style={{ flex: 1, minWidth: 150, background: tc, color: C.onAcc, border: "none", borderRadius: 8, padding: "11px 16px", fontWeight: 800, fontSize: 14 }}>
               {isA ? "Accept invite →" : "Register & compete →"}
             </button>
             <button onClick={() => onDeclineEntry && onDeclineEntry()}
@@ -168,7 +170,7 @@ export function CalendarView({ season, myTeam, onAdvance, onSim, onAcceptSponsor
               {isA ? "Decline" : "Skip event"}
             </button>
           </div>
-          <div style={{ fontFamily: mono, fontSize: 9, color: C.faint, marginTop: 10 }}>Decide before advancing the week.</div>
+          <div style={{ fontSize: 11, color: C.faint, marginTop: 10 }}>Decide before advancing the week.</div>
         </div>
       );
     })()}
@@ -188,7 +190,7 @@ export function CalendarView({ season, myTeam, onAdvance, onSim, onAcceptSponsor
         <SL n="ACT" t="THIS WEEK" />
         <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 12, padding: "16px", marginBottom: 22, position: "relative" }}>
           {blocked && (
-            <div style={{ fontFamily: mono, fontSize: 11, color: C.gold, marginBottom: 12, background: "rgba(243,194,91,.06)", border: `1px solid ${C.gold}33`, borderRadius: 7, padding: "8px 12px" }}>
+            <div style={{ fontSize: 12, color: C.gold, marginBottom: 12, background: C.gold + "0f", border: `1px solid ${C.gold}33`, borderRadius: 7, padding: "8px 12px" }}>
               Resolve the alerts above before training this week.
             </div>
           )}
@@ -216,12 +218,12 @@ export function CalendarView({ season, myTeam, onAdvance, onSim, onAcceptSponsor
               const activeP = teamActivePool(season.simState, myTeam) || [];
               return (
               <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${C.line}` }}>
-                <div style={{ fontFamily: mono, fontSize: 10, color: C.faint, letterSpacing: 1, marginBottom: 8 }}>MAP TO DRILL</div>
+                <div style={{ fontFamily: sans, fontSize: 11, fontWeight: 700, color: C.dim, letterSpacing: .4, marginBottom: 8 }}>MAP TO DRILL</div>
                 <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>
                   {pool.map(m => { const prof = getMapProf(season.simState, myTeam)[m] || 50; const inPool = activeP.includes(m); return (
                     <button key={m} onClick={() => setMapChoice(m)}
-                      style={{ background: mapChoice === m ? C.acc : C.panel2, color: mapChoice === m ? "#0a0c10" : C.ink, border: `1px solid ${mapChoice === m ? C.acc : inPool ? C.acc + "55" : C.line}`, borderRadius: 7, padding: "7px 13px", fontFamily: mono, fontSize: 12 }}>
-                      {m} <span style={{ fontSize: 10, color: mapChoice === m ? "#0a0c10aa" : C.faint }}>{prof}</span>
+                      style={{ background: mapChoice === m ? C.acc : C.panel2, color: mapChoice === m ? C.onAcc : C.ink, border: `1px solid ${mapChoice === m ? C.acc : inPool ? C.acc + "55" : C.line}`, borderRadius: 7, padding: "7px 13px", fontFamily: mono, fontSize: 12 }}>
+                      {m} <span style={{ fontSize: 10, color: mapChoice === m ? C.onAcc+"aa" : C.faint }}>{prof}</span>
                       {!inPool && activeP.length > 0 && <span style={{ fontSize: 8, color: C.red, marginLeft: 4 }}>decay</span>}
                     </button>); })}
                 </div>
@@ -230,12 +232,12 @@ export function CalendarView({ season, myTeam, onAdvance, onSim, onAcceptSponsor
 
             {act === "scout" && (
               <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${C.line}` }}>
-                <div style={{ fontFamily: mono, fontSize: 10, color: C.faint, letterSpacing: 1, marginBottom: 8 }}>TEAM TO SCOUT</div>
+                <div style={{ fontFamily: sans, fontSize: 11, fontWeight: 700, color: C.dim, letterSpacing: .4, marginBottom: 8 }}>TEAM TO SCOUT</div>
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                   {AI_TEAMS.filter(tm => rosterOf(season.simState, tm).length > 0).map(tm => {
                     const scouted = season.scoutedTeams?.[tm];
                     return (<button key={tm} onClick={() => setScoutChoice(tm)}
-                      style={{ background: scoutChoice === tm ? C.acc : C.panel2, color: scoutChoice === tm ? "#0a0c10" : C.ink, border: `1px solid ${scoutChoice === tm ? C.acc : scouted ? C.win + "66" : C.line}`, borderRadius: 7, padding: "6px 12px", fontFamily: mono, fontSize: 11 }}>
+                      style={{ background: scoutChoice === tm ? C.acc : C.panel2, color: scoutChoice === tm ? C.onAcc : C.ink, border: `1px solid ${scoutChoice === tm ? C.acc : scouted ? C.win + "66" : C.line}`, borderRadius: 7, padding: "6px 12px", fontFamily: mono, fontSize: 11 }}>
                       {tm}{scouted ? " ✓" : ""}
                     </button>);
                   })}
@@ -245,12 +247,12 @@ export function CalendarView({ season, myTeam, onAdvance, onSim, onAcceptSponsor
 
             {act === "individual" && (
               <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${C.line}` }}>
-                <div style={{ fontFamily: mono, fontSize: 10, color: C.faint, letterSpacing: 1, marginBottom: 8 }}>PLAYER TO COACH 1-ON-1</div>
+                <div style={{ fontFamily: sans, fontSize: 11, fontWeight: 700, color: C.dim, letterSpacing: .4, marginBottom: 8 }}>PLAYER TO COACH 1-ON-1</div>
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                   {roster.map(p => (
                     <button key={p.name} onClick={() => setPlayerChoice(p.name)}
-                      style={{ background: playerChoice === p.name ? C.acc : C.panel2, color: playerChoice === p.name ? "#0a0c10" : C.ink, border: `1px solid ${playerChoice === p.name ? C.acc : C.line}`, borderRadius: 7, padding: "6px 12px", fontFamily: mono, fontSize: 11 }}>
-                      {p.name} <span style={{ fontSize: 9, color: playerChoice === p.name ? "#0a0c10aa" : C.faint }}>{playerOvr(p)}</span>
+                      style={{ background: playerChoice === p.name ? C.acc : C.panel2, color: playerChoice === p.name ? C.onAcc : C.ink, border: `1px solid ${playerChoice === p.name ? C.acc : C.line}`, borderRadius: 7, padding: "6px 12px", fontFamily: mono, fontSize: 11 }}>
+                      {p.name} <span style={{ fontSize: 9, color: playerChoice === p.name ? C.onAcc+"aa" : C.faint }}>{playerOvr(p)}</span>
                     </button>
                   ))}
                 </div>
@@ -263,11 +265,11 @@ export function CalendarView({ season, myTeam, onAdvance, onSim, onAcceptSponsor
                 Advance Week →
               </button>
               {!act && weeksUntil > 1 && (
-                <button onClick={onSim} style={{ background: "transparent", border: `1px solid ${C.live}`, borderRadius: 9, padding: "11px 20px", fontFamily: mono, fontSize: 12, color: C.live, fontWeight: 700, cursor: "pointer" }}>
+                <button onClick={onSim} style={{ background: "transparent", border: `1px solid ${C.live}66`, borderRadius: 9, padding: "11px 20px", fontFamily: sans, fontSize: 13, color: C.live, fontWeight: 700, cursor: "pointer" }}>
                   Sim {weeksUntil} weeks to {nextEvent?.label?.split(" ")[0] || "event"} →
                 </button>
               )}
-              <span style={{ fontFamily: mono, fontSize: 11, color: C.faint, marginLeft: "auto" }}>
+              <span style={{ fontFamily: sans, fontSize: 12, color: C.faint, marginLeft: "auto" }}>
                 {act ? `Week ${season.week} → ${season.week + 1}` : "Pick an activity, or sim ahead"}
               </span>
             </div>
@@ -277,8 +279,9 @@ export function CalendarView({ season, myTeam, onAdvance, onSim, onAcceptSponsor
     )}
 
     {lastEvent && (
-      <div style={{ background: "rgba(243,194,91,.07)", border: `1px solid ${C.gold}44`, borderRadius: 9, padding: "10px 14px", marginBottom: 22, fontFamily: mono, fontSize: 12, color: C.gold }}>
-        {lastEvent}
+      <div style={{ background: C.gold + "12", border: `1px solid ${C.gold}44`, borderRadius: 10, padding: "10px 14px", marginBottom: 22, display: "flex", alignItems: "center", gap: 10 }}>
+        <span style={{ fontFamily: sans, fontSize: 9.5, fontWeight: 800, color: C.onAcc, background: C.gold, borderRadius: 5, padding: "2px 8px", letterSpacing: .5, flexShrink: 0 }}>NEWS</span>
+        <span style={{ fontSize: 12.5, color: C.ink }}>{cleanEvent(lastEvent)}</span>
       </div>
     )}
 
@@ -302,16 +305,16 @@ export function CalendarView({ season, myTeam, onAdvance, onSim, onAcceptSponsor
           return { text: `Out of range — ranked #${myRank} (need top 24)`, color: C.red };
         })();
         return (
-          <div key={ev.week} className="lift" style={{ background: isNext ? "linear-gradient(135deg,#13171f,#1a1f29)" : C.panel, border: `1px solid ${isNext ? tc : C.line}`, borderLeft: `3px solid ${tc}`, borderRadius: 10, padding: "12px 16px", display: "flex", alignItems: "center", gap: 14, animation: "risePop .4s ease both", animationDelay: `${i * 0.06}s`, ...(isNext ? { boxShadow: `0 0 18px -6px ${tc}66` } : {}) }}>
+          <div key={ev.week} className="lift" style={{ background: isNext ? `linear-gradient(135deg,${C.panel2},${C.panel})` : C.panel, border: `1px solid ${isNext ? tc : C.line}`, borderLeft: `3px solid ${tc}`, borderRadius: 10, padding: "12px 16px", display: "flex", alignItems: "center", gap: 14, animation: "risePop .4s ease both", animationDelay: `${i * 0.06}s`, ...(isNext ? { boxShadow: `0 0 18px -6px ${tc}66` } : {}) }}>
             <div style={{ background: tc + "22", border: `1px solid ${tc}`, borderRadius: 6, padding: "3px 9px", fontFamily: mono, fontSize: 9, color: tc, fontWeight: 700, flexShrink: 0 }}>{tierLabel(ev.tier)}</div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontWeight: 700, fontSize: 14, color: isNext ? C.ink : C.dim }}>{ev.label}</div>
-              <div style={{ fontFamily: mono, fontSize: 10, color: C.faint, marginTop: 2 }}>{ev.location} · {weekToLabel(ev.week, season.year)} · {ev.teams} teams</div>
-              <div style={{ fontFamily: mono, fontSize: 9, color: accessInfo.color, marginTop: 3 }}>{accessInfo.text}</div>
+              <div style={{ fontSize: 11.5, color: C.faint, marginTop: 2 }}>{ev.location} · {weekToLabel(ev.week, season.year)} · {ev.teams} teams</div>
+              <div style={{ fontSize: 11, fontWeight: 600, color: accessInfo.color, marginTop: 3 }}>{accessInfo.text}</div>
             </div>
             <div style={{ textAlign: "right", flexShrink: 0 }}>
               <div style={{ fontFamily: mono, fontSize: 15, fontWeight: 800, color: wk === 0 ? C.red : wk <= 2 ? C.gold : C.live }}>{wk === 0 ? "NOW" : `${wk}wk`}</div>
-              <div style={{ fontFamily: mono, fontSize: 9, color: C.faint }}>{wk === 0 ? "this week" : "away"}</div>
+              <div style={{ fontSize: 10, color: C.faint }}>{wk === 0 ? "this week" : "away"}</div>
             </div>
           </div>);
       })}
@@ -319,12 +322,12 @@ export function CalendarView({ season, myTeam, onAdvance, onSim, onAcceptSponsor
 
     {/* ── Squad ── */}
     <SL n="SQD" t="SQUAD" />
-    <div style={{ fontFamily: mono, fontSize: 10.5, color: C.faint, marginBottom: 8 }}>
+    <div style={{ fontSize: 12, color: C.faint, marginBottom: 8 }}>
       {roster.length}/5 players · ${totalSalary}K/mo salary · manage via the <span style={{ color: C.acc }}>Transfers</span> tab
     </div>
     <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 24 }}>
       {roster.map((p, i) => {
-        const fc = p.fatigue > 80 ? C.red : p.fatigue > 60 ? C.gold : p.fatigue > 40 ? "#8bc99a" : C.win;
+        const fc = p.fatigue > 80 ? C.red : p.fatigue > 60 ? C.gold : p.fatigue > 40 ? C.winSoft : C.win;
         const morale = p.morale ?? 60;
         const mc = morale >= 70 ? C.win : morale >= 45 ? C.gold : C.red;
         return (
@@ -348,9 +351,9 @@ export function CalendarView({ season, myTeam, onAdvance, onSim, onAcceptSponsor
       <SL n="LOG" t="ACTIVITY LOG" />
       <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 10, padding: "6px 14px", display: "flex", flexDirection: "column", maxHeight: 240, overflowY: "auto" }}>
         {[...season.weekLog].reverse().slice(0, 18).map((w, i) => (
-          <div key={i} style={{ fontFamily: mono, fontSize: 11, color: w.event ? C.gold : C.dim, padding: "6px 0", borderTop: i === 0 ? "none" : `1px solid ${C.line}` }}>
-            <span style={{ color: C.faint, marginRight: 6 }}>W{w.week}</span>
-            {w.event ? w.event : (<span style={{ textTransform: "capitalize" }}>{ACTIVITIES[w.activity]?.label || w.activity}{w.mapChoice ? ` (${w.mapChoice})` : ""}</span>)}
+          <div key={i} style={{ fontSize: 12, color: w.event ? C.gold : C.dim, padding: "6px 0", borderTop: i === 0 ? "none" : `1px solid ${C.line}` }}>
+            <span style={{ fontFamily: mono, fontSize: 10.5, color: C.faint, marginRight: 8 }}>W{w.week}</span>
+            {w.event ? cleanEvent(w.event) : (<span style={{ textTransform: "capitalize" }}>{ACTIVITIES[w.activity]?.label || w.activity}{w.mapChoice ? ` (${w.mapChoice})` : ""}</span>)}
           </div>
         ))}
       </div>

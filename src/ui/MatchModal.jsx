@@ -242,7 +242,7 @@ export function MatchModal({ m, onClose }) {
                             fontFamily: mono,
                             fontSize: 10,
                             background: isHighlight
-                              ? "rgba(155,140,255,.06)"
+                              ? C.acc+"0f"
                               : "transparent",
                             borderRadius: 3,
                           }}

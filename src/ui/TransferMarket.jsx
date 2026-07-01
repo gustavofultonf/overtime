@@ -7,7 +7,7 @@ import { SL, Pill, Stat, MoodTag } from './primitives.jsx';
 import { contractLabel } from '../constants/events.js';
 
 const ROLES = ["IGL","AWP","Entry","Lurk","Support"];
-const roleColor = {IGL:C.live, AWP:"#e05050", Entry:C.acc, Lurk:C.gold, Support:C.win};
+const roleColor = {IGL:C.live, AWP:C.awp, Entry:C.acc, Lurk:C.gold, Support:C.win};
 
 function faDesiredSalary(p, career) {
   const r = career?.avgRating || 0.95;
@@ -42,7 +42,7 @@ function ResultBanner({ result, onClose, onMatchCounter }) {
       <span style={{fontFamily:mono,fontSize:12,color:col,flex:1}}>{result.msg}</span>
       {result.counter && onMatchCounter && (
         <button onClick={onMatchCounter}
-          style={{background:C.gold,color:"#0a0c10",border:"none",borderRadius:5,
+          style={{background:C.gold,color:C.onAcc,border:"none",borderRadius:5,
             padding:"4px 10px",fontFamily:mono,fontSize:9,fontWeight:700}}>
           MATCH COUNTER
         </button>
@@ -94,7 +94,7 @@ function FaTab({ simState, season, myTeam, onNegotiateFA }) {
         <div style={{display:"flex",gap:3,flexWrap:"wrap"}}>
           {["all",...ROLES].map(r => (
             <button key={r} onClick={() => setRoleFilter(r)}
-              style={{background:roleFilter===r?C.acc:C.panel,color:roleFilter===r?"#0a0c10":C.dim,
+              style={{background:roleFilter===r?C.acc:C.panel,color:roleFilter===r?C.onAcc:C.dim,
                 border:`1px solid ${roleFilter===r?C.acc:C.line}`,borderRadius:5,
                 padding:"4px 9px",fontFamily:mono,fontSize:9,fontWeight:700}}>
               {r.toUpperCase()}
@@ -200,8 +200,8 @@ function FaTab({ simState, season, myTeam, onNegotiateFA }) {
                       }}
                       disabled={!canAfford || rosterFull}
                       style={{width:"100%",
-                        background:(!canAfford||rosterFull)?"#1e2530":C.win,
-                        color:(!canAfford||rosterFull)?C.faint:"#0a0c10",
+                        background:(!canAfford||rosterFull)?C.panel2:C.win,
+                        color:(!canAfford||rosterFull)?C.faint:C.onAcc,
                         border:"none",borderRadius:7,padding:"10px",
                         fontWeight:800,fontSize:13,fontFamily:mono}}>
                       {rosterFull   ? "ROSTER FULL"                  :
@@ -255,7 +255,7 @@ function BuyTab({ simState, season, myTeam, onBuyoutOffer }) {
         {activeTeams.map(t => (
           <button key={t} onClick={() => { setSelectedTeam(t); setExpanded(null); setResult(null); }}
             style={{background:selectedTeam===t?C.acc:C.panel,
-              color:selectedTeam===t?"#0a0c10":C.dim,
+              color:selectedTeam===t?C.onAcc:C.dim,
               border:`1px solid ${selectedTeam===t?C.acc:C.line}`,
               borderRadius:6,padding:"5px 12px",fontFamily:mono,fontSize:10,fontWeight:700}}>
             {t}
@@ -343,8 +343,8 @@ function BuyTab({ simState, season, myTeam, onBuyoutOffer }) {
                       }}
                       disabled={!canAfford || rosterFull}
                       style={{width:"100%",
-                        background:(!canAfford||rosterFull)?"#1e2530":C.live,
-                        color:(!canAfford||rosterFull)?C.faint:"#0a0c10",
+                        background:(!canAfford||rosterFull)?C.panel2:C.live,
+                        color:(!canAfford||rosterFull)?C.faint:C.onAcc,
                         border:"none",borderRadius:7,padding:"10px",
                         fontWeight:800,fontSize:13,fontFamily:mono}}>
                       {rosterFull  ? "ROSTER FULL"       :
@@ -407,7 +407,7 @@ function TradeTab({ simState, season, myTeam, onTradeOffer }) {
           <div style={{display:"flex",gap:3,flexWrap:"wrap",marginBottom:6}}>
             {AI_TEAMS.filter(t => rosterOf(simState,t).length > 0).map(t => (
               <button key={t} onClick={() => { setTradeTeam(t); setTradeTheirPlayer(null); }}
-                style={{background:tradeTeam===t?C.acc:C.panel,color:tradeTeam===t?"#0a0c10":C.faint,
+                style={{background:tradeTeam===t?C.acc:C.panel,color:tradeTeam===t?C.onAcc:C.faint,
                   border:`1px solid ${tradeTeam===t?C.acc:C.line}`,
                   borderRadius:4,padding:"3px 7px",fontFamily:mono,fontSize:9,fontWeight:700}}>
                 {t}
@@ -474,8 +474,8 @@ function TradeTab({ simState, season, myTeam, onTradeOffer }) {
           }}
           disabled={!tradeReady || season.budget < tradeCash}
           style={{width:"100%",
-            background:(!tradeReady||season.budget<tradeCash)?"#1e2530":C.acc,
-            color:(!tradeReady||season.budget<tradeCash)?C.faint:"#0a0c10",
+            background:(!tradeReady||season.budget<tradeCash)?C.panel2:C.acc,
+            color:(!tradeReady||season.budget<tradeCash)?C.faint:C.onAcc,
             border:"none",borderRadius:7,padding:"12px",fontWeight:800,fontSize:14,fontFamily:mono}}>
           {!tradeReady          ? "SELECT PLAYERS ABOVE" :
            season.budget<tradeCash ? "INSUFFICIENT FUNDS"   :
@@ -551,7 +551,7 @@ function SellTab({ simState, season, myTeam, onSellPlayer, onRelease }) {
                 </div>
                 <div style={{display:"flex",gap:4}}>
                   <button onClick={() => selectForSale(p)}
-                    style={{background:isSel?C.gold:C.panel2,color:isSel?"#0a0c10":C.gold,
+                    style={{background:isSel?C.gold:C.panel2,color:isSel?C.onAcc:C.gold,
                       border:`1px solid ${C.gold}44`,borderRadius:5,
                       padding:"4px 10px",fontFamily:mono,fontSize:9,fontWeight:700}}>
                     {isSel?"HIDE":"SELL"}
@@ -603,7 +603,7 @@ function SellTab({ simState, season, myTeam, onSellPlayer, onRelease }) {
                               setResult({success:true, msg:`${p.name} sold to ${bid.team} for $${bid.bid}K!`});
                               setSellPlayer(null);
                             }}
-                            style={{background:C.win,color:"#0a0c10",border:"none",
+                            style={{background:C.win,color:C.onAcc,border:"none",
                               borderRadius:5,padding:"5px 12px",fontFamily:mono,fontSize:10,fontWeight:700}}>
                             SELL
                           </button>

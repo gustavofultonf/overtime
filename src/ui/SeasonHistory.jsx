@@ -3,7 +3,7 @@ import {
   LineChart, Line, BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer,
 } from "recharts";
-import { C, mono } from "./theme.js";
+import { C, mono, SHADOW } from "./theme.js";
 import { getRankedTeams } from "../engine/player.js";
 import { Intro, Locked, MiniStat, Overlay, SL } from "./primitives.jsx";
 import { EventDetail } from "./EventDetail.jsx";
@@ -17,7 +17,7 @@ const ordinal = (n) => {
   return n + (s[(v - 20) % 10] || s[v] || s[0]);
 };
 const placeColor = (p) =>
-  p === 1 ? C.gold : p === 2 ? "#c9d2e0" : p <= 4 ? C.acc : p <= 8 ? C.live : p >= 90 ? C.faint : C.dim;
+  p === 1 ? C.gold : p === 2 ? C.silver : p <= 4 ? C.acc : p <= 8 ? C.live : p >= 90 ? C.faint : C.dim;
 const tierColor = (t) => (t === "Major" ? C.gold : t === "A" ? C.live : C.win);
 
 // Real series/match record for the season — walks every fixture actually
@@ -165,10 +165,10 @@ export function SeasonHistory({ season, myTeam }) {
       {/* ── Hero record strip ── */}
       <div style={{
         display: "flex", gap: 18, flexWrap: "wrap", marginBottom: 20, padding: "16px 20px",
-        background: C.panel, border: `1px solid ${C.line}`, borderRadius: 12,
+        background: C.panel, border: `1px solid ${C.line}`, borderRadius: 12, boxShadow: SHADOW.card,
       }}>
         <div style={{ display: "flex", flexDirection: "column" }}>
-          <span style={{ fontFamily: mono, fontSize: 10, color: C.faint, letterSpacing: 1 }}>SEASON RECORD</span>
+          <span style={{ fontFamily: sans, fontSize: 10.5, fontWeight: 700, color: C.faint, letterSpacing: .7 }}>SEASON RECORD</span>
           <span style={{ fontFamily: mono, fontSize: 28, fontWeight: 800, color: recordColor }}>
             {record.wins}–{record.losses}
           </span>
@@ -212,13 +212,13 @@ export function SeasonHistory({ season, myTeam }) {
       <div style={{ fontFamily: mono, fontSize: 9, color: C.dim, marginBottom: 6 }}>
         * click any event to view swiss standings, bracket and player stats
       </div>
-      <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 10, overflow: "hidden", marginBottom: 20 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 16px", fontFamily: mono, fontSize: 10, color: C.faint, letterSpacing: 1 }}>
+      <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 12, overflow: "hidden", marginBottom: 20, boxShadow: SHADOW.card }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 16px", fontSize: 10.5, fontWeight: 700, color: C.dim, letterSpacing: .3, background: C.panel2, borderBottom: `1px solid ${C.line}` }}>
           <span style={{ minWidth: 24 }}>#</span>
-          <span style={{ minWidth: 46 }}>TIER</span>
-          <span style={{ flex: 1 }}>EVENT</span>
-          <span style={{ minWidth: 40, textAlign: "right" }}>PLACE</span>
-          <span style={{ minWidth: 62, textAlign: "right" }}>PRIZE</span>
+          <span style={{ minWidth: 46 }}>Tier</span>
+          <span style={{ flex: 1 }}>Event</span>
+          <span style={{ minWidth: 40, textAlign: "right" }}>Place</span>
+          <span style={{ minWidth: 62, textAlign: "right" }}>Prize</span>
           <span style={{ width: 10 }} />
         </div>
         {season.history.map((h, i) => (

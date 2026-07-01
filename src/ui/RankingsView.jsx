@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { C, sans, mono } from './theme.js';
+import { C, sans, mono, SHADOW, HEAD_H } from './theme.js';
 import { getRankedTeams } from '../engine/player.js';
 import { AI_TEAMS } from '../constants/data.js';
 import { Intro, TeamCrest } from './primitives.jsx';
@@ -54,9 +54,9 @@ export function RankingsView({ state, myTeam, week = 1, year = 2026 }) {
       </div>
 
       {/* Rankings table */}
-      <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 10, overflow: 'hidden' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '28px 38px minmax(0,1fr) 80px 90px', gap: 8, padding: '8px 14px', fontFamily: mono, fontSize: 10, color: C.faint, letterSpacing: 1 }}>
-          <span>#</span><span/><span>TEAM</span><span style={{ textAlign: 'right' }}>RATING</span><span/>
+      <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 12, boxShadow: SHADOW.card }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '28px 38px minmax(0,1fr) 80px 90px', gap: 8, padding: '8px 14px', fontFamily: sans, fontSize: 10.5, fontWeight: 700, color: C.dim, letterSpacing: .3, background: C.panel2, borderBottom: `1px solid ${C.line}`, position: 'sticky', top: HEAD_H, zIndex: 5, borderRadius: '12px 12px 0 0' }}>
+          <span>#</span><span/><span>Team</span><span style={{ textAlign: 'right' }}>Rating</span><span/>
         </div>
         {ranked.map((r, i) => {
           const me = r.team === myTeam;
@@ -70,12 +70,12 @@ export function RankingsView({ state, myTeam, week = 1, year = 2026 }) {
           const delta = prevRank != null ? prevRank - (i + 1) : null;
 
           return (
-            <div key={r.team} style={{ display: 'grid', gridTemplateColumns: '28px 38px minmax(0,1fr) 80px 90px', gap: 8, padding: '9px 14px', alignItems: 'center', borderTop: `1px solid ${C.line}`, borderLeft: `3px solid ${me ? C.acc : col}`, background: me ? 'rgba(155,140,255,.06)' : 'transparent' }}>
+            <div key={r.team} style={{ display: 'grid', gridTemplateColumns: '28px 38px minmax(0,1fr) 80px 90px', gap: 8, padding: '9px 14px', alignItems: 'center', borderTop: `1px solid ${C.line}`, borderLeft: `3px solid ${me ? C.acc : col}`, background: me ? C.acc + '14' : 'transparent' }}>
               <span style={{ fontFamily: mono, fontWeight: 700, fontSize: 15, color: col }}>{i + 1}</span>
               <RankDelta delta={delta} />
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, cursor: 'pointer' }} onClick={() => handleTeamClick(r.team)}>
                 <TeamCrest name={r.team} size={24} />
-                <span style={{ fontWeight: me ? 700 : 600, fontSize: 13, color: me ? C.acc : C.ink, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{r.team}{me ? ' you' : ''}</span>
+                <span style={{ fontWeight: me ? 700 : 600, fontSize: 13, color: me ? C.acc : C.ink, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 150 }}>{r.team}{me ? ' you' : ''}</span>
                 {badge && <span style={{ fontFamily: mono, fontSize: 9, color: badge.color, background: badge.color + '22', padding: '1px 4px', borderRadius: 3, flexShrink: 0 }}>{badge.label}</span>}
               </div>
               <span style={{ fontFamily: mono, fontWeight: 700, fontSize: 13, textAlign: 'right', color: col }}>{Math.round(r.pts).toLocaleString()}</span>
@@ -92,7 +92,7 @@ export function RankingsView({ state, myTeam, week = 1, year = 2026 }) {
                       { label: 'SEED VALUE', value: state.valveBounty[r.team].seedValue, desc: `Initial Glicko rating: ${state.valveBounty[r.team].initialRating}`, color: C.acc },
                     ].map(({ label, value, desc, color }) => (
                       <div key={label} style={{ background: C.panel, borderRadius: 6, padding: '8px 12px', border: `1px solid ${C.line}` }}>
-                        <div style={{ fontFamily: mono, fontSize: 9, color: C.faint, letterSpacing: 1, marginBottom: 4 }}>{label}</div>
+                        <div style={{ fontFamily: sans, fontSize: 9.5, fontWeight: 700, color: C.faint, letterSpacing: .7, marginBottom: 4 }}>{label}</div>
                         <div style={{ fontFamily: mono, fontSize: 20, fontWeight: 700, color }}>{(value * 100).toFixed(1)}%</div>
                         <div style={{ height: 3, background: C.line, borderRadius: 2, margin: '4px 0' }}>
                           <div style={{ width: `${value * 100}%`, height: '100%', background: color, borderRadius: 2 }}/>
@@ -126,7 +126,7 @@ export function RankingsView({ state, myTeam, week = 1, year = 2026 }) {
                 { label: 'SEED VALUE', value: myBounty.seedValue, desc: `Initial Glicko rating: ${myBounty.initialRating}`, color: C.acc },
               ].map(({ label, value, desc, color }) => (
                 <div key={label} style={{ background: C.panel, borderRadius: 6, padding: '8px 12px', border: `1px solid ${C.line}` }}>
-                  <div style={{ fontFamily: mono, fontSize: 9, color: C.faint, letterSpacing: 1, marginBottom: 4 }}>{label}</div>
+                  <div style={{ fontFamily: sans, fontSize: 9.5, fontWeight: 700, color: C.faint, letterSpacing: .7, marginBottom: 4 }}>{label}</div>
                   <div style={{ fontFamily: mono, fontSize: 20, fontWeight: 700, color }}>{(value * 100).toFixed(1)}%</div>
                   <div style={{ height: 3, background: C.line, borderRadius: 2, margin: '4px 0' }}>
                     <div style={{ width: `${value * 100}%`, height: '100%', background: color, borderRadius: 2 }}/>

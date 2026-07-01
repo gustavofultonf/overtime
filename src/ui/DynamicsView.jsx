@@ -4,9 +4,9 @@ import { playerOvr, desiredSalary } from '../engine/utils.js';
 import { rosterOf, hierarchyTier } from '../engine/state.js';
 import { contractLabel } from '../constants/events.js';
 
-const TIER_COLOR={Leader:C.gold,Star:C.live,Player:C.dim,Prospect:"#9b8eff"};
-const TIER_BG={Leader:"rgba(243,194,91,.10)",Star:"rgba(155,140,255,.10)",Player:"transparent",Prospect:"rgba(155,142,255,.10)"};
-const ROLE_COLOR={IGL:C.live,AWP:"#e05050",Entry:C.acc,Lurk:C.gold,Support:C.win};
+const TIER_COLOR={Leader:C.gold,Star:C.live,Player:C.dim,Prospect:C.acc};
+const TIER_BG={Leader:C.gold+"1a",Star:C.live+"14",Player:"transparent",Prospect:C.acc+"1a"};
+const ROLE_COLOR={IGL:C.live,AWP:C.awp,Entry:C.acc,Lurk:C.gold,Support:C.win};
 
 function MoralBar({morale}){
   const col=morale>=70?C.win:morale>=45?C.gold:C.red;
@@ -47,15 +47,15 @@ export function DynamicsView({season,myTeam}){
     <div style={{background:C.panel,border:`1px solid ${C.line}`,borderRadius:12,padding:"18px 20px",marginBottom:16}}>
       <div style={{display:"flex",gap:24,alignItems:"center",flexWrap:"wrap"}}>
         <div>
-          <div style={{fontFamily:mono,fontSize:9,color:C.faint,letterSpacing:1.5,marginBottom:5}}>TEAM MOOD</div>
+          <div style={{fontFamily:sans,fontSize:9.5,fontWeight:700,color:C.faint,letterSpacing:.7,marginBottom:5}}>TEAM MOOD</div>
           <div style={{fontFamily:mono,fontSize:18,fontWeight:800,color:moodColor,letterSpacing:1}}>{moodLabel}</div>
         </div>
         <div>
-          <div style={{fontFamily:mono,fontSize:9,color:C.faint,letterSpacing:1.5,marginBottom:5}}>AVG MORALE</div>
+          <div style={{fontFamily:sans,fontSize:9.5,fontWeight:700,color:C.faint,letterSpacing:.7,marginBottom:5}}>AVG MORALE</div>
           <MoralBar morale={avgMorale}/>
         </div>
         <div>
-          <div style={{fontFamily:mono,fontSize:9,color:C.faint,letterSpacing:1.5,marginBottom:5}}>CHEMISTRY</div>
+          <div style={{fontFamily:sans,fontSize:9.5,fontWeight:700,color:C.faint,letterSpacing:.7,marginBottom:5}}>CHEMISTRY</div>
           <div style={{fontFamily:mono,fontSize:15,fontWeight:700,color:chem>=70?C.win:chem>=55?C.gold:C.red}}>{chem}</div>
         </div>
         <div style={{marginLeft:"auto",fontFamily:mono,fontSize:10,color:C.faint,lineHeight:1.9}}>
@@ -65,14 +65,14 @@ export function DynamicsView({season,myTeam}){
         </div>
       </div>
       {unhappyLeaders.length>0&&(
-        <div style={{marginTop:12,background:"rgba(239,68,68,.08)",border:`1px solid ${C.red}44`,borderRadius:8,padding:"8px 12px",fontFamily:mono,fontSize:11,color:C.red}}>
+        <div style={{marginTop:12,background:C.red+"14",border:`1px solid ${C.red}44`,borderRadius:8,padding:"8px 12px",fontFamily:mono,fontSize:11,color:C.red}}>
           !! LOCKER ROOM UNREST — {unhappyLeaders.map(p=>p.name).join(", ")} {unhappyLeaders.length===1?"is":"are"} critically unhappy. A crisis event will trigger next week.
         </div>
       )}
     </div>
 
     {/* Squad hierarchy table */}
-    <div style={{fontFamily:mono,fontSize:9,color:C.faint,letterSpacing:1.5,marginBottom:8}}>SQUAD DYNAMICS</div>
+    <div style={{fontFamily:sans,fontSize:9.5,fontWeight:700,color:C.faint,letterSpacing:.7,marginBottom:8}}>SQUAD DYNAMICS</div>
     <div style={{display:"flex",flexDirection:"column",gap:5,marginBottom:20}}>
       {sorted.map(p=>{
         const tier=hierarchyTier(p,roster);

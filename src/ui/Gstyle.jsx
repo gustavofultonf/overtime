@@ -1,5 +1,5 @@
 import React from 'react';
-import { C, sans, mono } from './theme.js';
+import { C, sans, mono, HEAD_H } from './theme.js';
 
 export function Gstyle(){return <style>{`
 @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
@@ -39,6 +39,32 @@ a{color:${C.acc};}
 @keyframes risePop{0%{opacity:0;transform:translateY(14px) scale(.96);}60%{opacity:1;}100%{opacity:1;transform:translateY(0) scale(1);}}
 @keyframes sheen{0%{background-position:200% 0;}100%{background-position:-200% 0;}}
 @keyframes confettiFall{0%{transform:translateY(-8vh) rotate(0deg);opacity:1;}90%{opacity:1;}100%{transform:translateY(108vh) rotate(540deg);opacity:0;}}
+
+/* ── Data tables (Table primitive) ── */
+table.tbl{border-collapse:separate;border-spacing:0;width:100%;font-family:${sans};}
+.tbl thead th{position:sticky;top:0;z-index:2;background:${C.panel2};font-family:${sans};font-size:10.5px;font-weight:700;letter-spacing:.3px;color:${C.dim};padding:8px 10px;border-bottom:1px solid ${C.line};white-space:nowrap;user-select:none;}
+.tbl tbody td{padding:7px 10px;border-top:1px solid ${C.line};font-size:12.5px;color:${C.ink};vertical-align:middle;}
+.tbl tbody tr:first-child td{border-top:none;}
+.tbl tbody tr{transition:background .1s ease;}
+.tbl tbody tr:hover{background:${C.acc}0d;}
+.tbl tbody tr.hl{background:${C.acc}14;}
+.tbl tbody tr.hl td:first-child{box-shadow:inset 2px 0 0 ${C.acc};}
+
+/* ── App shell: sticky header · left nav rail · content ── */
+.shell{display:flex;align-items:flex-start;max-width:1440px;margin:0 auto;width:100%;}
+.rail{position:sticky;top:${HEAD_H}px;display:flex;flex-direction:column;gap:1px;padding:14px 10px 24px;width:176px;flex-shrink:0;min-height:calc(100vh - ${HEAD_H}px);border-right:1px solid ${C.line};}
+.railsec{font-family:${sans};font-size:9.5px;font-weight:800;letter-spacing:1.2px;color:${C.faint};text-transform:uppercase;padding:16px 12px 6px;}
+.rail>.railsec:first-child{padding-top:4px;}
+.railbtn{display:flex;align-items:center;gap:9px;width:100%;background:transparent;border:none;border-radius:9px;padding:8px 12px;color:${C.dim};font-size:13px;font-weight:600;text-align:left;letter-spacing:.1px;}
+.railbtn:not(:disabled):hover{background:${C.panel2};color:${C.ink};transform:none;}
+.railbtn.on{background:linear-gradient(100deg,${C.accDeep}33,${C.acc2}1f);color:${C.ink};font-weight:700;box-shadow:inset 2.5px 0 0 ${C.acc2};}
+@media(max-width:860px){
+  .shell{flex-direction:column;}
+  .rail{position:static;flex-direction:row;align-items:center;overflow-x:auto;width:100%;min-height:0;border-right:none;border-bottom:1px solid ${C.line};padding:6px 12px;}
+  .railsec{display:none;}
+  .railbtn{width:auto;white-space:nowrap;padding:7px 9px;}
+  .railbtn.on{box-shadow:inset 0 -2px 0 ${C.acc};}
+}
 
 /* Subtle hover-lift for non-button cards */
 .lift{transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease;}

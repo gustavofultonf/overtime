@@ -49,7 +49,7 @@ export function FacilitiesView({ season, myTeam, onUpgrade, onHireCoach, onFireC
               <span style={{ fontSize: 11, color: C.dim, flex: 1, minWidth: 160 }}>{c.desc}</span>
               <span style={{ fontFamily: mono, fontSize: 11, color: C.gold }}>${c.salary}K/mo</span>
               <button onClick={() => onHireCoach(c)} disabled={season.budget < c.salary}
-                style={{ background: season.budget >= c.salary ? C.win : "#333", color: season.budget >= c.salary ? "#0a0c10" : C.faint, border: "none", borderRadius: 6, padding: "6px 14px", fontFamily: mono, fontSize: 10, fontWeight: 700 }}>HIRE</button>
+                style={{ background: season.budget >= c.salary ? C.win : C.panel2, color: season.budget >= c.salary ? C.onAcc : C.faint, border: "none", borderRadius: 6, padding: "6px 14px", fontFamily: mono, fontSize: 10, fontWeight: 700 }}>HIRE</button>
             </div>
           ))}
         </div>
@@ -74,7 +74,7 @@ export function FacilitiesView({ season, myTeam, onUpgrade, onHireCoach, onFireC
           <div style={{ fontSize: 11, color: C.dim }}>Develop young talent for your roster or sell for profit. New prospects scouted every 6 weeks.</div>
         </div>
         <button onClick={onInitAcademy} disabled={season.budget < 100}
-          style={{ background: season.budget >= 100 ? C.acc : "#333", color: season.budget >= 100 ? "#0a0c10" : C.faint, border: "none", borderRadius: 7, padding: "9px 18px", fontWeight: 700, fontSize: 12 }}>
+          style={{ background: season.budget >= 100 ? C.acc : C.panel2, color: season.budget >= 100 ? C.onAcc : C.faint, border: "none", borderRadius: 7, padding: "9px 18px", fontWeight: 700, fontSize: 12 }}>
           $100K
         </button>
       </div>
@@ -98,9 +98,9 @@ export function FacilitiesView({ season, myTeam, onUpgrade, onHireCoach, onFireC
               <span style={{ fontFamily: mono, fontSize: 9, color: C.faint }}>{p.weeksInAcademy || 0}wk trained</span>
               <div style={{ marginLeft: "auto", display: "flex", gap: 5 }}>
                 <button onClick={() => onPromoteProspect(i)} disabled={rosterFull}
-                  style={{ background: rosterFull ? "#333" : C.win, color: rosterFull ? C.faint : "#0a0c10", border: "none", borderRadius: 5, padding: "5px 11px", fontFamily: mono, fontSize: 9, fontWeight: 700 }}>PROMOTE</button>
+                  style={{ background: rosterFull ? C.panel2 : C.win, color: rosterFull ? C.faint : C.onAcc, border: "none", borderRadius: 5, padding: "5px 11px", fontFamily: mono, fontSize: 9, fontWeight: 700 }}>PROMOTE</button>
                 <button onClick={() => onSellProspect(i)} disabled={(p.weeksInAcademy || 0) < 8}
-                  style={{ background: (p.weeksInAcademy || 0) >= 8 ? C.panel2 : "#222", color: (p.weeksInAcademy || 0) >= 8 ? C.gold : C.faint, border: `1px solid ${(p.weeksInAcademy || 0) >= 8 ? C.gold + "44" : C.line}`, borderRadius: 5, padding: "5px 11px", fontFamily: mono, fontSize: 9, fontWeight: 700 }}>
+                  style={{ background: (p.weeksInAcademy || 0) >= 8 ? C.panel2 : C.panel2, color: (p.weeksInAcademy || 0) >= 8 ? C.gold : C.faint, border: `1px solid ${(p.weeksInAcademy || 0) >= 8 ? C.gold + "44" : C.line}`, borderRadius: 5, padding: "5px 11px", fontFamily: mono, fontSize: 9, fontWeight: 700 }}>
                   {(p.weeksInAcademy || 0) >= 8 ? `SELL $${Math.round(playerOvr(p) * 0.8)}K` : `${8 - (p.weeksInAcademy || 0)}wk to sell`}
                 </button>
               </div>
@@ -137,7 +137,7 @@ export function FacilitiesView({ season, myTeam, onUpgrade, onHireCoach, onFireC
               <div style={{ marginTop: 6 }}>
                 <div style={{ fontSize: 11, color: C.dim, marginBottom: 6 }}>{tier === 0 ? "Unlock:" : "Upgrade:"} {fac.desc[tier]}</div>
                 <button onClick={() => onUpgrade(id)} disabled={!canAfford}
-                  style={{ width: "100%", background: canAfford ? C.acc : "#333", color: canAfford ? "#0a0c10" : C.faint, border: "none", borderRadius: 7, padding: "8px", fontWeight: 700, fontSize: 12 }}>
+                  style={{ width: "100%", background: canAfford ? C.acc : C.panel2, color: canAfford ? C.onAcc : C.faint, border: "none", borderRadius: 7, padding: "8px", fontWeight: 700, fontSize: 12 }}>
                   {canAfford ? `UPGRADE — ${nextCost}K` : `$${nextCost}K (need $${nextCost - season.budget}K more)`}
                 </button>
               </div>
