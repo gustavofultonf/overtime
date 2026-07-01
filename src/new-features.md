@@ -1,70 +1,33 @@
-Player Development System
+# Feature Backlog
 
-Advanced training programs with different focus areas (aim, game sense, utility skills)
-Mentorship system where senior players help junior ones
-Skill progression trees with branching paths
-Injury management and recovery systems
-Economic & Business Features
+## P1 — High impact / low effort (do first)
 
-Sponsorship negotiation mechanics with different contract types
-Brand value system that affects player salaries and team appeal
-Transfer market auctions with bidding wars
-Team ownership structures with board decisions
-Advanced Match Systems
+| Idea | Impact | Effort | Notes |
+|------|--------|--------|-------|
+| Post-match MVP highlight reel | Engagement | Low | Reuse `rounds[]` from MapResult; cycle top moments in overlay |
+| "Season in review" end-of-year page | Narrative | Medium | Aggregate eventHistory stats into career timeline |
+| Coach hire/fire from CalendarView sidebar | Depth | Low | Wire coach panel to toggle coach on/off, apply bonus |
+| Event-specific sticker rewards (Major) | Meta | Medium | Add to `season.stickers[]`; display in calendar phase |
 
-Tactical decision-making during matches (pause, timeout, strategy changes)
-Player form and momentum tracking that affects performance
-Weather and map-specific strategies
-Coaching AI that provides real-time advice
-Social & Community Features
-Rivalry System Enhancement
+## P2 — Medium impact / medium effort
 
-Personal rivalry tracking with detailed history
-Custom rival tournaments between teams
-Reputation system affecting how other teams treat you
-Clan/league systems for team cooperation
-Player Interaction
+| Idea | Impact | Effort | Notes |
+|------|--------|--------|-------|
+| Mentorship mechanic | Depth | Medium | Senior→junior stat gain bonus when on same roster; affects `bootcamp` activity |
+| Injury system | Risk/reward | High | Fatigue threshold triggers injury; recovery period via rest/vacation |
+| Rivalry tournament mode | Meta | High | Custom event with 2–4 teams, special bracket + bragging rights rewards |
+| Expanded sponsorship deals (types) | Replayability | Medium | Add "streaming milestone", "win streak" conditions beyond rank-based |
 
-Player reputation and relationship tracking
-Social media integration showing player activities
-Community events and challenges
-Trading cards or collectibles based on player performance
-Content Expansion
-Seasonal Events
+## P3 — Nice to have / aspirational
 
-Special tournaments with unique rules and rewards
-Regional competitions with different maps/teams
-Anniversary celebrations with special events
-Limited-time challenges and objectives
-Team Management
+- Heat maps per player map proficiency over time
+- Customizable dashboard with drag-and-drop widgets
+- Accessibility: colorblind modes, keyboard navigation
+- Difficulty presets (casual/hardcore) adjusting fatigue/economy RNG variance
+- Team culture/values system affecting chemistry gains (expands facilities section)
+- Player personality traits beyond `traits[]` (ambitious/loyal/team-player)
 
-Youth academy development with prospect tracking
-Coaching staff management with different expertise types
-Facility upgrades with cascading benefits
-Team culture and values system that affects performance
-Game Mechanics
-Advanced Analytics
-
-Detailed performance metrics for each player
-Heat maps showing where players are most effective
-Match prediction systems based on team composition
-Historical data analysis tools
-Random Events
-
-More complex scenario-based events with multiple choices
-Player personality traits affecting how they respond to situations
-Career milestone events (first major, top 10 finish, etc.)
-Team-wide consequences from individual player decisions
-UI/UX Improvements
-Data Visualization
-
-Interactive charts for team performance over time
-Comparison tools between teams/players
-Customizable dashboards
-Performance trend analysis
-Accessibility
-
-Difficulty settings with different focus areas
-Speed controls for match viewing
-Multiple language support
-Colorblind-friendly visualizations
+## Archive (no longer relevant or already implemented)
+Already covered: activities, academy, sponsorships, ranking system, Swiss tournaments, multi-year carryover.
+Not feasible for CS management sim: weather effects (indoor sport).
+Vague / needs spec first: "transfer auctions with bidding wars", "team ownership structures".

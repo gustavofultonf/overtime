@@ -14,6 +14,7 @@ export function CalendarView({ season, myTeam, onAdvance, onSim, onAcceptSponsor
   const [act, setAct] = useState(null);
   const [mapChoice, setMapChoice] = useState(MAPS[0]);
   const [scoutChoice, setScoutChoice] = useState(null);
+  const [playerChoice, setPlayerChoice] = useState(null);
 
   const roster = rosterOf(season.simState, myTeam);
   const avgFatigue = roster.length ? Math.round(roster.reduce((s, p) => s + p.fatigue, 0) / roster.length) : 0;
@@ -31,8 +32,8 @@ export function CalendarView({ season, myTeam, onAdvance, onSim, onAcceptSponsor
 
   function confirm() {
     if (!act) return;
-    const arg = act === "practice" ? mapChoice : act === "scout" ? scoutChoice : null;
-    if (act === "scout" && !arg) return;
+    const arg = act === "practice" ? mapChoice : act === "scout" ? scoutChoice : act === "individual" ? playerChoice : null;
+    if ((act === "scout" || act === "individual") && !arg) return;
     onAdvance(act, arg);
     setAct(null);
   }
@@ -242,9 +243,23 @@ export function CalendarView({ season, myTeam, onAdvance, onSim, onAcceptSponsor
               </div>
             )}
 
+            {act === "individual" && (
+              <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${C.line}` }}>
+                <div style={{ fontFamily: mono, fontSize: 10, color: C.faint, letterSpacing: 1, marginBottom: 8 }}>PLAYER TO COACH 1-ON-1</div>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  {roster.map(p => (
+                    <button key={p.name} onClick={() => setPlayerChoice(p.name)}
+                      style={{ background: playerChoice === p.name ? C.acc : C.panel2, color: playerChoice === p.name ? "#0a0c10" : C.ink, border: `1px solid ${playerChoice === p.name ? C.acc : C.line}`, borderRadius: 7, padding: "6px 12px", fontFamily: mono, fontSize: 11 }}>
+                      {p.name} <span style={{ fontSize: 9, color: playerChoice === p.name ? "#0a0c10aa" : C.faint }}>{playerOvr(p)}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div style={{ display: "flex", gap: 12, alignItems: "center", marginTop: 16, flexWrap: "wrap" }}>
-              <button onClick={confirm} disabled={!act || (act === "scout" && !scoutChoice)}
-                style={{ background: (!act || (act === "scout" && !scoutChoice)) ? C.line : C.acc, color: (!act || (act === "scout" && !scoutChoice)) ? C.faint : C.onAcc, border: "none", borderRadius: 9, padding: "12px 24px", fontWeight: 700, fontSize: 15, cursor: act ? "pointer" : "default" }}>
+              <button onClick={confirm} disabled={!act || (act === "scout" && !scoutChoice) || (act === "individual" && !playerChoice)}
+                style={{ background: (!act || (act === "scout" && !scoutChoice) || (act === "individual" && !playerChoice)) ? C.line : C.acc, color: (!act || (act === "scout" && !scoutChoice) || (act === "individual" && !playerChoice)) ? C.faint : C.onAcc, border: "none", borderRadius: 9, padding: "12px 24px", fontWeight: 700, fontSize: 15, cursor: act ? "pointer" : "default" }}>
                 Advance Week →
               </button>
               {!act && weeksUntil > 1 && (

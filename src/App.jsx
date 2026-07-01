@@ -185,6 +185,27 @@ export default function App() {
     }
   }
 
+  // Self-heals the double-wrapped matches[] shape a legacy snapshotTournament()
+  // could produce ([[f1,f2,...]] instead of [f1,f2,...]) — harmless for
+  // JSON.stringify/localStorage, but Firestore's setDoc() rejects nested arrays
+  // outright, and EventDetail.jsx's matches.map() was silently rendering garbage
+  // for it too. Shared by both the in-progress tournament save path and the
+  // completed-event history sanitizer below — a tournament loaded from an old
+  // save carrying the bad shape would otherwise keep re-saving it verbatim on
+  // every autosave, since only history (not the live in-progress event) used
+  // to get cleaned up.
+  function sanitizeSwissRecords(records) {
+    if (!records) return records;
+    const fixed = {};
+    let changed = false;
+    for (const [team, r] of Object.entries(records)) {
+      const flatMatches = Array.isArray(r.matches) ? r.matches.flat() : r.matches;
+      if (flatMatches !== r.matches) changed = true;
+      fixed[team] = { ...r, matches: flatMatches };
+    }
+    return changed ? fixed : records;
+  }
+
   // Strip non-serializable refs (rng functions, duplicate simState pointer) so an
   // in-progress tournament can round-trip through JSON without losing match progress.
   function tournamentForSave(tt) {
@@ -192,8 +213,8 @@ export default function App() {
     const { simState: _s, rng: _r, swiss, ...rest } = tt;
     let swissOut = null;
     if (swiss) {
-      const { simState: _s2, rng: _r2, ...swissRest } = swiss;
-      swissOut = swissRest;
+      const { simState: _s2, rng: _r2, records, ...swissRest } = swiss;
+      swissOut = { ...swissRest, records: sanitizeSwissRecords(records) };
     }
     return { ...rest, swiss: swissOut };
   }
@@ -204,23 +225,14 @@ export default function App() {
     return tt;
   }
 
-  // Older snapshotTournament() output double-wrapped each team's match log in an
-  // extra array ([[f1,f2,...]] instead of [f1,f2,...]) — harmless for
-  // JSON.stringify/localStorage, but Firestore's setDoc() rejects nested arrays
-  // outright, and EventDetail.jsx's matches.map() was silently rendering garbage
-  // for it too. Self-heals any save already carrying the bad shape.
+  // Self-heals any completed-event history entry still carrying the bad
+  // double-wrapped matches[] shape — see sanitizeSwissRecords above.
   function sanitizeHistory(history) {
     return (history || []).map((h) => {
       const records = h.tournament?.swiss?.records;
       if (!records) return h;
-      const fixed = {};
-      let changed = false;
-      for (const [team, r] of Object.entries(records)) {
-        const flatMatches = Array.isArray(r.matches) ? r.matches.flat() : r.matches;
-        if (flatMatches !== r.matches) changed = true;
-        fixed[team] = { ...r, matches: flatMatches };
-      }
-      if (!changed) return h;
+      const fixed = sanitizeSwissRecords(records);
+      if (fixed === records) return h;
       return { ...h, tournament: { ...h.tournament, swiss: { ...h.tournament.swiss, records: fixed } } };
     });
   }
@@ -412,6 +424,8 @@ export default function App() {
       debtWeeks: 0,
       debtWarnStage: 0,
       debtInterestRate: 0,
+      totalSalaryPaid: 0,
+      totalIncomeEarned: 0,
     };
     setSeason(s);
     setPhase("season");
@@ -606,17 +620,36 @@ export default function App() {
   }
 
   // Snapshot complete tournament state into a serializable shape for the season page.
+  // Strips the heavy round-by-round breakdown (economy/narrative per round —
+  // 16-30+ entries per map) out of a finished match result before it goes into
+  // permanent save history. EventDetail.jsx only ever reads winnerName/
+  // loserName/seriesScore for past events, never the round-by-round detail, so
+  // keeping it was pure dead weight — across a season/multi-year save it was
+  // the main driver of "overtime-saves" outgrowing the localStorage quota.
+  function slimFixtureRes(res) {
+    if (!res) return res;
+    return {
+      ...res,
+      maps: (res.maps || []).map(({ rounds, wPerf, lPerf, triggers, ...m }) => m),
+    };
+  }
+
   function snapshotTournament(state) {
     if (!state) return null;
     const swiss = state.swiss;
     let bracket = state.bracket || null;
     if (bracket) {
+      // Bug fix: this used to read state.qf/state.sf/state.final directly —
+      // those fields live on state.bracket, not state, so every saved bracket
+      // came out as {qf:undefined, sf:undefined, final:{}, bo5Final:false}
+      // regardless of what actually happened in the playoffs. Season history
+      // and EventDetail's bracket view were silently missing all of it.
       bracket = {
-        qf: state.qf?.map((f) => ({ ...f })),
-        sf: state.sf?.map((f) => ({ ...f })),
-        final: { ...state.final },
-        bo3: state.bo3,
-        bo5Final: !!state.bo5Final,
+        qf: bracket.qf?.map((f) => ({ ...f, res: slimFixtureRes(f.res) })),
+        sf: bracket.sf?.map((f) => ({ ...f, res: slimFixtureRes(f.res) })),
+        final: { ...bracket.final, res: slimFixtureRes(bracket.final?.res) },
+        bo3: bracket.bo3,
+        bo5Final: !!bracket.bo5Final,
       };
     }
     return {
@@ -628,14 +661,14 @@ export default function App() {
             w: 0,
             l: 0,
             buchholz: swiss.records[tm]?.buchholz || 0,
-            matches: (swiss.records[tm].matches || []).map((f) => ({ ...f })),
+            matches: (swiss.records[tm].matches || []).map((f) => ({ ...f, res: slimFixtureRes(f.res) })),
           };
         }
         return {
           teams: Array.from(swiss.teams),
           records,
           rounds: swiss.rounds.map((rd) => ({
-            fixtures: (rd.fixtures || []).map((f) => ({ ...f })),
+            fixtures: (rd.fixtures || []).map((f) => ({ ...f, res: slimFixtureRes(f.res) })),
           })),
           _advanceAt: swiss._advanceAt,
           _elimAt: swiss._elimAt,
@@ -798,6 +831,7 @@ export default function App() {
       label: ev.label || "Major",
       tournament: snapshotTournament(t),
       roster: playerStats.map((p) => p.name),
+      playerStats,
     });
 
     // Update world rankings
@@ -1007,6 +1041,11 @@ export default function App() {
       totalIncome = income.total,
       net = fin.net;
     season.budget += net;
+    // Real running total for the Season tab — previously reverse-parsed from
+    // weekLog display strings with a regex that never actually matched the
+    // log format, so it silently always read $0K. Tracked directly here instead.
+    season.totalSalaryPaid = (season.totalSalaryPaid || 0) + totalSalary;
+    season.totalIncomeEarned = (season.totalIncomeEarned || 0) + totalIncome;
     const dateStr = weekToLabel(week, season.year);
     const parts = [];
     if (income.content) parts.push(`content ${income.content}K`);
@@ -1345,6 +1384,7 @@ export default function App() {
           : 0;
         const totalSalary = roster.reduce((s, p) => s + p.salary, 0) + coachPay;
         season.budget -= totalSalary;
+        season.totalSalaryPaid = (season.totalSalaryPaid || 0) + totalSalary;
         enriched.push({
           week: entry.week + 1,
           activity: "salary",
@@ -1371,9 +1411,15 @@ export default function App() {
   function checkWeekTransition() {
     const ev = EVENTS.find((e) => e.week === season.week);
     if (ev) {
-      season.phase = "event";
+      // Phase only flips to "event" once a tournament actually starts for the
+      // user (Major auto-entry below, or acceptEntry() once they accept an
+      // A/B-tier invite). A/B-tier events instead show a pendingEntry decision
+      // card and must stay on "calendar" — setting phase="event" here
+      // unconditionally left it stuck in "event" with `t` still null for that
+      // branch, which renders nothing (the event-phase JSX bails on `!t`).
       season.currentEvent = ev;
       if (ev.tier === "Major") {
+        season.phase = "event";
         // Major qualification: top 8 = Legends (direct), 9-16 = Challengers (qualifier)
         const ranked = getRankedTeams(season.simState, myTeam);
         const myRank = ranked.findIndex((x) => x.team === myTeam) + 1;
@@ -1797,7 +1843,7 @@ export default function App() {
       );
     } else if (action === "sign" && p.team === "FA") {
       p.team = myTeam;
-      p.contract = 104;
+      p.contract = 52;
       season.budget -= marketValue(p);
       season.simState.chemistry[myTeam] = Math.max(
         40,
@@ -1846,7 +1892,7 @@ export default function App() {
       if (season.budget < buyout) return;
       season.budget -= buyout;
       p.team = myTeam;
-      p.contract = 104;
+      p.contract = 52;
       season.simState.chemistry[myTeam] = Math.max(
         40,
         (season.simState.chemistry[myTeam] || 70) - 5,
@@ -1957,7 +2003,7 @@ export default function App() {
     if (offeredSalary >= desired) {
       p.team = myTeam;
       p.salary = offeredSalary;
-      p.contract = 104;
+      p.contract = 52;
       season.budget -= mv;
       season.simState.chemistry[myTeam] = Math.max(
         40,
@@ -2017,7 +2063,7 @@ export default function App() {
       const oldTeam = p.team;
       season.budget -= offerAmount;
       p.team = myTeam;
-      p.contract = 104;
+      p.contract = 52;
       season.simState.chemistry[myTeam] = Math.max(
         40,
         (season.simState.chemistry[myTeam] || 70) - 5,
@@ -2098,7 +2144,7 @@ export default function App() {
       myP.team = oldTheirTeam;
       myP.contract = 104;
       theirP.team = myTeam;
-      theirP.contract = 104;
+      theirP.contract = 52;
       season.simState.chemistry[myTeam] = Math.max(
         40,
         (season.simState.chemistry[myTeam] || 70) - 5,
@@ -2320,6 +2366,8 @@ export default function App() {
     season.week = 1;
     season.eventNum = 1;
     season.history = [];
+    season.totalSalaryPaid = 0;
+    season.totalIncomeEarned = 0;
     season.weekLog = [
       {
         week: 0,
@@ -2396,6 +2444,47 @@ export default function App() {
     };
   }
 
+  // Direct pay adjustment for a current roster player — unlike negotiateContract
+  // (which only fires at renewal and can reject a lowball), this always succeeds
+  // but a cut below what the player's worth dings morale/chemistry proportionally
+  // to the size of the cut, so pay can't be slashed for free.
+  function adjustPay(playerName, newSalary) {
+    const p = season.simState.players.find(
+      (x) => x.name === playerName && x.team === myTeam,
+    );
+    if (!p) return { success: false, msg: "Player not on roster" };
+    const floor = Math.max(5, Math.round(desiredSalary(p) * 0.5));
+    if (newSalary < floor)
+      return {
+        success: false,
+        msg: `${p.name} won't accept below $${floor}K/mo.`,
+      };
+    const cut = p.salary - newSalary;
+    if (cut > 0) {
+      const pct = cut / p.salary;
+      p.morale = Math.max(5, (p.morale ?? 60) - Math.round(pct * 40));
+      season.simState.chemistry[myTeam] = Math.max(
+        40,
+        (season.simState.chemistry[myTeam] || 70) - Math.round(pct * 10),
+      );
+    } else if (cut < 0) {
+      const pct = -cut / p.salary;
+      p.morale = Math.min(100, (p.morale ?? 60) + Math.min(8, Math.round(pct * 20)));
+    }
+    p.salary = newSalary;
+    season.weekLog.push({
+      week: season.week,
+      activity: "news",
+      event: `[$] ${p.name}'s pay ${cut > 0 ? "cut" : cut < 0 ? "raised" : "set"} to $${newSalary}K/mo`,
+    });
+    setSeason({ ...season });
+    redraw();
+    return {
+      success: true,
+      msg: `${p.name}'s pay is now $${newSalary}K/mo.`,
+    };
+  }
+
   // Role assignment
   function changeRole(playerName, newRole) {
     const p = season.simState.players.find((x) => x.name === playerName);
@@ -2459,7 +2548,7 @@ export default function App() {
     if (roster.length >= 5) return;
     const p = season.academy.prospects[idx];
     p.team = myTeam;
-    p.contract = 156;
+    p.contract = 52;
     season.simState.players.push(p);
     season.simState.stats[p.name] = {
       maps: 0,
@@ -3116,6 +3205,7 @@ export default function App() {
               myTeam={myTeam}
               onNegotiate={negotiateContract}
               onChangeRole={changeRole}
+              onAdjustPay={adjustPay}
             />
           )}
           {tab === "market" && (
@@ -3265,6 +3355,7 @@ export default function App() {
             myTeam={myTeam}
             onNegotiate={negotiateContract}
             onChangeRole={changeRole}
+            onAdjustPay={adjustPay}
           />
         ) : tab === "stats" ? (
           <StatsView t={t} />

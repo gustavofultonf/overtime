@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { C, sans, mono } from './theme.js';
 import { FACILITIES, COACHES } from '../constants/events.js';
 import { playerOvr } from '../engine/player.js';
 import { rosterOf } from '../engine/state.js';
 import { Intro, SL, Pill, Stat } from './primitives.jsx';
+
+const COACHES_PER_PAGE = 5;
 
 // Scouting grade from a prospect's hidden potential ceiling.
 function prospectGrade(pot) {
@@ -17,6 +19,9 @@ function prospectGrade(pot) {
 export function FacilitiesView({ season, myTeam, onUpgrade, onHireCoach, onFireCoach, onInitAcademy, onPromoteProspect, onSellProspect }) {
   const coach = season.simState.coach;
   const rosterFull = myTeam ? rosterOf(season.simState, myTeam).length >= 5 : false;
+  const [coachPage, setCoachPage] = useState(0);
+  const coachPageCount = Math.ceil(COACHES.length / COACHES_PER_PAGE);
+  const coachesShown = COACHES.slice(coachPage * COACHES_PER_PAGE, (coachPage + 1) * COACHES_PER_PAGE);
   return (<div>
     <Intro text="Build out your organization: hire a coach, run an academy, and upgrade facilities for permanent passive bonuses." />
 
@@ -33,19 +38,30 @@ export function FacilitiesView({ season, myTeam, onUpgrade, onHireCoach, onFireC
         <button onClick={onFireCoach} style={{ background: "transparent", border: `1px solid ${C.red}`, color: C.red, borderRadius: 6, padding: "6px 12px", fontFamily: mono, fontSize: 10, fontWeight: 700 }}>FIRE</button>
       </div>
     ) : (
-      <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 22 }}>
-        {COACHES.map(c => (
-          <div key={c.name} style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 9, padding: "10px 14px", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-            <div style={{ minWidth: 74 }}>
-              <div style={{ fontWeight: 600, fontSize: 13 }}>{c.name}</div>
-              <span style={{ fontFamily: mono, fontSize: 9, color: C.live }}>{c.style}</span>
+      <div style={{ marginBottom: 22 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 8 }}>
+          {coachesShown.map(c => (
+            <div key={c.name} style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 9, padding: "10px 14px", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              <div style={{ minWidth: 74 }}>
+                <div style={{ fontWeight: 600, fontSize: 13 }}>{c.name}</div>
+                <span style={{ fontFamily: mono, fontSize: 9, color: C.live }}>{c.style}</span>
+              </div>
+              <span style={{ fontSize: 11, color: C.dim, flex: 1, minWidth: 160 }}>{c.desc}</span>
+              <span style={{ fontFamily: mono, fontSize: 11, color: C.gold }}>${c.salary}K/mo</span>
+              <button onClick={() => onHireCoach(c)} disabled={season.budget < c.salary}
+                style={{ background: season.budget >= c.salary ? C.win : "#333", color: season.budget >= c.salary ? "#0a0c10" : C.faint, border: "none", borderRadius: 6, padding: "6px 14px", fontFamily: mono, fontSize: 10, fontWeight: 700 }}>HIRE</button>
             </div>
-            <span style={{ fontSize: 11, color: C.dim, flex: 1, minWidth: 160 }}>{c.desc}</span>
-            <span style={{ fontFamily: mono, fontSize: 11, color: C.gold }}>${c.salary}K/mo</span>
-            <button onClick={() => onHireCoach(c)} disabled={season.budget < c.salary}
-              style={{ background: season.budget >= c.salary ? C.win : "#333", color: season.budget >= c.salary ? "#0a0c10" : C.faint, border: "none", borderRadius: 6, padding: "6px 14px", fontFamily: mono, fontSize: 10, fontWeight: 700 }}>HIRE</button>
+          ))}
+        </div>
+        {coachPageCount > 1 && (
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12 }}>
+            <button onClick={() => setCoachPage(p => Math.max(0, p - 1))} disabled={coachPage === 0}
+              style={{ background: "transparent", border: `1px solid ${C.line}`, color: coachPage === 0 ? C.faint : C.ink, borderRadius: 6, padding: "5px 12px", fontFamily: mono, fontSize: 10, fontWeight: 700 }}>‹ PREV</button>
+            <span style={{ fontFamily: mono, fontSize: 10, color: C.dim }}>Page {coachPage + 1} of {coachPageCount}</span>
+            <button onClick={() => setCoachPage(p => Math.min(coachPageCount - 1, p + 1))} disabled={coachPage === coachPageCount - 1}
+              style={{ background: "transparent", border: `1px solid ${C.line}`, color: coachPage === coachPageCount - 1 ? C.faint : C.ink, borderRadius: 6, padding: "5px 12px", fontFamily: mono, fontSize: 10, fontWeight: 700 }}>NEXT ›</button>
           </div>
-        ))}
+        )}
       </div>
     )}
 

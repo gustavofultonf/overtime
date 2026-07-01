@@ -172,24 +172,50 @@ function RoundHistory({ rounds, tA, tB, myTeam, mapDone }) {
   );
 }
 
-// ── Half-time & timeout decisions ────────────────────────────────────
+// ── Half-time decisions ──────────────────────────────────────────────
 // Each option trades a strength swing against a real cost: lingering tilt,
 // squad fatigue/morale, or a thinner economy going into the next stretch.
 // fx fields: str (flat) | gamble:[hi,lo,prob]; clearTilt; tilt; money;
-// lossStreak; fatigue (season); morale (season).
-const HALFTIME_OPTS = [
-  { label: 'Tactical Reset', color: '#a78bfa', pro: 'Fresh strats — steady +4 strength for the half', con: 'Safe, but no big surge', fx: { str: 4, clearTilt: true } },
-  { label: 'Fire Them Up', color: C.acc, pro: 'Adrenaline surge — big +7 strength', con: 'Players tire (+fatigue) and start on edge — losses snowball', fx: { str: 7, tilt: 2, fatigue: 6 } },
-  { label: 'Stay Calm', color: C.win, pro: 'Clears all tilt, steadies nerves (+morale), +2 strength', con: 'Only a small tactical bump', fx: { str: 2, clearTilt: true, morale: 4 } },
-  { label: 'Default Buys', color: C.gold, pro: 'Bank the economy — start the half flush for better buys', con: 'Passive opening — only +1 strength', fx: { str: 1, money: 4500, clearTilt: true } },
-  { label: 'All-In Gamble', color: C.red, pro: 'Swing for it — +10 strength if the read lands', con: 'Boom-or-bust (~55%) and dents squad morale either way', fx: { gamble: [10, -1, 0.55], morale: -4 } },
-];
-const TIMEOUT_OPTS = [
-  { label: 'Go Aggro', color: C.acc, pro: 'Force the tempo — +6 strength burst', con: 'Hard to sustain — players tire (+fatigue)', fx: { str: 6, fatigue: 5 } },
-  { label: 'Save & Reset Eco', color: C.gold, pro: 'Rebuild the bank — full buys next round, +3 strength', con: 'Likely concede this round — you save instead of buy', fx: { str: 3, money: 300, lossStreak: 0 } },
-  { label: 'Mindset Reset', color: C.win, pro: 'Wipe the tilt, clear heads — +5 strength', con: 'Burns your only timeout this map', fx: { str: 5, clearTilt: true } },
-  { label: 'Slow It Down', color: '#a78bfa', pro: 'Play for picks — +4 strength, steadier rounds', con: 'Cedes map control — the opponent dictates pace', fx: { str: 4 } },
-];
+// fatigue (season); morale (season).
+//
+// The options themselves — and their pro/con copy — react to the actual
+// state of the match at halftime (score margin, current tilt, banked money,
+// squad fatigue) instead of always showing the same generic numbers, so the
+// call you're making reads differently when you're down big vs. cruising.
+function halftimeOptions(ctx) {
+  const { tilt, money, scoreDiff, avgFatigue } = ctx;
+  const down = scoreDiff <= -3;
+  const tilted = tilt > 0;
+  const flushEco = money >= 3000;
+  const wired = avgFatigue >= 60;
+
+  const fireStr = down ? 8 : 7;
+  const calmStr = tilted ? 3 : 2;
+  const ecoGain = flushEco ? 1500 : 4500;
+
+  return [
+    { label: 'Tactical Reset', color: '#a78bfa',
+      pro: 'Fresh strats — steady +4 strength for the half',
+      con: 'Safe, but no big surge',
+      fx: { str: 4, clearTilt: true } },
+    { label: 'Fire Them Up', color: C.acc,
+      pro: `Adrenaline surge — big +${fireStr} strength${down ? ' (down big — worth the risk)' : ''}`,
+      con: `Players tire (+fatigue) and start on edge — losses snowball${wired ? ' (squad already gassed!)' : ''}`,
+      fx: { str: fireStr, tilt: 2, fatigue: 6 } },
+    { label: 'Stay Calm', color: C.win,
+      pro: tilted ? `Wipes ${tilt} tilt, steadies nerves (+morale), +${calmStr} strength` : `Steadies nerves (+morale), +${calmStr} strength — no tilt to shake off right now`,
+      con: 'Only a small tactical bump',
+      fx: { str: calmStr, clearTilt: true, morale: 4 } },
+    { label: 'Default Buys', color: C.gold,
+      pro: flushEco ? `Top off the bank (+$${ecoGain}) — already sitting on $${money}, so this mostly just clears heads` : `Rebuild the bank (+$${ecoGain}) — start the half flush for better buys`,
+      con: 'Passive opening — only +1 strength',
+      fx: { str: 1, money: money + ecoGain, clearTilt: true } },
+    { label: 'All-In Gamble', color: C.red,
+      pro: `Swing for it — +10 strength if the read lands${down ? ' (you need this)' : ''}`,
+      con: 'Boom-or-bust (~55%) and dents squad morale either way',
+      fx: { gamble: [10, -1, 0.55], morale: -4 } },
+  ];
+}
 function resolveStr(fx, rng) {
   if (fx.gamble) { const [hi, lo, prob] = fx.gamble; return rng() < prob ? hi : lo; }
   return fx.str || 0;
@@ -230,8 +256,6 @@ export function MatchReveal({ reveal, myTeam, t, onDone }) {
   // Interactive state
   const [halftimeDone, setHalftimeDone] = useState(false);
   const [showHalftime, setShowHalftime] = useState(false);
-  const [timeoutUsed, setTimeoutUsed] = useState(false);
-  const [showTimeout, setShowTimeout] = useState(false);
   const [lastInteraction, setLastInteraction] = useState(null);
   const [paused, setPaused] = useState(false);
 
@@ -256,8 +280,6 @@ export function MatchReveal({ reveal, myTeam, t, onDone }) {
   useEffect(() => {
     setHalftimeDone(false);
     setShowHalftime(false);
-    setTimeoutUsed(false);
-    setShowTimeout(false);
     setLastInteraction(null);
     setPaused(false);
     setTickerView('rounds');
@@ -265,7 +287,7 @@ export function MatchReveal({ reveal, myTeam, t, onDone }) {
 
   // Auto-advance rounds
   useEffect(() => {
-    if (done || !mp || paused || showHalftime || showTimeout) return;
+    if (done || !mp || paused || showHalftime) return;
     if (roundIdx >= mp.rounds.length) {
       const timer = setTimeout(() => {
         if (mapIdx < res.maps.length - 1) { setMapIdx(i => i + 1); setRoundIdx(0); }
@@ -275,27 +297,15 @@ export function MatchReveal({ reveal, myTeam, t, onDone }) {
     }
 
     // Halftime pause (round 12 done → round 13 about to start)
-    const visRds = mp.rounds.slice(0, roundIdx);
-    const lastRd = visRds[visRds.length - 1];
     if (roundIdx === 12 && !halftimeDone && t && isMyMap) {
       setShowHalftime(true);
       setPaused(true);
       return;
     }
 
-    // Timeout: detect 5 consecutive losses for myTeam
-    if (!timeoutUsed && t && isMyMap && roundIdx >= 5) {
-      const recent = visRds.slice(-5);
-      if (recent.length === 5 && recent.every(rd => rd.winner !== myTeamInMap)) {
-        setShowTimeout(true);
-        setPaused(true);
-        return;
-      }
-    }
-
     const timer = setTimeout(() => setRoundIdx(i => i + 1), speed);
     return () => clearTimeout(timer);
-  }, [roundIdx, mapIdx, done, mp, speed, paused, showHalftime, showTimeout, halftimeDone, timeoutUsed, t, isMyMap, myTeamInMap]);
+  }, [roundIdx, mapIdx, done, mp, speed, paused, showHalftime, halftimeDone, t, isMyMap, myTeamInMap]);
 
   // Toast: trigger on notable rounds
   useEffect(() => {
@@ -346,6 +356,21 @@ export function MatchReveal({ reveal, myTeam, t, onDone }) {
     });
   }
 
+  function squadAvgFatigue() {
+    if (!t) return 0;
+    const roster = t.simState.players.filter(p => p.team === myTeamInMap);
+    if (!roster.length) return 0;
+    return roster.reduce((s, p) => s + (p.fatigue || 0), 0) / roster.length;
+  }
+
+  function halftimeCtx(lastRd, isA) {
+    const tilt = isA ? lastRd.tiltA : lastRd.tiltB;
+    const money = isA ? lastRd.moneyA : lastRd.moneyB;
+    const myScore = isA ? lastRd.scoreA : lastRd.scoreB;
+    const oppScore = isA ? lastRd.scoreB : lastRd.scoreA;
+    return { tilt, money, scoreDiff: myScore - oppScore, avgFatigue: squadAvgFatigue() };
+  }
+
   function finalizeMapFrom(slice, fromRounds) {
     mp.rounds = mp.rounds.slice(0, slice).concat(fromRounds);
     const fA = mp.rounds[mp.rounds.length - 1]?.scoreA || 0;
@@ -360,8 +385,9 @@ export function MatchReveal({ reveal, myTeam, t, onDone }) {
     if (!t || !mp) return;
     const lastRd = mp.rounds[11]; // round 12 data (0-indexed)
     if (!lastRd) return;
-    const opt = HALFTIME_OPTS[choiceIdx]; const fx = opt.fx;
     const isA = tA === myTeamInMap;
+    const opts = halftimeOptions(halftimeCtx(lastRd, isA));
+    const opt = opts[choiceIdx]; const fx = opt.fx;
     const strVal = resolveStr(fx, t.rng);
     const myTilt = fx.clearTilt ? 0 : (fx.tilt ?? (isA ? lastRd.tiltA : lastRd.tiltB));
     const myMoney = fx.money ?? 800;
@@ -380,40 +406,15 @@ export function MatchReveal({ reveal, myTeam, t, onDone }) {
     const newHalf = resolveMap(t.simState, mp.map, tA, tB, { stage: 'group' }, t.rng, startFrom);
     finalizeMapFrom(12, newHalf.rounds);
 
-    setLastInteraction({ type: 'halftime', choice: opt.label, desc: effectDesc(fx, strVal) });
+    // Concrete payoff, not just the strength swing: how many of the second-half
+    // rounds you actually won, plus an explicit landed/missed call for gambles —
+    // so the choice reads as having actually worked or not, not just a number.
+    const won = newHalf.rounds.filter(r => r.winner === myTeamInMap).length;
+    const lost = newHalf.rounds.length - won;
+    const gambleOutcome = fx.gamble ? (strVal > 0 ? 'landed' : 'missed') : null;
+    setLastInteraction({ type: 'halftime', choice: opt.label, desc: effectDesc(fx, strVal), secondHalf: { won, lost }, gambleOutcome });
     setHalftimeDone(true);
     setShowHalftime(false);
-    setPaused(false);
-  }
-
-  // ── Interactive: timeout call ───────────────────────────────────────
-  function applyTimeoutChoice(choiceIdx) {
-    if (!t || !mp) return;
-    const lastRd = visibleRounds[visibleRounds.length - 1];
-    if (!lastRd) return;
-    const opt = TIMEOUT_OPTS[choiceIdx]; const fx = opt.fx;
-    const isA = tA === myTeamInMap;
-    const strVal = resolveStr(fx, t.rng);
-    const myTilt = fx.clearTilt ? 0 : (isA ? lastRd.tiltA : lastRd.tiltB);
-    const myMoney = fx.money ?? (isA ? lastRd.moneyA : lastRd.moneyB);
-    const myLS = fx.lossStreak ?? (isA ? lastRd.lossStreakA : lastRd.lossStreakB);
-
-    const startFrom = {
-      scoreA: lastRd.scoreA, scoreB: lastRd.scoreB,
-      moneyA: isA ? myMoney : lastRd.moneyA, moneyB: isA ? lastRd.moneyB : myMoney,
-      lossStreakA: isA ? myLS : lastRd.lossStreakA, lossStreakB: isA ? lastRd.lossStreakB : myLS,
-      tiltA: isA ? myTilt : lastRd.tiltA, tiltB: isA ? lastRd.tiltB : myTilt,
-      side: lastRd.side === 'first' ? 0 : 1, startRound: lastRd.round,
-      strModA: isA ? strVal : 0, strModB: isA ? 0 : strVal,
-    };
-
-    applySquadCost(fx);
-    const continuation = resolveMap(t.simState, mp.map, tA, tB, { stage: 'group' }, t.rng, startFrom);
-    finalizeMapFrom(roundIdx, continuation.rounds);
-
-    setLastInteraction({ type: 'timeout', choice: opt.label, desc: effectDesc(fx, strVal) });
-    setTimeoutUsed(true);
-    setShowTimeout(false);
     setPaused(false);
   }
 
@@ -434,6 +435,7 @@ export function MatchReveal({ reveal, myTeam, t, onDone }) {
     const myScore = myTeamInMap === tA ? scH.scoreA : scH.scoreB;
     const oppScore = myTeamInMap === tA ? scH.scoreB : scH.scoreA;
     const winning = myScore > oppScore;
+    const haOpts = halftimeOptions(halftimeCtx(mp.rounds[11], tA === myTeamInMap));
     return (
       <Overlay onClose={() => { setHalftimeDone(true); setShowHalftime(false); setPaused(false); }}
         title={`HALF-TIME · ${mp.map} · ${myScore}–${oppScore}`} wide>
@@ -453,40 +455,12 @@ export function MatchReveal({ reveal, myTeam, t, onDone }) {
           </div>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
-          {HALFTIME_OPTS.map((opt, i) => (
+          {haOpts.map((opt, i) => (
             <ChoiceButton key={i} opt={opt} onClick={() => applyHalftimeChoice(i)} />
           ))}
         </div>
         <div style={{ marginTop: 12, fontFamily: mono, fontSize: 10, color: C.faint, textAlign: 'center' }}>
           The second half is re-simulated with your call — pros and cons included.
-        </div>
-      </Overlay>
-    );
-  }
-
-  // ── Timeout panel ───────────────────────────────────────────────────
-  if (showTimeout) {
-    const scT = curScore;
-    const myScore = myTeamInMap === tA ? scT.scoreA : scT.scoreB;
-    const oppScore = myTeamInMap === tA ? scT.scoreB : scT.scoreA;
-    return (
-      <Overlay onClose={() => { setTimeoutUsed(true); setShowTimeout(false); setPaused(false); }}
-        title={`TIMEOUT · ${mp.map} · ${myScore}–${oppScore}`} wide>
-        <div style={{ background: 'rgba(220,50,50,0.10)', border: `1px solid ${C.red}`, borderRadius: 10, padding: '18px 20px', marginBottom: 16 }}>
-          <div style={{ fontFamily: mono, fontSize: 13, color: C.red, marginBottom: 6, letterSpacing: 1 }}>
-            TACTICAL TIMEOUT
-          </div>
-          <div style={{ color: C.ink, fontSize: 14, marginBottom: 2 }}>
-            5-round losing streak. The momentum has shifted — call it now.
-          </div>
-          <div style={{ fontFamily: mono, fontSize: 10, color: C.faint }}>
-            One timeout per map. Use it wisely.
-          </div>
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
-          {TIMEOUT_OPTS.map((opt, i) => (
-            <ChoiceButton key={i} opt={opt} onClick={() => applyTimeoutChoice(i)} />
-          ))}
         </div>
       </Overlay>
     );
@@ -599,16 +573,26 @@ export function MatchReveal({ reveal, myTeam, t, onDone }) {
         {/* Last interaction badge */}
         {lastInteraction && (
           <div style={{
-            background: lastInteraction.type === 'halftime' ? 'rgba(124,58,237,0.15)' : 'rgba(220,50,50,0.12)',
-            border: `1px solid ${lastInteraction.type === 'halftime' ? '#7c3aed' : C.red}`,
+            background: 'rgba(124,58,237,0.15)',
+            border: '1px solid #7c3aed',
             borderRadius: 6, padding: '6px 12px', marginBottom: 8,
             fontFamily: mono, fontSize: 10,
-            color: lastInteraction.type === 'halftime' ? '#a78bfa' : C.red,
+            color: '#a78bfa',
             display: 'flex', gap: 8, alignItems: 'center',
           }}>
-            <span style={{ fontWeight: 700 }}>{lastInteraction.type === 'halftime' ? 'HALF-TIME' : 'TIMEOUT'}</span>
+            <span style={{ fontWeight: 700 }}>HALF-TIME</span>
             <span style={{ color: C.dim }}>"{lastInteraction.choice}"</span>
             <span style={{ color: C.faint }}>— {lastInteraction.desc}</span>
+            {lastInteraction.gambleOutcome && (
+              <span style={{ color: lastInteraction.gambleOutcome === 'landed' ? C.win : C.red, fontWeight: 700 }}>
+                {lastInteraction.gambleOutcome === 'landed' ? 'GAMBLE LANDED' : 'GAMBLE MISSED'}
+              </span>
+            )}
+            {lastInteraction.secondHalf && (
+              <span style={{ color: lastInteraction.secondHalf.won >= lastInteraction.secondHalf.lost ? C.win : C.red, marginLeft: 'auto' }}>
+                2nd half: {lastInteraction.secondHalf.won}-{lastInteraction.secondHalf.lost}
+              </span>
+            )}
           </div>
         )}
 

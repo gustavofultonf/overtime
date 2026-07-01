@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { C, sans, mono } from './theme.js';
-import { playerOvr } from '../engine/player.js';
+import { playerOvr, desiredSalary } from '../engine/player.js';
 import { rosterOf, teamBase, momentumOf } from '../engine/state.js';
-import { Overlay, SL, Intro, Pill, TraitPill, Stat, MiniStat, FormArrow, TeamCrest } from './primitives.jsx';
+import { Overlay, SL, Intro, Pill, TraitPill, Stat, MiniStat, FormArrow, TeamCrest, MoodTag } from './primitives.jsx';
 import { contractLabel } from '../constants/events.js';
 
 // Per-player rating across events, from career.eventHistory (real recorded match
@@ -99,10 +99,12 @@ function Sparkline({history}){
   );
 }
 
-export function RosterView2({state,myTeam,onNegotiate,onChangeRole}){
+export function RosterView2({state,myTeam,onNegotiate,onChangeRole,onAdjustPay}){
   const [profilePlayer,setProfilePlayer]=useState(null);
   const [negotiating,setNegotiating]=useState(null);
   const [negoResult,setNegoResult]=useState(null);
+  const [adjustingPay,setAdjustingPay]=useState(null);
+  const [payResult,setPayResult]=useState(null);
   const r=rosterOf(state,myTeam);const base=teamBase(state,myTeam);const chem=state.chemistry[myTeam]||55;
   const roleColor={IGL:C.live,AWP:"#e05050",Entry:C.acc,Lurk:C.gold,Support:C.win};
   const mom=momentumOf(state,myTeam);
@@ -212,8 +214,12 @@ export function RosterView2({state,myTeam,onNegotiate,onChangeRole}){
               style={{background:C.panel2,color:C.ink,border:`1px solid ${C.line}`,borderRadius:5,padding:"4px 8px",fontFamily:mono,fontSize:10}}>
               {["IGL","AWP","Entry","Lurk","Support"].map(rl=><option key={rl} value={rl}>{rl}</option>)}
             </select>}
-            {p.contract<=16&&onNegotiate&&<button onClick={()=>setNegotiating({player:p,offer:p.salary})}
-              style={{marginLeft:"auto",background:C.gold,color:"#0a0c10",border:"none",borderRadius:5,padding:"4px 10px",fontFamily:mono,fontSize:9,fontWeight:700}}>RENEW CONTRACT</button>}
+            <div style={{marginLeft:"auto",display:"flex",gap:6}}>
+              {onAdjustPay&&<button onClick={()=>setAdjustingPay({player:p,offer:p.salary})}
+                style={{background:C.panel2,color:C.ink,border:`1px solid ${C.line}`,borderRadius:5,padding:"4px 10px",fontFamily:mono,fontSize:9,fontWeight:700}}>ADJUST PAY</button>}
+              {p.contract<=16&&onNegotiate&&<button onClick={()=>setNegotiating({player:p,offer:p.salary})}
+                style={{background:C.gold,color:"#0a0c10",border:"none",borderRadius:5,padding:"4px 10px",fontFamily:mono,fontSize:9,fontWeight:700}}>RENEW CONTRACT</button>}
+            </div>
           </div>
         ))}
       </div>
@@ -241,6 +247,40 @@ export function RosterView2({state,myTeam,onNegotiate,onChangeRole}){
             <button onClick={()=>{const res=onNegotiate(negotiating.player.name,negotiating.offer);setNegoResult(res);}} style={{width:"100%",background:C.acc,color:"#0a0c10",border:"none",borderRadius:8,padding:"12px",fontWeight:800,fontSize:14}}>SUBMIT OFFER</button>
           </div>
         )}
+      </Overlay>
+    )}
+    {/* Adjust pay modal */}
+    {adjustingPay&&(
+      <Overlay onClose={()=>{setAdjustingPay(null);setPayResult(null);}} title={`PAY · ${adjustingPay.player.name}`}>
+        {payResult?(
+          <div>
+            <div style={{fontSize:14,color:payResult.success?C.win:C.red,marginBottom:12}}>{payResult.msg}</div>
+            <button onClick={()=>{setAdjustingPay(null);setPayResult(null);}} style={{background:C.acc,color:"#0a0c10",border:"none",borderRadius:8,padding:"10px 20px",fontWeight:700}}>OK</button>
+          </div>
+        ):(()=>{
+          const desired=desiredSalary(adjustingPay.player);
+          const max=Math.max(desired*2.5,adjustingPay.player.salary*1.5,10);
+          return(
+          <div>
+            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
+              <span style={{fontFamily:mono,fontSize:12,color:C.dim}}>Current: ${adjustingPay.player.salary}K/mo</span>
+              <MoodTag offered={adjustingPay.offer} desired={desired}/>
+              <span style={{fontFamily:mono,fontSize:9,color:C.faint,marginLeft:"auto"}}>wants ~${desired}K/mo</span>
+            </div>
+            <div style={{fontFamily:mono,fontSize:11,color:C.dim,marginBottom:8}}>NEW PAY ($/month)</div>
+            <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:8}}>
+              <button onClick={()=>setAdjustingPay(a=>({...a,offer:Math.max(1,a.offer-2)}))} style={{background:C.panel,border:`1px solid ${C.line}`,borderRadius:5,padding:"6px 10px",fontFamily:mono,color:C.ink}}>−</button>
+              <input type="range" min={1} max={Math.round(max)} value={adjustingPay.offer}
+                onChange={e=>setAdjustingPay(a=>({...a,offer:+e.target.value}))}
+                style={{flex:1,accentColor:C.acc}}/>
+              <button onClick={()=>setAdjustingPay(a=>({...a,offer:a.offer+2}))} style={{background:C.panel,border:`1px solid ${C.line}`,borderRadius:5,padding:"6px 10px",fontFamily:mono,color:C.ink}}>+</button>
+              <span style={{fontFamily:mono,fontSize:16,fontWeight:700,color:C.gold,minWidth:60,textAlign:"center"}}>${adjustingPay.offer}K</span>
+            </div>
+            <div style={{fontFamily:mono,fontSize:9,color:C.faint,marginBottom:16}}>Cutting below what they want hurts morale and chemistry — bigger cuts hurt more. Raises don't cost you anything but the money.</div>
+            <button onClick={()=>{const res=onAdjustPay(adjustingPay.player.name,adjustingPay.offer);setPayResult(res);}} style={{width:"100%",background:C.acc,color:"#0a0c10",border:"none",borderRadius:8,padding:"12px",fontWeight:800,fontSize:14}}>CONFIRM</button>
+          </div>
+          );
+        })()}
       </Overlay>
     )}
     {profilePlayer&&<PlayerProfile p={profilePlayer} state={state} onClose={()=>setProfilePlayer(null)}/>}

@@ -57,13 +57,14 @@ export const EVENT_WEEKS = EVENTS.map(e=>e.week);
 export const SALARY_WEEKS = Array.from({length:SEASON_WEEKS},(_,i)=>i+1).filter(isSalaryWeek);
 
 export const ACTIVITIES = {
-  practice: {label:"practice",desc:"drill a specific map. +4 map proficiency, +8 fatigue.",fatigue:8,icon:"p"},
-  bootcamp: {label:"bootcamp",desc:"intensive training. All stats gain +1-2, +15 fatigue.",fatigue:15,icon:"t"},
-  scrim:    {label:"scrim",desc:"practice match vs AI team. Form +1-2, chemistry +2, +10 fatigue.",fatigue:10,icon:"s"},
-  vod:      {label:"vod review",desc:"study demos. Game sense & util +1, +5 fatigue.",fatigue:5,icon:"v"},
-  scout:    {label:"scout rival",desc:"study a specific team. Get intel on their map pool and roster.",fatigue:3,icon:"sc"},
-  rest:     {label:"rest",desc:"light week. -15 fatigue, no stat gains.",fatigue:-15,icon:"r"},
-  vacation: {label:"vacation",desc:"full reset. -30 fatigue, +3 chemistry, form decays.",fatigue:-30,icon:"vc"},
+  practice:   {label:"practice",desc:"drill a specific map. +4 map proficiency, +8 fatigue.",fatigue:8,icon:"p"},
+  bootcamp:   {label:"bootcamp",desc:"intensive training. All stats gain +1-2, +15 fatigue.",fatigue:15,icon:"t"},
+  scrim:      {label:"scrim",desc:"practice match vs AI team. Form +1-2, chemistry +2, +10 fatigue.",fatigue:10,icon:"s"},
+  vod:        {label:"vod review",desc:"study demos. Game sense & util +1, +5 fatigue.",fatigue:5,icon:"v"},
+  scout:      {label:"scout rival",desc:"study a specific team. Get intel on their map pool and roster.",fatigue:3,icon:"sc"},
+  individual: {label:"individual coaching",desc:"1-on-1 focus. Bigger gains for them (+12 fatigue); the rest of the roster gets a light week (-5 fatigue, no gains).",fatigue:12,icon:"1v1",requiresPlayer:true},
+  rest:       {label:"rest",desc:"light week. -15 fatigue, no stat gains.",fatigue:-15,icon:"r"},
+  vacation:   {label:"vacation",desc:"full reset. -30 fatigue, +3 chemistry, form decays.",fatigue:-30,icon:"vc"},
 };
 
 // Coaches are salaried staff paid monthly like players (figures are $K/month).
@@ -73,6 +74,11 @@ export const COACHES = [
   {name:"casle",style:"Analyst",desc:"+2 map proficiency per practice, better veto intel",salary:16,bonus:"analyst"},
   {name:"Robban",style:"Veteran",desc:"+1 mentality per bootcamp, reduced nerves penalty",salary:20,bonus:"veteran"},
   {name:"Floo",style:"Fitness",desc:"-5 extra fatigue per rest/vacation, +1 consistency per bootcamp",salary:12,bonus:"fitness"},
+  {name:"NBK",style:"IGL Mentor",desc:"+1 IGL rating per bootcamp, steadier shotcalling under pressure",salary:19,bonus:"igl"},
+  {name:"Traceurr",style:"Aim Coach",desc:"+1 aim per bootcamp, faster mechanical improvement",salary:15,bonus:"aim"},
+  {name:"seangares",style:"Utility Guru",desc:"+1 util per bootcamp, sharper nade lineups",salary:15,bonus:"util"},
+  {name:"Anders",style:"Recovery Specialist",desc:"-2 fatigue on every activity (not just rest), fewer burnout injuries",salary:17,bonus:"recovery"},
+  {name:"ISSAA",style:"Sports Psych",desc:"Faster morale recovery every week, steadier squad mood",salary:16,bonus:"psych"},
 ];
 
 // ── Contracts (time-based) ──────────────────────────────────────────

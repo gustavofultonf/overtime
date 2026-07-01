@@ -66,6 +66,13 @@ export function Intro({text}){return <p style={{color:C.dim,fontSize:13,lineHeig
 export function ColHead({children}){return <div style={{fontFamily:mono,fontSize:10,fontWeight:700,color:C.dim,letterSpacing:1.5,paddingBottom:7,borderBottom:`1px solid ${C.line}`,textTransform:"uppercase"}}>{children}</div>;}
 export function Pill({children,c}){return <span style={{fontFamily:mono,fontSize:9,fontWeight:600,color:c,background:c+"1a",border:`1px solid ${c}55`,borderRadius:5,padding:"1px 6px",letterSpacing:.4}}>{children}</span>;}
 export function TraitPill({t}){const m={clutch:["CLUTCH",C.win],boom:["BOOM/BUST",C.acc],leader:["LEADER",C.live]};const[l,c]=m[t]||[t,C.dim];return <Pill c={c}>{l}</Pill>;}
+export function MoodTag({offered,desired}){
+  const [label,col]=
+    offered>=desired        ? ["HAPPY",C.win] :
+    offered>=desired*0.85   ? ["NEUTRAL",C.gold] :
+                               ["DEMANDING",C.red];
+  return <span style={{fontFamily:mono,fontSize:8,color:col,border:`1px solid ${col}44`,borderRadius:3,padding:"1px 6px"}}>{label}</span>;
+}
 export function Stat({l,v}){return(<div style={{display:"flex",flexDirection:"column",alignItems:"center",minWidth:34}}><span style={{fontFamily:mono,fontSize:9,color:C.faint}}>{l}</span><span style={{fontFamily:mono,fontSize:13,fontWeight:700,color:v>=90?C.acc:C.ink}}>{v}</span></div>);}
 export function MiniStat({label,value,color,small}){return(<div style={{display:"flex",flexDirection:"column",alignItems:small?"flex-end":"flex-start"}}><span style={{fontFamily:mono,fontSize:9,color:C.faint,letterSpacing:1}}>{label}</span><span style={{fontFamily:mono,fontSize:small?13:22,fontWeight:700,color}}>{value}</span></div>);}
 export function FormArrow({form}){const col=form>3?C.win:form>0?"#8bc99a":form<-3?C.red:form<0?"#c98b8b":C.faint;const arrow=form>3?"▲▲":form>0?"▲":form<-3?"▼▼":form<0?"▼":"–";return(<div style={{display:"flex",flexDirection:"column",alignItems:"center",minWidth:38}}><span style={{fontFamily:mono,fontSize:9,color:C.faint}}>FORM</span><span style={{fontFamily:mono,fontSize:14,fontWeight:700,color:col}}>{arrow}</span><span style={{fontFamily:mono,fontSize:10,color:col}}>{form>0?"+":""}{form.toFixed(1)}</span></div>);}

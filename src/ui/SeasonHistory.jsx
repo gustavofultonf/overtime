@@ -1,208 +1,144 @@
 import React, { useState } from "react";
-import { C, sans, mono } from "./theme.js";
+import {
+  LineChart, Line, BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid,
+  Tooltip, ResponsiveContainer,
+} from "recharts";
+import { C, mono } from "./theme.js";
 import { getRankedTeams } from "../engine/player.js";
-import { Intro, Locked, MiniStat } from "./primitives.jsx";
+import { Intro, Locked, MiniStat, Overlay, SL } from "./primitives.jsx";
 import { EventDetail } from "./EventDetail.jsx";
 import { TrophyCase } from "./TrophyCase.jsx";
 
-function BudgetChart({ history }) {
-  if (!history || history.length < 1) return null;
-  const W = 420,
-    H = 90,
-    PL = 36,
-    PR = 14,
-    PT = 10,
-    PB = 22;
-  const plotW = W - PL - PR,
-    plotH = H - PT - PB;
-  const n = history.length;
-  const budgets = history.map((h) => h.budgetAfter);
-  const prizes = history.map((h) => h.prize);
-  const maxV = Math.max(...budgets, 200) * 1.1;
-  const minV = Math.min(...budgets, 0);
-  const range = maxV - minV || 200;
-  const xOf = (i) => (n === 1 ? PL + plotW / 2 : PL + (i / (n - 1)) * plotW);
-  const yOf = (v) => PT + (1 - (v - minV) / range) * plotH;
-  const maxPrize = Math.max(...prizes, 1);
-  const barW = Math.max(4, Math.min(18, (plotW / n) * 0.45));
-  const gridVals = [
-    0,
-    Math.round((maxV * 0.5) / 100) * 100,
-    Math.round(maxV / 100) * 100,
-  ].filter((v, i, a) => a.indexOf(v) === i);
+const ordinal = (n) => {
+  if (n == null) return "—";
+  if (n >= 90) return "DNP";
+  if (n === 1) return "1st";
+  const s = ["th", "st", "nd", "rd"], v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
+};
+const placeColor = (p) =>
+  p === 1 ? C.gold : p === 2 ? "#c9d2e0" : p <= 4 ? C.acc : p <= 8 ? C.live : p >= 90 ? C.faint : C.dim;
+const tierColor = (t) => (t === "Major" ? C.gold : t === "A" ? C.live : C.win);
+
+// Real series/match record for the season — walks every fixture actually
+// recorded against myTeam (swiss + bracket) rather than inferring it from
+// placements. Depends on season.history[].tournament carrying real swiss +
+// bracket data (see snapshotTournament() in App.jsx).
+function seasonRecord(history, myTeam) {
+  let wins = 0, losses = 0;
+  (history || []).forEach((h) => {
+    const t = h.tournament;
+    if (!t) return;
+    const swissMatches = t.swiss?.records?.[myTeam]?.matches || [];
+    const br = t.bracket;
+    const bracketMatches = br ? [...(br.qf || []), ...(br.sf || []), br.final].filter(Boolean) : [];
+    [...swissMatches, ...bracketMatches].forEach((fx) => {
+      if (!fx?.res) return;
+      if (fx.res.winnerName === myTeam) wins++;
+      else if (fx.res.loserName === myTeam) losses++;
+    });
+  });
+  return { wins, losses };
+}
+
+function ChartTip({ active, payload, label, rows }) {
+  if (!active || !payload || !payload.length) return null;
   return (
-    <svg
-      width="100%"
-      viewBox={`0 0 ${W} ${H}`}
-      style={{ display: "block", overflow: "visible" }}
-    >
-      {gridVals.map((v) => (
-        <g key={v}>
-          <line
-            x1={PL}
-            x2={W - PR}
-            y1={yOf(v)}
-            y2={yOf(v)}
-            stroke={C.line}
-            strokeWidth={0.5}
-            strokeDasharray="3,3"
-          />
-          <text
-            x={PL - 3}
-            y={yOf(v) + 3}
-            fontSize="8"
-            fill={C.faint}
-            textAnchor="end"
-          >
-            {v >= 1000 ? (v / 1000).toFixed(0) + "k" : v}
-          </text>
-        </g>
-      ))}
-      {minV < 0 && (
-        <line
-          x1={PL}
-          x2={W - PR}
-          y1={yOf(0)}
-          y2={yOf(0)}
-          stroke={C.red}
-          strokeWidth={1}
-          opacity={0.4}
-        />
-      )}
-      {history.map((h, i) => {
-        const barH = (h.prize / maxPrize) * plotH * 0.4;
+    <div style={{ background: C.panel2, border: `1px solid ${C.line}`, borderRadius: 6, padding: "7px 10px", fontFamily: mono, fontSize: 10 }}>
+      <div style={{ color: C.faint, marginBottom: 3 }}>Event #{label}</div>
+      {payload.map((p, i) => {
+        const row = rows?.[p.dataKey];
         return (
-          <rect
-            key={i}
-            x={xOf(i) - barW / 2}
-            y={PT + plotH - barH}
-            width={barW}
-            height={barH}
-            fill={C.win + "55"}
-            rx={2}
-          />
+          <div key={i} style={{ color: p.color, fontWeight: 700 }}>
+            {row?.label || p.dataKey}: {row?.fmt ? row.fmt(p.value) : p.value}
+          </div>
         );
       })}
-      {n > 1 && (
-        <polyline
-          points={history
-            .map((h, i) => `${xOf(i)},${yOf(h.budgetAfter)}`)
-            .join(" ")}
-          fill="none"
-          stroke={C.gold}
-          strokeWidth="2"
-          strokeLinejoin="round"
-          strokeLinecap="round"
-        />
-      )}
-      {history.map((h, i) => (
-        <g key={i}>
-          <circle
-            cx={xOf(i)}
-            cy={yOf(h.budgetAfter)}
-            r="3.5"
-            fill={h.budgetAfter > 0 ? C.gold : C.red}
-          />
-          <text
-            x={xOf(i)}
-            y={H - 4}
-            fontSize="8"
-            fill={C.faint}
-            textAnchor="middle"
-          >
-            #{h.eventNum}
-          </text>
-        </g>
-      ))}
-      <text x={PL} y={PT - 3} fontSize="8" fill={C.faint}>
-        budget ($K)
-      </text>
-      <text
-        x={W - PR}
-        y={H - 4}
-        fontSize="8"
-        fill={C.win + "aa"}
-        textAnchor="end"
-      >
-        prize
-      </text>
-    </svg>
+    </div>
   );
 }
 
-// Placement over events — inverted y-axis (1st place plots highest) so the line
-// reads as "up = better," matching how the budget chart reads "up = more money."
 function PlacementChart({ history }) {
   if (!history || history.length < 2) return null;
-  const W = 420,
-    H = 90,
-    PL = 26,
-    PR = 14,
-    PT = 10,
-    PB = 22;
-  const plotW = W - PL - PR,
-    plotH = H - PT - PB;
-  const n = history.length;
-  const places = history.map((h) => h.place);
-  const maxPlace = Math.max(...places, 8);
-  const xOf = (i) => (n === 1 ? PL + plotW / 2 : PL + (i / (n - 1)) * plotW);
-  // place=1 → top of plot, place=maxPlace → bottom
-  const yOf = (p) => PT + ((p - 1) / (maxPlace - 1 || 1)) * plotH;
-  const plCol = (p) =>
-    p === 1 ? C.gold : p === 2 ? "#c9d2e0" : p <= 4 ? C.acc : p <= 8 ? C.live : C.dim;
+  const data = history.map((h) => ({ eventNum: h.eventNum, place: h.place >= 90 ? null : h.place }));
+  const maxPlace = Math.max(...data.map((d) => d.place || 0), 8);
   return (
-    <svg
-      width="100%"
-      viewBox={`0 0 ${W} ${H}`}
-      style={{ display: "block", overflow: "visible" }}
-    >
-      {[1, Math.round((maxPlace + 1) / 2), maxPlace]
-        .filter((v, i, a) => a.indexOf(v) === i)
-        .map((v) => (
-          <g key={v}>
-            <line
-              x1={PL}
-              x2={W - PR}
-              y1={yOf(v)}
-              y2={yOf(v)}
-              stroke={C.line}
-              strokeWidth={0.5}
-              strokeDasharray="3,3"
-            />
-            <text x={PL - 3} y={yOf(v) + 3} fontSize="8" fill={C.faint} textAnchor="end">
-              {v === 1 ? "1st" : `T${v}`}
-            </text>
-          </g>
-        ))}
-      {n > 1 && (
-        <polyline
-          points={history.map((h, i) => `${xOf(i)},${yOf(h.place)}`).join(" ")}
-          fill="none"
-          stroke={C.acc}
-          strokeWidth="2"
-          strokeLinejoin="round"
-          strokeLinecap="round"
-        />
-      )}
-      {history.map((h, i) => (
-        <g key={i}>
-          <circle cx={xOf(i)} cy={yOf(h.place)} r="3.5" fill={plCol(h.place)} />
-          <text x={xOf(i)} y={H - 4} fontSize="8" fill={C.faint} textAnchor="middle">
-            #{h.eventNum}
-          </text>
-        </g>
-      ))}
-      <text x={PL} y={PT - 3} fontSize="8" fill={C.faint}>
-        placement
-      </text>
-    </svg>
+    <ResponsiveContainer width="100%" height={160}>
+      <LineChart data={data} margin={{ top: 6, right: 8, left: -8, bottom: 0 }}>
+        <CartesianGrid stroke={C.line} strokeDasharray="3 3" vertical={false} />
+        <XAxis dataKey="eventNum" tickFormatter={(v) => `#${v}`}
+          tick={{ fill: C.faint, fontSize: 9, fontFamily: mono }} axisLine={{ stroke: C.line }} tickLine={false} />
+        <YAxis domain={[1, maxPlace]} reversed allowDecimals={false}
+          tickFormatter={(v) => (v === 1 ? "1st" : `T${v}`)}
+          tick={{ fill: C.faint, fontSize: 9, fontFamily: mono }} axisLine={false} tickLine={false} width={34} />
+        <Tooltip cursor={{ stroke: C.acc, strokeWidth: 1 }}
+          content={<ChartTip rows={{ place: { label: "placement", fmt: ordinal } }} />} />
+        <Line type="monotone" dataKey="place" name="placement" stroke={C.acc} strokeWidth={2.5}
+          dot={{ r: 3.5, fill: C.acc, strokeWidth: 0 }} activeDot={{ r: 5 }} connectNulls />
+      </LineChart>
+    </ResponsiveContainer>
+  );
+}
+
+function PrizeChart({ history }) {
+  if (!history || history.length < 2) return null;
+  const data = history.map((h) => ({ eventNum: h.eventNum, prize: h.prize || 0, tier: h.tier || "Major" }));
+  return (
+    <ResponsiveContainer width="100%" height={160}>
+      <BarChart data={data} margin={{ top: 6, right: 8, left: -8, bottom: 0 }}>
+        <CartesianGrid stroke={C.line} strokeDasharray="3 3" vertical={false} />
+        <XAxis dataKey="eventNum" tickFormatter={(v) => `#${v}`}
+          tick={{ fill: C.faint, fontSize: 9, fontFamily: mono }} axisLine={{ stroke: C.line }} tickLine={false} />
+        <YAxis tickFormatter={(v) => `$${v}K`}
+          tick={{ fill: C.faint, fontSize: 9, fontFamily: mono }} axisLine={false} tickLine={false} width={46} />
+        <Tooltip cursor={{ fill: C.line, opacity: 0.2 }}
+          content={<ChartTip rows={{ prize: { label: "prize won", fmt: (v) => `$${v}K` } }} />} />
+        <Bar dataKey="prize" name="prize" radius={[4, 4, 0, 0]} maxBarSize={30}>
+          {data.map((d, i) => <Cell key={i} fill={tierColor(d.tier)} fillOpacity={0.8} />)}
+        </Bar>
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
+
+function EventRow({ h, myTeam, onOpen }) {
+  const won = h.champion === myTeam;
+  const tc = tierColor(h.tier);
+  return (
+    <button onClick={() => onOpen(h)} style={{
+      width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "11px 16px",
+      background: "transparent", border: "none", borderTop: `1px solid ${C.line}`,
+      cursor: "pointer", textAlign: "left",
+    }}>
+      <span style={{ fontFamily: mono, fontSize: 11, color: C.faint, minWidth: 24 }}>#{h.eventNum}</span>
+      <span style={{
+        fontFamily: mono, fontSize: 9, fontWeight: 700, color: tc, background: tc + "1a",
+        border: `1px solid ${tc}55`, borderRadius: 4, padding: "2px 7px", letterSpacing: 1,
+        minWidth: 46, textAlign: "center", flexShrink: 0,
+      }}>
+        {(h.tier || "Major").toUpperCase()}
+      </span>
+      <span style={{
+        flex: 1, minWidth: 0, fontSize: 13, fontWeight: won ? 700 : 500, color: won ? C.gold : C.ink,
+        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+      }}>
+        {h.label}{won ? " — champions" : ""}
+      </span>
+      <span style={{ fontFamily: mono, fontWeight: 700, fontSize: 13, color: placeColor(h.place), minWidth: 40, textAlign: "right" }}>
+        {ordinal(h.place)}
+      </span>
+      <span style={{ fontFamily: mono, fontSize: 11, color: h.prize > 0 ? C.win : C.faint, minWidth: 62, textAlign: "right" }}>
+        {h.prize > 0 ? `+$${h.prize}K` : "—"}
+      </span>
+      <span style={{ fontFamily: mono, fontSize: 9, color: C.faint }}>▸</span>
+    </button>
   );
 }
 
 export function SeasonHistory({ season, myTeam }) {
-  const hasPastTitles = (season.yearHistory || []).some(
-    (y) => (y.titles || []).length > 0,
-  );
+  const [selected, setSelected] = useState(null);
+  const hasPastTitles = (season.yearHistory || []).some((y) => (y.titles || []).length > 0);
+
   if (!season.history.length && !hasPastTitles)
     return <Locked text="Season history appears after your first event." />;
   if (!season.history.length)
@@ -212,266 +148,89 @@ export function SeasonHistory({ season, myTeam }) {
         <Locked text="This season's history appears after your first event." />
       </div>
     );
-  const plCol = (p) =>
-    p === 1
-      ? C.gold
-      : p === 2
-        ? "#c9d2e0"
-        : p <= 4
-          ? C.acc
-          : p <= 8
-            ? C.live
-            : C.dim;
 
-  const [expanded, setExpanded] = useState(null);
-
-  // Calculate total salary paid (from weekLog)
-  const totalSalaryPaid = season.weekLog
-    .filter((e) => e.activity === "salary")
-    .reduce((s, e) => {
-      const m = e.event?.match(/\$(\\d+)K/);
-      return s + (m ? parseInt(m[1]) : 0);
-    }, 0);
-
-  function toggleEvent(idx) {
-    if (expanded === idx) setExpanded(null);
-    else setExpanded(idx);
-  }
+  const record = seasonRecord(season.history, myTeam);
+  const winPct = record.wins + record.losses > 0 ? Math.round((record.wins / (record.wins + record.losses)) * 100) : null;
+  const titles = season.history.filter((h) => h.place === 1).length;
+  const bestPlace = Math.min(...season.history.map((h) => h.place));
+  const totalPrize = season.history.reduce((s, h) => s + (h.prize || 0), 0);
+  const ranked = getRankedTeams(season.simState, myTeam);
+  const myRank = ranked.findIndex((x) => x.team === myTeam) + 1;
+  const recordColor = winPct == null ? C.dim : winPct >= 55 ? C.win : winPct >= 45 ? C.gold : C.red;
 
   return (
     <div>
       <Intro text="Your results across all events this season." />
+
+      {/* ── Hero record strip ── */}
+      <div style={{
+        display: "flex", gap: 18, flexWrap: "wrap", marginBottom: 20, padding: "16px 20px",
+        background: C.panel, border: `1px solid ${C.line}`, borderRadius: 12,
+      }}>
+        <div style={{ display: "flex", flexDirection: "column" }}>
+          <span style={{ fontFamily: mono, fontSize: 10, color: C.faint, letterSpacing: 1 }}>SEASON RECORD</span>
+          <span style={{ fontFamily: mono, fontSize: 28, fontWeight: 800, color: recordColor }}>
+            {record.wins}–{record.losses}
+          </span>
+        </div>
+        <div style={{ width: 1, background: C.line }} />
+        <MiniStat label="MATCH WIN%" value={winPct == null ? "—" : `${winPct}%`} color={recordColor} />
+        <MiniStat label="EVENTS PLAYED" value={season.history.length} color={C.ink} />
+        <MiniStat label="TITLES" value={titles} color={titles > 0 ? C.gold : C.dim} />
+        <MiniStat label="BEST FINISH" value={ordinal(bestPlace)} color={placeColor(bestPlace)} />
+        <MiniStat label="PRIZE WON" value={`$${totalPrize}K`} color={C.win} />
+        <MiniStat label="SALARY PAID" value={`$${season.totalSalaryPaid || 0}K`} color={C.red} />
+        <MiniStat label="WORLD RANK" value={myRank ? `#${myRank}` : "—"} color={C.live} />
+      </div>
+
       <TrophyCase season={season} myTeam={myTeam} />
-      <div
-        style={{
-          background: C.panel2,
-          border: `1px solid ${C.line}`,
-          borderRadius: 8,
-          padding: "10px 14px",
-          marginBottom: 12,
-          display: "flex",
-          gap: 16,
-          flexWrap: "wrap",
-        }}
-      >
-        <MiniStat
-          label="TOTAL SALARY PAID"
-          value={`${totalSalaryPaid}K`}
-          color={C.red}
-        />
-        <MiniStat
-          label="TOTAL PRIZE WON"
-          value={`$${season.history.reduce((s, h) => s + h.prize, 0)}K`}
-          color={C.win}
-        />
-        <MiniStat
-          label="CURRENT BUDGET"
-          value={`$${season.budget}K`}
-          color={season.budget > 0 ? C.gold : C.red}
-        />
-      </div>
-      {season.history.length >= 2 && (
-        <div
-          style={{
-            background: C.panel,
-            border: `1px solid ${C.line}`,
-            borderRadius: 10,
-            padding: "12px 16px",
-            marginBottom: 12,
-          }}
-        >
-          <div
-            style={{
-              fontFamily: mono,
-              fontSize: 10,
-              color: C.faint,
-              letterSpacing: 1,
-              marginBottom: 8,
-            }}
-          >
-            BUDGET TREND
-          </div>
-          <BudgetChart history={season.history} />
-          <div
-            style={{
-              display: "flex",
-              gap: 14,
-              marginTop: 6,
-              fontFamily: mono,
-              fontSize: 9,
-              color: C.faint,
-            }}
-          >
-            <span style={{ color: C.gold }}>— budget after event</span>
-            <span style={{ color: C.win }}>prize earned</span>
-          </div>
-        </div>
-      )}
-      {season.history.length >= 2 && (
-        <div
-          style={{
-            background: C.panel,
-            border: `1px solid ${C.line}`,
-            borderRadius: 10,
-            padding: "12px 16px",
-            marginBottom: 12,
-          }}
-        >
-          <div
-            style={{
-              fontFamily: mono,
-              fontSize: 10,
-              color: C.faint,
-              letterSpacing: 1,
-              marginBottom: 8,
-            }}
-          >
-            PLACEMENT TREND
-          </div>
-          <PlacementChart history={season.history} />
-        </div>
-      )}
-      <div
-        style={{ fontFamily: mono, fontSize: 9, color: C.dim, marginBottom: 6 }}
-      >
-        * click any row to view match-by-match results
-      </div>
-      <div
-        style={{
-          background: C.panel,
-          border: `1px solid ${C.line}`,
-          borderRadius: 10,
-          overflow: "hidden",
-        }}
-      >
-        {/* Column header */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "40px 60px 1fr 80px 60px 70px 36px",
-            gap: 6,
-            padding: "8px 14px",
-            fontFamily: mono,
-            fontSize: 10,
-            color: C.faint,
-            letterSpacing: 1,
-          }}
-        >
-          <span>#</span>
-          <span>TYPE</span>
-          <span style={{ flex: 1 }}>CHAMPION</span>
-          <span style={{ textAlign: "right" }}>PLACE</span>
-          <span style={{ textAlign: "right" }}>PRIZE</span>
-          <span style={{ textAlign: "right" }}>BUDGET</span>
-          <span></span>
-        </div>
 
-        {/* Event rows */}
-        {season.history.map((h, i) => {
-          const tierC =
-            h.tier === "Major" ? C.gold : h.tier === "A" ? C.live : C.dim;
-          return (
-            <div key={i}>
-              <button
-                onClick={() => toggleEvent(i)}
-                style={{
-                  width: "100%",
-                  background: "transparent",
-                  border: "none",
-                  display: "grid",
-                  gridTemplateColumns: "40px 60px 1fr 80px 60px 70px 36px",
-                  gap: 6,
-                  padding: "9px 14px",
-                  alignItems: "center",
-                  cursor: h.tournament ? "pointer" : "default",
-                }}
-              >
-                <span
-                  style={{ fontFamily: mono, fontWeight: 700, color: C.acc }}
-                >
-                  #{h.eventNum}
+      {/* ── Charts ── */}
+      {season.history.length >= 2 && (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(300px,1fr))", gap: 16, marginBottom: 20 }}>
+          <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 12, padding: "14px 18px" }}>
+            <SL n="PLC" t="Placement trend" />
+            <PlacementChart history={season.history} />
+          </div>
+          <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 12, padding: "14px 18px" }}>
+            <SL n="PRZ" t="Prize per event" />
+            <PrizeChart history={season.history} />
+            <div style={{ display: "flex", gap: 14, marginTop: 4, fontFamily: mono, fontSize: 9, color: C.faint }}>
+              {["Major", "A", "B"].map((t) => (
+                <span key={t} style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+                  <span style={{ width: 8, height: 8, borderRadius: 2, background: tierColor(t) }} />
+                  {t === "Major" ? "Major" : `${t}-Tier`}
                 </span>
-                <span style={{ fontFamily: mono, fontSize: 9, color: tierC }}>
-                  {h.tier || "Major"}
-                </span>
-                <span
-                  style={{
-                    flex: 1,
-                    fontSize: 12,
-                    color: h.champion === myTeam ? C.gold : C.ink,
-                  }}
-                >
-                  {h.champion}
-                  {h.champion === myTeam ? " — champions" : ""}
-                </span>
-                <span
-                  style={{
-                    fontFamily: mono,
-                    fontWeight: 700,
-                    fontSize: 13,
-                    textAlign: "right",
-                    color: plCol(h.place),
-                  }}
-                >
-                  {h.place === 1
-                    ? "1st"
-                    : h.place === 2
-                      ? "2nd"
-                      : h.place <= 4
-                        ? "T" + h.place
-                        : "T" + h.place}
-                </span>
-                <span
-                  style={{
-                    fontFamily: mono,
-                    fontSize: 11,
-                    textAlign: "right",
-                    color: C.win,
-                  }}
-                >
-                  +{h.prize}
-                </span>
-                <span
-                  style={{
-                    fontFamily: mono,
-                    fontSize: 11,
-                    textAlign: "right",
-                    color: h.budgetAfter > 0 ? C.gold : C.red,
-                  }}
-                >
-                  {h.budgetAfter}
-                </span>
-                <span
-                  style={{
-                    textAlign: "center",
-                    fontFamily: mono,
-                    fontSize: 9,
-                    color: C.faint,
-                  }}
-                >
-                  {expanded === i ? "▾" : "▸"}
-                </span>
-              </button>
+              ))}
             </div>
-          );
-        })}
-
-        {/* Event detail panel (shows when row is clicked) */}
-        {expanded != null && season.history[expanded] && (
-          <div
-            style={{
-              marginTop: 12,
-              background: C.panel,
-              border: `1px solid ${C.line}`,
-              borderRadius: 8,
-              padding: "14px 16px",
-              overflowX: "auto",
-            }}
-          >
-            <EventDetail event={season.history[expanded]} myTeam={myTeam} />
           </div>
-        )}
+        </div>
+      )}
+
+      {/* ── Event list ── */}
+      <SL n="EVT" t="Event results" />
+      <div style={{ fontFamily: mono, fontSize: 9, color: C.dim, marginBottom: 6 }}>
+        * click any event to view swiss standings, bracket and player stats
       </div>
+      <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 10, overflow: "hidden", marginBottom: 20 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 16px", fontFamily: mono, fontSize: 10, color: C.faint, letterSpacing: 1 }}>
+          <span style={{ minWidth: 24 }}>#</span>
+          <span style={{ minWidth: 46 }}>TIER</span>
+          <span style={{ flex: 1 }}>EVENT</span>
+          <span style={{ minWidth: 40, textAlign: "right" }}>PLACE</span>
+          <span style={{ minWidth: 62, textAlign: "right" }}>PRIZE</span>
+          <span style={{ width: 10 }} />
+        </div>
+        {season.history.map((h, i) => (
+          <EventRow key={i} h={h} myTeam={myTeam} onOpen={setSelected} />
+        ))}
+      </div>
+
+      {selected && (
+        <Overlay onClose={() => setSelected(null)} title={`${selected.label} · ${selected.tier || "Major"} · ${ordinal(selected.place)}`} wide>
+          <EventDetail event={selected} myTeam={myTeam} />
+        </Overlay>
+      )}
     </div>
   );
 }

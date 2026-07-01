@@ -55,7 +55,7 @@ export function RankingsView({ state, myTeam, week = 1, year = 2026 }) {
 
       {/* Rankings table */}
       <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 10, overflow: 'hidden' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '28px 38px 1fr 80px 1fr', gap: 8, padding: '8px 14px', fontFamily: mono, fontSize: 10, color: C.faint, letterSpacing: 1 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '28px 38px minmax(0,1fr) 80px 90px', gap: 8, padding: '8px 14px', fontFamily: mono, fontSize: 10, color: C.faint, letterSpacing: 1 }}>
           <span>#</span><span/><span>TEAM</span><span style={{ textAlign: 'right' }}>RATING</span><span/>
         </div>
         {ranked.map((r, i) => {
@@ -70,13 +70,13 @@ export function RankingsView({ state, myTeam, week = 1, year = 2026 }) {
           const delta = prevRank != null ? prevRank - (i + 1) : null;
 
           return (
-            <div key={r.team} style={{ display: 'grid', gridTemplateColumns: '28px 38px 1fr 80px 1fr', gap: 8, padding: '9px 14px', alignItems: 'center', borderTop: `1px solid ${C.line}`, borderLeft: `3px solid ${me ? C.acc : col}`, background: me ? 'rgba(155,140,255,.06)' : 'transparent' }}>
+            <div key={r.team} style={{ display: 'grid', gridTemplateColumns: '28px 38px minmax(0,1fr) 80px 90px', gap: 8, padding: '9px 14px', alignItems: 'center', borderTop: `1px solid ${C.line}`, borderLeft: `3px solid ${me ? C.acc : col}`, background: me ? 'rgba(155,140,255,.06)' : 'transparent' }}>
               <span style={{ fontFamily: mono, fontWeight: 700, fontSize: 15, color: col }}>{i + 1}</span>
               <RankDelta delta={delta} />
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }} onClick={() => handleTeamClick(r.team)}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, cursor: 'pointer' }} onClick={() => handleTeamClick(r.team)}>
                 <TeamCrest name={r.team} size={24} />
-                <span style={{ fontWeight: me ? 700 : 600, fontSize: 13, color: me ? C.acc : C.ink }}>{r.team}{me ? ' you' : ''}</span>
-                {badge && <span style={{ fontFamily: mono, fontSize: 9, color: badge.color, background: badge.color + '22', padding: '1px 4px', borderRadius: 3 }}>{badge.label}</span>}
+                <span style={{ fontWeight: me ? 700 : 600, fontSize: 13, color: me ? C.acc : C.ink, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{r.team}{me ? ' you' : ''}</span>
+                {badge && <span style={{ fontFamily: mono, fontSize: 9, color: badge.color, background: badge.color + '22', padding: '1px 4px', borderRadius: 3, flexShrink: 0 }}>{badge.label}</span>}
               </div>
               <span style={{ fontFamily: mono, fontWeight: 700, fontSize: 13, textAlign: 'right', color: col }}>{Math.round(r.pts).toLocaleString()}</span>
               <div style={{ height: 6, background: C.line, borderRadius: 3, overflow: 'hidden' }}>

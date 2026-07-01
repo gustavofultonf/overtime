@@ -95,6 +95,19 @@ export function initState(eras){
     const place=priorAPlaces[Math.min(i,priorAPlaces.length-1)];
     prizeLog.push({team:t,amount:prizeForPlace(priorATable,place),week:30,year:2025,prizePool:200});
   });
+  // Seed a matching fictional matchLog (placement-order ladder: each team "beat" the
+  // next-lowest-placed team) so bountyCollected/opponentNetwork — which are derived
+  // from head-to-head wins, not prize money — aren't hard-zero for AI teams that
+  // haven't played a real event yet this season. Without this, an idle proven team
+  // (zero in 2 of the 4 seedValue components) could be numerically overtaken by a
+  // brand-new team's very first small win, since that team's fresh matchLog entries
+  // give it nonzero bountyCollected/opponentNetwork while the proven team has none.
+  function seedLadder(places,week,prizePool){
+    const order=AI_TEAMS.map((t,i)=>({t,p:places[Math.min(i,places.length-1)]})).sort((a,b)=>a.p-b.p).map(x=>x.t);
+    for(let i=0;i<order.length-1;i++) matchLog.push({winner:order[i],loser:order[i+1],week,year:2025,prizePool});
+  }
+  seedLadder(priorPlaces,41,500);
+  seedLadder(priorAPlaces,30,200);
   computeValveRankings({rankings,matchLog,prizeLog,valveBounty:{}},1,2026);
 
   // If current era is not active, AI teams have no players — auto-assign from FA pool
@@ -130,7 +143,7 @@ export function initState(eras){
   const mapPool=[...MAPS];
   const activePool={};
 
-  return {players,chemistry,momentum,stats,career,mapProf,rivalries,rankings,matchLog,prizeLog,valveBounty:{},coach:null,pendingBonus:null,tactics,mapPool,activePool};
+  return {players,chemistry,momentum,stats,career,mapProf,rivalries,rankings,matchLog,prizeLog,valveBounty:{},coach:null,pendingBonus:null,tactics,mapPool,activePool,teamMapStats:{}};
 }
 
 export function rosterOf(state,team){return state.players.filter(p=>p.team===team);}
@@ -144,7 +157,14 @@ export function teamBase(state,team){
   const mean=k=>r.reduce((s,p)=>s+p[k],0)/r.length;
   const igl=r.reduce((b,p)=>p.igl>b.igl?p:b,r[0]);
   const core=0.45*mean("aim")+0.25*mean("gameSense")+0.20*mean("util")+0.10*igl.igl;
-  const formAdj=mean("form");
+  // Form and momentum both rise together on a win streak (driftForm bumps both
+  // at once), so adding form at full weight on top of momentum was double-
+  // counting the same "hot streak" signal — a big driver of ratings running
+  // well past the nominal 99 stat ceiling and producing lopsided win odds
+  // even against a genuinely weaker opponent. Halved so form still matters as
+  // a real tiebreaker without compounding with momentum into an extra ~10+
+  // points on top of the roster's actual stat-driven strength.
+  const formAdj=mean("form")*0.5;
   const chem=(state.chemistry[team]||70)/100;
   // fatigue penalty: avg fatigue over 50 reduces effective rating
   const avgFatigue=mean("fatigue");

@@ -355,7 +355,7 @@ function SwissStandings({ swiss, myTeam }) {
   );
 }
 
-function PlayoffBracket({ bracket }) {
+function PlayoffBracket({ bracket, myTeam }) {
   if (!bracket) return null;
   const rounds = bracket.qf
     ? ["qf", "sf", "final"]
@@ -549,8 +549,12 @@ function PlayerStats({ roster, myTeam, statsMap }) {
 
 export function EventDetail({ event, myTeam }) {
   if (!event) return null;
-  const swiss = event.swiss;
-  let bracket = event.bracket || event._bracketData;
+  // Match/bracket data lives under event.tournament (see snapshotTournament()
+  // in App.jsx) — event itself is the season.history row (place/prize/etc).
+  // This used to read event.swiss/event.bracket directly, which are never set
+  // on that row, so this panel silently rendered nothing for every event.
+  const swiss = event.tournament?.swiss;
+  let bracket = event.tournament?.bracket || event.tournament?._bracketData;
   if (bracket && typeof bracket === "string") {
     try {
       bracket = JSON.parse(bracket);
@@ -580,7 +584,7 @@ export function EventDetail({ event, myTeam }) {
       {/* Playoff Bracket results */}
       {(bracket || event.champion) && (
         <div>
-          <PlayoffBracket bracket={bracket} />
+          <PlayoffBracket bracket={bracket} myTeam={myTeam} />
         </div>
       )}
 

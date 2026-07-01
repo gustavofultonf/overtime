@@ -269,28 +269,31 @@ export function MapProfView({ state, myTeam, onSetActivePool }) {
     if (onSetActivePool) onSetActivePool(next);
   }
 
-  // Aggregate team map stats from player careers
+  // Team record per map comes from teamMapStats (tracked per-team in
+  // match.js), not summed from player careers — a player's career mapStats
+  // follow them across every team they've ever played for, so aggregating
+  // those over the current roster blended in maps a signed/traded player
+  // played before joining this org, wildly inflating the W-L shown here.
+  // Rating/best-player are still drawn from the roster's career data since
+  // those are about individual current-squad quality, not the org's record.
   const teamMapData = {};
   pool.forEach((map) => {
-    let totalMaps = 0,
-      totalWins = 0,
-      ratingSum = 0,
+    let ratingSum = 0,
       ratingCount = 0;
     let bestPlayer = null;
     roster.forEach((p) => {
       const ms = state.career?.[p.name]?.mapStats?.[map];
       if (!ms || !ms.maps) return;
-      totalMaps += ms.maps;
-      totalWins += ms.wins;
       ratingSum += ms.avgRating * ms.maps;
       ratingCount += ms.maps;
       if (!bestPlayer || ms.avgRating > bestPlayer.rating) {
         bestPlayer = { name: p.name, rating: ms.avgRating, maps: ms.maps };
       }
     });
+    const teamRec = state.teamMapStats?.[myTeam]?.[map];
     teamMapData[map] = {
-      maps: totalMaps,
-      wins: totalWins,
+      maps: teamRec?.maps || 0,
+      wins: teamRec?.wins || 0,
       avgRating: ratingCount > 0 ? ratingSum / ratingCount : 0,
       bestPlayer: bestPlayer && bestPlayer.maps >= 2 ? bestPlayer : null,
     };

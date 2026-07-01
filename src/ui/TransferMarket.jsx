@@ -3,7 +3,7 @@ import { C, mono } from './theme.js';
 import { playerOvr, marketValue, getRankedTeams, buyoutPrice, transferPremium } from '../engine/player.js';
 import { rosterOf, freeAgents } from '../engine/state.js';
 import { AI_TEAMS } from '../constants/data.js';
-import { SL, Pill, Stat } from './primitives.jsx';
+import { SL, Pill, Stat, MoodTag } from './primitives.jsx';
 import { contractLabel } from '../constants/events.js';
 
 const ROLES = ["IGL","AWP","Entry","Lurk","Support"];
@@ -13,18 +13,6 @@ function faDesiredSalary(p, career) {
   const r = career?.avgRating || 0.95;
   const mult = r >= 1.15 ? 1.5 : r >= 1.1 ? 1.3 : r >= 1.0 ? 1.1 : r >= 0.9 ? 1.0 : 0.85;
   return Math.max(5, Math.round(p.salary * mult));
-}
-
-function MoodTag({ offered, desired }) {
-  const [label, col] =
-    offered >= desired          ? ["HAPPY",    C.win]  :
-    offered >= desired * 0.85   ? ["NEUTRAL",  C.gold] :
-                                  ["DEMANDING",C.red];
-  return (
-    <span style={{fontFamily:mono,fontSize:8,color:col,border:`1px solid ${col}44`,borderRadius:3,padding:"1px 6px"}}>
-      {label}
-    </span>
-  );
 }
 
 function PlayerRow({ p, right, selected, onClick }) {

@@ -7,13 +7,18 @@ import { getRankedTeams } from './player.js';
 // (ranking + trophies), star power on the roster, and content investment.
 // Brand drives merch income and the size of sponsorship offers, so winning
 // and signing stars compounds into bigger off-server revenue.
+// Trophy weight scales hard with tier — a Major win is a career-defining
+// moment, an A-tier is a solid result, a B-tier is a minor blip. Winning
+// every tier equally (the old flat "+5 per trophy" model) let a single
+// small B-tier title bump brand value almost as much as a Major run.
+function trophyWeight(tier){ return tier === "Major" ? 12 : tier === "A" ? 4 : 1.5; }
 export function brandValue(season, state, myTeam){
   const ranked = getRankedTeams(state, myTeam);
   const rank = ranked.findIndex(x => x.team === myTeam) + 1;
   const rankScore = rank <= 1 ? 40 : rank <= 3 ? 34 : rank <= 5 ? 28 : rank <= 10 ? 20 : rank <= 16 ? 12 : 6;
-  const trophies = (season.history || []).filter(h => h.place === 1).length
-    + (season.yearHistory || []).reduce((s, y) => s + (y.trophies || 0), 0);
-  const trophyScore = Math.min(25, trophies * 5);
+  const trophies = (season.history || []).filter(h => h.place === 1).reduce((s, h) => s + trophyWeight(h.tier), 0)
+    + (season.yearHistory || []).reduce((s, y) => s + (y.titles || []).reduce((s2, ti) => s2 + trophyWeight(ti.tier), 0), 0);
+  const trophyScore = Math.min(25, trophies);
   const roster = rosterOf(state, myTeam);
   const starPower = roster.reduce((s, p) => s + Math.max(0, playerOvr(p) - 80), 0);
   const starScore = Math.min(20, starPower * 1.2);

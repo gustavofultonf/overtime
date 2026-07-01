@@ -389,6 +389,18 @@ export function resolveMap(state,map,A,B,ctx,rng,startFrom=null){
         c.kills+=Math.round(10+pp.perf/15);
       }
     });
+    // Team-level map record, keyed by team (not by roster membership) — a
+    // player's career mapStats above follow THEM across every team they've
+    // ever played for, so summing those over a roster blends in maps a
+    // signed/traded player racked up before joining. This tracks what the
+    // org itself actually did on each map, independent of roster churn.
+    if(!state.teamMapStats)state.teamMapStats={};
+    [A,B].forEach(team=>{
+      if(!state.teamMapStats[team])state.teamMapStats[team]={};
+      if(!state.teamMapStats[team][map])state.teamMapStats[team][map]={maps:0,wins:0};
+    });
+    state.teamMapStats[A][map].maps++;state.teamMapStats[B][map].maps++;
+    if(aWon)state.teamMapStats[A][map].wins++;else state.teamMapStats[B][map].wins++;
     if(carry.traits.includes("clutch")&&Math.min(scoreA,scoreB)>=9){const s=state.stats[carry.name];if(s)s.clutches++;}
     if(state.stats[carry.name])state.stats[carry.name].mvps++;
     if(carry.traits.includes("clutch")&&Math.min(scoreA,scoreB)>=9)triggers.push({who:carry.name,what:"clutch_carry"});
@@ -478,9 +490,12 @@ export function applyActivity(state,team,activity,mapChoice,facilities){
   // Fatigue: coach + gaming house reduce gain
   const ghBonus=[0,2,4,6][ghTier]||0;
   const mbBonus=(activity==="rest"||activity==="vacation")?([0,5,8][mbTier]||0):0;
-  const fatMod=cb==="fitness"&&(activity==="rest"||activity==="vacation")?-5:cb==="motivator"?-3:0;
+  const fatMod=cb==="fitness"&&(activity==="rest"||activity==="vacation")?-5:cb==="motivator"?-3:cb==="recovery"?-2:0;
   roster.forEach(p=>{
-    p.fatigue=Math.max(0,Math.min(100,p.fatigue+(ACTIVITIES[activity]?.fatigue||0)+fatMod-ghBonus-mbBonus));
+    // Individual coaching splits fatigue instead of applying one flat number to
+    // everyone: the focused player trains hard, the rest of the roster coasts.
+    const base=activity==="individual"?(p.name===mapChoice?ACTIVITIES.individual.fatigue:-5):(ACTIVITIES[activity]?.fatigue||0);
+    p.fatigue=Math.max(0,Math.min(100,p.fatigue+base+fatMod-ghBonus-mbBonus));
   });
   if(activity==="practice"&&mapChoice){
     const prof=getMapProf(state,team);
@@ -491,12 +506,13 @@ export function applyActivity(state,team,activity,mapChoice,facilities){
     roster.forEach(p=>{
       const moraleMult=(p.morale??60)>=75?1.25:(p.morale??60)<=35?0.6:1;
       const gain=()=>Math.round((1+(bcExtra>0?1:0)+(Math.random()|0))*moraleMult);
-      p.aim=Math.min(99,p.aim+gain());p.gameSense=Math.min(99,p.gameSense+gain()+(cb==="tactical"?1:0));
-      p.util=Math.min(99,p.util+gain());
+      p.aim=Math.min(99,p.aim+gain()+(cb==="aim"?1:0));p.gameSense=Math.min(99,p.gameSense+gain()+(cb==="tactical"?1:0));
+      p.util=Math.min(99,p.util+gain()+(cb==="util"?1:0));
       p.rifle=Math.min(99,(p.rifle||70)+gain());
       p.entry=Math.min(99,(p.entry||60)+gain());
       if(cb==="veteran"){p.mentality=Math.min(99,p.mentality+1);p.composure=Math.min(99,(p.composure||60)+1);}
       if(cb==="fitness"){p.consistency=Math.min(99,p.consistency+1);p.stamina=Math.min(99,(p.stamina||60)+1);}
+      if(cb==="igl"){p.igl=Math.min(99,(p.igl||50)+1);}
       if(psTier>=1){p.composure=Math.min(99,(p.composure||60)+1);}
     });
   } else if(activity==="scrim"){
@@ -513,6 +529,21 @@ export function applyActivity(state,team,activity,mapChoice,facilities){
     roster.forEach(p=>{
       p.gameSense=Math.min(99,p.gameSense+1+anExtra);p.util=Math.min(99,p.util+1);
     });
+  } else if(activity==="individual"&&mapChoice){
+    // One-on-one focus: bigger, near-guaranteed gains, but only for the chosen
+    // player — everyone else sits this week out (handled in the fatigue loop
+    // above). This reshuffles where a season's development goes rather than
+    // adding to the team's total growth on top of what bootcamp already gives.
+    const target=roster.find(p=>p.name===mapChoice);
+    if(target){
+      const moraleMult=(target.morale??60)>=75?1.25:(target.morale??60)<=35?0.6:1;
+      const gain=()=>Math.round(2*moraleMult);
+      target.aim=Math.min(99,target.aim+gain()+(cb==="aim"?1:0));
+      target.gameSense=Math.min(99,target.gameSense+gain()+(cb==="tactical"?1:0));
+      target.util=Math.min(99,target.util+gain()+(cb==="util"?1:0));
+      if(cb==="igl"&&target.role==="IGL")target.igl=Math.min(99,(target.igl||50)+1);
+      if(cb==="veteran"){target.mentality=Math.min(99,target.mentality+1);target.composure=Math.min(99,(target.composure||60)+1);}
+    }
   } else if(activity==="rest"){
     // fatigue already handled above
   } else if(activity==="vacation"){
@@ -548,6 +579,7 @@ export function applyActivity(state,team,activity,mapChoice,facilities){
     if(activity==="rest"||activity==="vacation") delta+=3;
     else if(activity==="scrim") delta+=1;
     else if(activity==="bootcamp") delta-=1;
+    if(cb==="psych") delta+=1.5;
     // Salary jealousy: players paid 30%+ below roster avg lose morale
     const avgSalary=roster.reduce((s,x)=>s+x.salary,0)/roster.length;
     if(p.salary<avgSalary*0.7&&playerOvr(p)>=roster.reduce((s,x)=>s+playerOvr(x),0)/roster.length) delta-=2;
