@@ -86,15 +86,30 @@ export function aiWeekActivity(state){
 }
 
 // ── tournament structure ─────────────────────────────────────────────
+// career[].eventHistory is tracked for every player in the league (~200+), not just
+// the user's roster, and this fires every event for anyone who played — left
+// uncapped it grows forever and was the dominant driver of save-file bloat. Only the
+// most recent entries are ever shown (the roster sparkline/trend chart), so old ones
+// are dropped once the cap is hit; avgRating/totalMaps/etc are true all-time figures
+// tracked incrementally rather than resummed from the (now-truncated) array.
+export const CAREER_EVENT_HISTORY_CAP=30;
+
 export function snapshotEventStats(simState,eventNum){
   Object.entries(simState.stats).forEach(([name,s])=>{
     if(s.maps===0)return;
     const c=simState.career?.[name];
     if(!c)return;
-    c.eventHistory.push({eventNum,maps:s.maps,rating:+s.rating.toFixed(3),mvps:s.mvps,clutches:s.clutches});
+    const rating=+s.rating.toFixed(3);
+    // Legacy saves won't have eventCount yet — fall back to the (still untruncated,
+    // at this point) history length so the running average picks up exactly where
+    // the old resummed-every-time calculation left off.
+    c.eventCount=(c.eventCount??c.eventHistory.length)+1;
+    c.avgRating=c.eventCount>1?(c.avgRating*(c.eventCount-1)+rating)/c.eventCount:rating;
+    c.eventHistory.push({eventNum,maps:s.maps,rating,mvps:s.mvps,clutches:s.clutches});
+    if(c.eventHistory.length>CAREER_EVENT_HISTORY_CAP)
+      c.eventHistory.splice(0,c.eventHistory.length-CAREER_EVENT_HISTORY_CAP);
     c.totalMaps+=s.maps;c.totalMvps+=s.mvps;c.totalClutches+=s.clutches;
-    c.avgRating=c.eventHistory.length>0?c.eventHistory.reduce((a,e)=>a+e.rating,0)/c.eventHistory.length:0;
-    if(s.rating>c.bestRating)c.bestRating=+s.rating.toFixed(3);
+    if(rating>c.bestRating)c.bestRating=rating;
   });
 }
 
