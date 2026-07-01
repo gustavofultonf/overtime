@@ -1,9 +1,36 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { C, sans, mono } from './theme.js';
 import { CountUp } from './primitives.jsx';
 
 const PLACE_LABELS=["","1st","2nd","3rd","4th","5th-8th","9th-12th","13th-16th"];
 const PLACE_COLORS=["",C.gold,"#c9d2e0","#cd7f32",C.dim,C.faint,C.faint,C.faint];
+const CONFETTI_COLORS=[C.gold,C.acc,C.win,C.live,"#f472b6"];
+
+// Pure-CSS confetti burst across the overlay on a tournament win. Piece layout is
+// randomized once per mount (useMemo) so it doesn't reshuffle on incidental re-renders
+// while the debrief is open. Respects prefers-reduced-motion via Gstyle's global rule.
+function Confetti(){
+  const pieces=useMemo(()=>Array.from({length:60},(_,i)=>({
+    id:i,
+    left:Math.random()*100,
+    delay:Math.random()*1.2,
+    duration:2.4+Math.random()*1.8,
+    size:6+Math.random()*6,
+    color:CONFETTI_COLORS[Math.floor(Math.random()*CONFETTI_COLORS.length)],
+    round:Math.random()<0.5,
+  })),[]);
+  return(
+    <div style={{position:"absolute",inset:0,overflow:"hidden",pointerEvents:"none",zIndex:1}}>
+      {pieces.map(p=>(
+        <div key={p.id} style={{
+          position:"absolute",left:`${p.left}%`,top:0,width:p.size,height:p.size*(p.round?1:1.6),
+          background:p.color,borderRadius:p.round?"50%":2,
+          animation:`confettiFall ${p.duration}s linear ${p.delay}s infinite`,
+        }}/>
+      ))}
+    </div>
+  );
+}
 
 export function EventDebrief({debrief,onDismiss}){
   const{label,tier,place,prize,champion,playerStats,mvp,chemBefore,chemAfter,winBonus}=debrief;
@@ -13,8 +40,9 @@ export function EventDebrief({debrief,onDismiss}){
   const chemDelta=chemAfter-chemBefore;
 
   return(
-  <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.85)",display:"flex",alignItems:"center",justifyContent:"center",padding:18,zIndex:60,animation:"fadeUp .2s ease"}}>
-    <div style={{background:C.panel,border:`1px solid ${won?C.gold+"66":C.line}`,borderRadius:14,maxWidth:580,width:"100%",maxHeight:"92vh",overflowY:"auto",animation:"popIn .42s cubic-bezier(.2,.8,.3,1)",...(won?{boxShadow:`0 0 40px -8px ${C.gold}55`}:{})}}>
+  <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.85)",display:"flex",alignItems:"center",justifyContent:"center",padding:18,zIndex:60,animation:"fadeUp .2s ease",overflow:"hidden"}}>
+    {won&&<Confetti/>}
+    <div style={{position:"relative",zIndex:2,background:C.panel,border:`1px solid ${won?C.gold+"66":C.line}`,borderRadius:14,maxWidth:580,width:"100%",maxHeight:"92vh",overflowY:"auto",animation:"popIn .42s cubic-bezier(.2,.8,.3,1)",...(won?{boxShadow:`0 0 50px -6px ${C.gold}66`}:{})}}>
 
       {/* Header banner */}
       <div className={won?"sheen":undefined} style={{background:won?"rgba(243,194,91,.08)":"rgba(20,20,30,1)",borderRadius:"14px 14px 0 0",padding:"20px 22px",borderBottom:`1px solid ${C.line}`}}>
@@ -25,7 +53,7 @@ export function EventDebrief({debrief,onDismiss}){
         <div style={{display:"flex",gap:12,alignItems:"center",flexWrap:"wrap"}}>
           <span style={{fontFamily:mono,fontSize:22,fontWeight:800,color:placeColor,display:"inline-block",animation:"stampIn .5s ease"}}>{placeLabel}</span>
           <CountUp value={prize} prefix="+$" suffix="K" style={{fontFamily:mono,fontSize:15,color:C.gold,fontWeight:700}}/>
-          {won&&<span style={{fontFamily:mono,fontSize:11,color:C.gold,background:"rgba(243,194,91,.18)",padding:"3px 9px",borderRadius:5,letterSpacing:1,animation:"glowPulse 1.8s ease-in-out infinite"}}>CHAMPIONS</span>}
+          {won&&<span style={{fontFamily:mono,fontSize:13,color:"#0a0c10",background:C.gold,padding:"5px 12px",borderRadius:6,letterSpacing:1,fontWeight:800,animation:"glowPulse 1.8s ease-in-out infinite"}}>CHAMPIONS</span>}
         </div>
         {!won&&champion&&<div style={{fontFamily:mono,fontSize:11,color:C.faint,marginTop:5}}>Champion: <span style={{color:C.dim}}>{champion}</span></div>}
       </div>

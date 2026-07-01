@@ -50,9 +50,9 @@ export function initState(eras){
   });
   // Second pass: enforce a salary floor (stars earn star money) + init morale
   players.forEach(p=>{
-    p.salary=Math.max(p.salary||0,desiredSalary(p));
-    const mv=marketValue(p);
-    const payFactor=p.salary>=mv*0.90?3:p.salary>=mv*0.70?0:-5;
+    const fairPay=desiredSalary(p);
+    p.salary=Math.max(p.salary||0,fairPay);
+    const payFactor=p.salary>=fairPay*0.90?3:p.salary>=fairPay*0.70?0:-5;
     p.morale=Math.max(30,Math.min(90,Math.round(65+(p.mentality-70)*0.3+payFactor+(Math.random()*16-8))));
   });
 
@@ -282,8 +282,8 @@ export function updateMorale(state,myTeam,place){
   const chem=state.chemistry[myTeam]||70;
   const chemFactor=chem>=80?2:chem>=60?0:-3;
   roster.forEach(p=>{
-    const mv=marketValue(p);
-    const payFactor=p.salary>=mv*0.90?2:p.salary>=mv*0.70?-2:-5;
+    const fairPay=desiredSalary(p);
+    const payFactor=p.salary>=fairPay*0.90?2:p.salary>=fairPay*0.70?-2:-5;
     // High mentality = smaller swings (mental resilience)
     const mentMod=0.5+(100-(p.mentality||70))/100*0.5;
     const delta=(resultBonus+payFactor+chemFactor)*mentMod;

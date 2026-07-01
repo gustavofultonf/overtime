@@ -4,6 +4,14 @@ export const TUNING = { D: 27, SYNERGY: 0.30 };
 export const DRAFT_BUDGET = 780;
 export const SEASON_WEEKS = 52;
 
+// ── Debt / bankruptcy tuning ────────────────────────────────────────
+// Budget now carries over between seasons with no reset — running a deficit is
+// a real, persistent threat instead of something a new year quietly wipes away.
+export const DEBT_GAMEOVER_THRESHOLD = -800; // instant bankruptcy at this deep a hole
+export const DEBT_SUSTAINED_WEEKS = 12;      // ...or any deficit held this long, regardless of depth
+export const DEBT_WARNING_WEEKS = 4;         // first board warning (choice event)
+export const DEBT_FINAL_WARNING_WEEKS = 8;   // final board warning before bankruptcy risk is severe
+
 export function seasonStart(year){return new Date(`${year}-01-06`);} // First Monday
 export function weekToDate(week,year){
   const d=new Date(seasonStart(year||2026));

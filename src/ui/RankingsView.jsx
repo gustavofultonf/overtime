@@ -1,7 +1,20 @@
 import React, { useState } from 'react';
 import { C, sans, mono } from './theme.js';
 import { getRankedTeams } from '../engine/player.js';
+import { AI_TEAMS } from '../constants/data.js';
 import { Intro, TeamCrest } from './primitives.jsx';
+
+// Small "+N"/"-N" rank-movement badge — green for climbing, red for dropping,
+// nothing for unchanged or a team we have no prior snapshot for yet.
+function RankDelta({ delta }) {
+  if (delta == null || delta === 0) return null;
+  const up = delta > 0;
+  return (
+    <span style={{ fontFamily: mono, fontSize: 10, fontWeight: 700, color: up ? C.win : C.red, whiteSpace: 'nowrap' }}>
+      {up ? '▲' : '▼'}{Math.abs(delta)}
+    </span>
+  );
+}
 
 export function RankingsView({ state, myTeam, week = 1, year = 2026 }) {
   const [expanded, setExpanded] = useState(false);
@@ -9,6 +22,18 @@ export function RankingsView({ state, myTeam, week = 1, year = 2026 }) {
   const ranked = getRankedTeams(state, myTeam);
   const maxPts = ranked[0]?.pts || 1;
   const myBounty = state.valveBounty?.[myTeam];
+
+  // Rank movement since the last time rankings recomputed (i.e. since the last
+  // event — rankings only update on event results, not every calendar week).
+  // Compare current position against the position implied by the pre-recompute
+  // rating snapshot (state.prevRankings, written in computeValveRankings).
+  const prevRankOf = {};
+  if (state.prevRankings) {
+    [...AI_TEAMS, myTeam]
+      .map((t) => ({ team: t, pts: state.prevRankings[t] || 0 }))
+      .sort((a, b) => b.pts - a.pts)
+      .forEach((r, i) => { prevRankOf[r.team] = i + 1; });
+  }
 
   const handleTeamClick = (teamName) => {
     if (expandedTeam === teamName) {
@@ -30,8 +55,8 @@ export function RankingsView({ state, myTeam, week = 1, year = 2026 }) {
 
       {/* Rankings table */}
       <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 10, overflow: 'hidden' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '36px 1fr 80px 1fr', gap: 8, padding: '8px 14px', fontFamily: mono, fontSize: 10, color: C.faint, letterSpacing: 1 }}>
-          <span>#</span><span>TEAM</span><span style={{ textAlign: 'right' }}>RATING</span><span/>
+        <div style={{ display: 'grid', gridTemplateColumns: '28px 38px 1fr 80px 1fr', gap: 8, padding: '8px 14px', fontFamily: mono, fontSize: 10, color: C.faint, letterSpacing: 1 }}>
+          <span>#</span><span/><span>TEAM</span><span style={{ textAlign: 'right' }}>RATING</span><span/>
         </div>
         {ranked.map((r, i) => {
           const me = r.team === myTeam;
@@ -41,10 +66,13 @@ export function RankingsView({ state, myTeam, week = 1, year = 2026 }) {
           const pct = maxPts > 0 ? r.pts / maxPts * 100 : 0;
           const badge = isLegend ? { label: 'LEGEND', color: C.gold } : isChal ? { label: 'CHALL', color: C.live } : null;
           const isExpanded = expandedTeam === r.team;
-          
+          const prevRank = prevRankOf[r.team];
+          const delta = prevRank != null ? prevRank - (i + 1) : null;
+
           return (
-            <div key={r.team} style={{ display: 'grid', gridTemplateColumns: '36px 1fr 80px 1fr', gap: 8, padding: '9px 14px', alignItems: 'center', borderTop: `1px solid ${C.line}`, borderLeft: `3px solid ${me ? C.acc : col}`, background: me ? 'rgba(155,140,255,.06)' : 'transparent' }}>
+            <div key={r.team} style={{ display: 'grid', gridTemplateColumns: '28px 38px 1fr 80px 1fr', gap: 8, padding: '9px 14px', alignItems: 'center', borderTop: `1px solid ${C.line}`, borderLeft: `3px solid ${me ? C.acc : col}`, background: me ? 'rgba(155,140,255,.06)' : 'transparent' }}>
               <span style={{ fontFamily: mono, fontWeight: 700, fontSize: 15, color: col }}>{i + 1}</span>
+              <RankDelta delta={delta} />
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }} onClick={() => handleTeamClick(r.team)}>
                 <TeamCrest name={r.team} size={24} />
                 <span style={{ fontWeight: me ? 700 : 600, fontSize: 13, color: me ? C.acc : C.ink }}>{r.team}{me ? ' you' : ''}</span>

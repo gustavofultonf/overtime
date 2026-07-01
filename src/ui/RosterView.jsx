@@ -5,6 +5,45 @@ import { rosterOf, teamBase, momentumOf } from '../engine/state.js';
 import { Overlay, SL, Intro, Pill, TraitPill, Stat, MiniStat, FormArrow, TeamCrest } from './primitives.jsx';
 import { contractLabel } from '../constants/events.js';
 
+// Per-player rating across events, from career.eventHistory (real recorded match
+// data — no fabricated stats). 1.00 is the "neutral" line CS rating conventions use.
+function RatingTrendChart({ history }) {
+  if (!history || history.length < 2) return null;
+  const W = 380,
+    H = 80,
+    PL = 24,
+    PR = 10,
+    PT = 10,
+    PB = 18;
+  const plotW = W - PL - PR,
+    plotH = H - PT - PB;
+  const n = history.length;
+  const ratings = history.map((e) => e.rating);
+  const maxV = Math.max(...ratings, 1.3) * 1.05;
+  const minV = Math.min(...ratings, 0.7) * 0.95;
+  const range = maxV - minV || 1;
+  const xOf = (i) => (n === 1 ? PL + plotW / 2 : PL + (i / (n - 1)) * plotW);
+  const yOf = (v) => PT + (1 - (v - minV) / range) * plotH;
+  return (
+    <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ display: 'block', overflow: 'visible' }}>
+      <line x1={PL} x2={W - PR} y1={yOf(1)} y2={yOf(1)} stroke={C.faint} strokeWidth={0.5} strokeDasharray="3,3" />
+      <text x={PL - 3} y={yOf(1) + 3} fontSize="8" fill={C.faint} textAnchor="end">1.00</text>
+      {n > 1 && (
+        <polyline
+          points={history.map((e, i) => `${xOf(i)},${yOf(e.rating)}`).join(' ')}
+          fill="none" stroke={C.acc} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round"
+        />
+      )}
+      {history.map((e, i) => (
+        <g key={i}>
+          <circle cx={xOf(i)} cy={yOf(e.rating)} r="3" fill={e.rating >= 1.1 ? C.win : e.rating >= 0.9 ? C.ink : C.red} />
+          <text x={xOf(i)} y={H - 4} fontSize="8" fill={C.faint} textAnchor="middle">#{e.eventNum + 1}</text>
+        </g>
+      ))}
+    </svg>
+  );
+}
+
 function StatRadar({ p }) {
   const CX = 70, CY = 70, R = 54;
   const stats = [
@@ -288,6 +327,11 @@ export function PlayerProfile({p,state,onClose}){
     </>)}
     {evHist.length>0&&(<>
       <SL n="EVT" t="EVENT HISTORY"/>
+      {evHist.length>=2&&(
+        <div style={{background:C.panel,border:`1px solid ${C.line}`,borderRadius:8,padding:"10px 12px",marginBottom:8}}>
+          <RatingTrendChart history={evHist}/>
+        </div>
+      )}
       <div style={{background:C.panel,border:`1px solid ${C.line}`,borderRadius:8,overflow:"hidden"}}>
         <div style={{display:"grid",gridTemplateColumns:"50px 60px 50px 50px",gap:6,padding:"6px 12px",fontFamily:mono,fontSize:9,color:C.faint}}>
           <span>EVENT</span><span style={{textAlign:"right"}}>RTG</span><span style={{textAlign:"right"}}>MVPs</span><span style={{textAlign:"right"}}>MAPS</span>

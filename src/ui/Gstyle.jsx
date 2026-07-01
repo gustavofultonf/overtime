@@ -38,6 +38,7 @@ a{color:${C.acc};}
 @keyframes glowPulse{0%,100%{box-shadow:0 0 10px 0 ${C.gold}44;}50%{box-shadow:0 0 24px 5px ${C.gold}aa;}}
 @keyframes risePop{0%{opacity:0;transform:translateY(14px) scale(.96);}60%{opacity:1;}100%{opacity:1;transform:translateY(0) scale(1);}}
 @keyframes sheen{0%{background-position:200% 0;}100%{background-position:-200% 0;}}
+@keyframes confettiFall{0%{transform:translateY(-8vh) rotate(0deg);opacity:1;}90%{opacity:1;}100%{transform:translateY(108vh) rotate(540deg);opacity:0;}}
 
 /* Subtle hover-lift for non-button cards */
 .lift{transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease;}

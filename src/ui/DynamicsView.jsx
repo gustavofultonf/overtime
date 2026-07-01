@@ -1,6 +1,6 @@
 import React from 'react';
 import { C, sans, mono } from './theme.js';
-import { playerOvr, marketValue } from '../engine/utils.js';
+import { playerOvr, desiredSalary } from '../engine/utils.js';
 import { rosterOf, hierarchyTier } from '../engine/state.js';
 import { contractLabel } from '../constants/events.js';
 
@@ -77,9 +77,9 @@ export function DynamicsView({season,myTeam}){
       {sorted.map(p=>{
         const tier=hierarchyTier(p,roster);
         const morale=p.morale??60;
-        const mv=marketValue(p);
-        const payOk=p.salary>=mv*0.90;
-        const payLow=!payOk&&p.salary>=mv*0.70;
+        const fairPay=desiredSalary(p);
+        const payOk=p.salary>=fairPay*0.90;
+        const payLow=!payOk&&p.salary>=fairPay*0.70;
         const payLabel=payOk?"Pay ✓":payLow?"Pay ↓":"!! Underpaid";
         const rColor=ROLE_COLOR[p.role]||C.dim;
         const tColor=TIER_COLOR[tier]||C.dim;

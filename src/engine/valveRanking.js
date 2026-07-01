@@ -109,6 +109,12 @@ export function computeValveRankings(state, currentWeek, currentYear) {
 
   if (matchLog.length === 0 && prizeLog.length === 0) return;
 
+  // Snapshot ratings as they stood before this recompute, so the UI can show each
+  // team's rank movement ("+N"/"-N") since the last time rankings changed (i.e.
+  // since the previous event — rankings only recompute on event results, not
+  // every calendar week).
+  state.prevRankings = { ...(state.rankings || {}) };
+
   // Annotate entries with recency
   function annotate(entries) {
     return entries.map(e => ({
@@ -130,7 +136,13 @@ export function computeValveRankings(state, currentWeek, currentYear) {
   state.prizeLog = prizeLog.filter(p =>
     (currentYear - p.year) * 52 + (currentWeek - p.week) < cutoff);
 
-  const refPool = Math.max(...matches.map(m => m.prizePool), 1);
+  // Anchored to the Major's 1st-place prize, not just whatever's in the log so far —
+  // otherwise an early-career log that only contains B-tier results (the season's
+  // first scheduled event is always a B-tier, before any A-tier/Major has happened)
+  // makes every B-tier match its own reference pool, i.e. stakesMod(80,80)=1.0 with
+  // zero tier dampening, instead of correctly discounting it against Major scale.
+  const MAJOR_REF_POOL = 500;
+  const refPool = Math.max(MAJOR_REF_POOL, ...matches.map(m => m.prizePool), 1);
 
   // All unique teams that have appeared in logs or already have a ranking
   const teams = new Set([
@@ -150,7 +162,14 @@ export function computeValveRankings(state, currentWeek, currentYear) {
       .slice(0, BUCKET_SIZE);
     scaledWinnings[t] = vals.reduce((s, v) => s + v, 0);
   });
-  const refWinnings = Math.max(...[...teams].map(t => scaledWinnings[t] || 0), 1);
+  // Anchored to roughly what a genuinely elite, consistent team would earn across
+  // its top BUCKET_SIZE recency-weighted results (a couple of Major wins/runner-ups
+  // plus some A-tier titles) — not just the highest scaledWinnings seen so far. Same
+  // rationale as MAJOR_REF_POOL above: without a floor, whichever team has earned
+  // *anything* becomes "the max" in a sparse early-career log and gets curved to a
+  // near-maximum bountyOffered, even off a single modest B-tier win.
+  const ELITE_WINNINGS_REF = 2500;
+  const refWinnings = Math.max(ELITE_WINNINGS_REF, ...[...teams].map(t => scaledWinnings[t] || 0), 1);
 
   // Phase 2: bountyOffered
   const bountyOffered = {};
@@ -191,13 +210,17 @@ export function computeValveRankings(state, currentWeek, currentYear) {
     seedValues[t] = (bountyCollected[t] + bountyOffered[t] + opponentNetwork[t] + LAN_FACTOR) / 4;
   });
 
-  // Phase 7: remap seedValues → Glicko initial ratings [SEED_LO, SEED_HI]
-  const seedArr = [...teams].map(t => seedValues[t]);
-  const minSeed = Math.min(...seedArr);
-  const maxSeed = Math.max(...seedArr);
+  // Phase 7: remap seedValues → Glicko initial ratings [SEED_LO, SEED_HI].
+  // seedValues are already mathematically bounded to [0,1] — a mean of four
+  // components that are each 0-1 (bountyCollected/bountyOffered/opponentNetwork via
+  // curveFunc, LAN_FACTOR fixed at 1) — so remap directly from that fixed range.
+  // Remapping from THIS round's actual min/max instead (as before) stretched
+  // whoever had the single best result to the ceiling and shoved every team with no
+  // logged matches yet to the floor, regardless of how modest that best result
+  // actually was — the direct cause of a single early B-tier win reading as world #1.
   const initialRatings = {};
   teams.forEach(t => {
-    initialRatings[t] = remap(seedValues[t], minSeed, maxSeed, SEED_LO, SEED_HI);
+    initialRatings[t] = remap(seedValues[t], 0, 1, SEED_LO, SEED_HI);
   });
 
   // Phase 8: Glicko batch update — accumulate all matches, apply simultaneously

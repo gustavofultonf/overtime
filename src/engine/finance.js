@@ -30,6 +30,34 @@ export function brandTier(v){
 // Sponsorship offers scale up with brand strength.
 export function sponsorBrandFactor(v){ return 0.7 + v / 100; }
 
+// ── Merch line breakdown ─────────────────────────────────────────────
+// Splits the abstract brand-driven merch total into named product lines so
+// the finance panel can show what's actually selling. The base split is
+// proportional to the pre-existing total (no change to overall economy
+// balance); jersey sales get an extra bump from the roster's star player,
+// and a recent trophy triggers a temporary "championship drop" spike.
+export function merchBreakdown(season, state, myTeam, brand){
+  const roster = rosterOf(state, myTeam);
+  const base = 6 + brand * 0.55;
+  const starPlayer = roster.length ? roster.reduce((b, p) => playerOvr(p) > playerOvr(b) ? p : b, roster[0]) : null;
+  const jerseyBonus = starPlayer ? Math.max(0, Math.round((playerOvr(starPlayer) - 80) * 0.4)) : 0;
+  const recentWin = (season.history || []).slice(-2).some(h => h.place === 1);
+  const champDrop = recentWin ? Math.round(base * 0.25) : 0;
+  const jerseys   = Math.round(base * 0.40) + jerseyBonus;
+  const hoodies   = Math.round(base * 0.25);
+  const mousepads = Math.round(base * 0.20);
+  const stickers  = Math.round(base * 0.15);
+  const items = [
+    { key: 'jerseys',   label: starPlayer ? `Jerseys (${starPlayer.name})` : 'Jerseys', value: jerseys },
+    { key: 'hoodies',   label: 'Hoodies', value: hoodies },
+    { key: 'mousepads', label: 'Mousepads', value: mousepads },
+    { key: 'stickers',  label: 'Stickers & pins', value: stickers },
+  ];
+  if (champDrop > 0) items.push({ key: 'champDrop', label: 'Championship drop', value: champDrop });
+  const total = items.reduce((s, i) => s + i.value, 0);
+  return { items, total };
+}
+
 // ── Central finance model ────────────────────────────────────────────
 // Single source of truth for income/expense math. Mirrors the deductions
 // applied in paySalary() so the Finance panel always matches reality.
@@ -45,8 +73,10 @@ export function computeFinances(season, myTeam){
   const brand = brandValue(season, state, myTeam);
   const contentTier = season.facilities?.content || 0;
   const content = [0, 15, 30][contentTier] || 0;
-  // Merch is now brand-driven: a recognizable org shifts far more product.
-  const merch   = Math.round(6 + brand * 0.55);
+  // Merch is brand-driven: a recognizable org shifts far more product.
+  // See merchBreakdown() for the per-product-line split shown in the Finance panel.
+  const merchLines = merchBreakdown(season, state, myTeam, brand);
+  const merch = merchLines.total;
   const stipend = rank <= 5 ? 30 : rank <= 10 ? 20 : rank <= 16 ? 12 : 5;
   const streams = Math.round(roster.reduce((s, p) => {
     const pop = playerOvr(p) / 20 + (state.career?.[p.name]?.totalMvps || 0) * 0.5;
@@ -76,6 +106,7 @@ export function computeFinances(season, myTeam){
     brand,
     budget: season.budget,
     income: { content, merch, stipend, streams, sponsor, total: incomeTotal },
+    merchLines: merchLines.items,
     expenses: { players, coach, playerSalary, coachSalary, salaryTotal, total: salaryTotal },
     net, weeklyNet, runwayMonths, runwayWeeks,
   };

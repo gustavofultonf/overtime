@@ -1,23 +1,22 @@
 import React, { useState } from 'react';
 import { C, sans, mono } from './theme.js';
 import { MAPS, AI_TEAMS } from '../constants/data.js';
-import { EVENTS, SALARY_WEEKS, ACTIVITIES, weekToLabel, contractLabel } from '../constants/events.js';
+import { EVENTS, ACTIVITIES, weekToLabel, contractLabel } from '../constants/events.js';
 import { playerOvr, getRankedTeams } from '../engine/player.js';
-import { rosterOf, getMapProf, TACTICS_INFO, currentMapPool, teamActivePool } from '../engine/state.js';
-import { SL, Banner, Pill, MiniStat, Stat, FormArrow } from './primitives.jsx';
+import { rosterOf, getMapProf, currentMapPool, teamActivePool } from '../engine/state.js';
+import { SL, Banner, Pill, Stat, FormArrow } from './primitives.jsx';
 
 const tierColor = t => t === "Major" ? C.gold : t === "A" ? C.live : C.dim;
 const tierLabel = t => t === "Major" ? "MAJOR" : t === "A" ? "A-TIER" : "B-TIER";
 const ordinal = n => { const s = ["th","st","nd","rd"]; const v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); };
 
-export function CalendarView({ season, myTeam, onAdvance, onSim, onAcceptSponsor, onDeclineSponsor, onResolveEvent, onResolveContract, onAcceptEntry, onDeclineEntry, onSetTactic }) {
+export function CalendarView({ season, myTeam, onAdvance, onSim, onAcceptSponsor, onDeclineSponsor, onResolveEvent, onResolveContract, onAcceptEntry, onDeclineEntry }) {
   const [act, setAct] = useState(null);
   const [mapChoice, setMapChoice] = useState(MAPS[0]);
   const [scoutChoice, setScoutChoice] = useState(null);
 
   const roster = rosterOf(season.simState, myTeam);
   const avgFatigue = roster.length ? Math.round(roster.reduce((s, p) => s + p.fatigue, 0) / roster.length) : 0;
-  const chem = season.simState.chemistry?.[myTeam] ?? 55;
   const nextEvent = EVENTS.find(e => e.week >= season.week);
   const weeksUntil = nextEvent ? nextEvent.week - season.week : 99;
   const totalSalary = roster.reduce((s, p) => s + p.salary, 0);
@@ -29,10 +28,6 @@ export function CalendarView({ season, myTeam, onAdvance, onSim, onAcceptSponsor
 
   const ranked = getRankedTeams(season.simState, myTeam);
   const myRank = ranked.findIndex(x => x.team === myTeam) + 1;
-  const nextPay = SALARY_WEEKS.find(w => w >= season.week);
-  const wksToPay = nextPay ? nextPay - season.week : 0;
-  const coachPay = season.simState.coach ? season.simState.coach.salary : 0;
-  const payDue = totalSalary + coachPay;
 
   function confirm() {
     if (!act) return;
@@ -45,44 +40,6 @@ export function CalendarView({ season, myTeam, onAdvance, onSim, onAcceptSponsor
   const lastEvent = season.weekLog.length > 0 ? season.weekLog[season.weekLog.length - 1]?.event : null;
 
   return (<div>
-    {/* ── Overview stat strip ── */}
-    <div style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>
-      <MiniStat label="DATE" value={`${weekToLabel(season.week, season.year)} ${season.year || 2026}`} color={C.acc} />
-      <MiniStat label="NEXT EVENT" value={weeksUntil === 0 ? (nextEvent?.label || "EVENT") : `${weeksUntil}wk`} color={weeksUntil <= 2 ? C.red : C.live} />
-      <MiniStat label="BUDGET" value={`$${season.budget}K`} color={season.budget > 0 ? C.gold : C.red} />
-      <MiniStat label="CHEMISTRY" value={chem} color={chem >= 70 ? C.win : chem >= 50 ? C.gold : C.red} />
-      <MiniStat label="AVG FATIGUE" value={avgFatigue} color={avgFatigue > 70 ? C.red : avgFatigue > 50 ? C.gold : C.win} />
-      <MiniStat label="AVG MORALE" value={Math.round(roster.reduce((s, p) => s + (p.morale ?? 60), 0) / (roster.length || 1))} color={(() => { const m = Math.round(roster.reduce((s, p) => s + (p.morale ?? 60), 0) / (roster.length || 1)); return m >= 70 ? C.win : m >= 45 ? C.gold : C.red; })()} />
-      <MiniStat label={wksToPay === 0 ? "PAYDAY" : "NEXT PAY"} value={wksToPay === 0 ? `${payDue}K due!` : `${wksToPay}wk · ${payDue}K`} color={wksToPay === 0 ? C.red : wksToPay <= 1 ? C.gold : C.dim} />
-    </div>
-
-    {/* ── Tactical style selector ── */}
-    {(() => {
-      const curTactic = season.simState.tactics?.[myTeam] || "Utility";
-      const tacticKeys = Object.keys(TACTICS_INFO);
-      return (
-        <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 10, padding: "12px 16px", marginBottom: 16 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-            <span style={{ fontFamily: mono, fontWeight: 700, fontSize: 10, color: C.acc, letterSpacing: 1 }}>TACTIC</span>
-            <span style={{ fontFamily: mono, fontSize: 10, color: C.faint }}>Beats {TACTICS_INFO[curTactic]?.beats}</span>
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 7 }}>
-            {tacticKeys.map(tac => {
-              const info = TACTICS_INFO[tac];
-              const sel = tac === curTactic;
-              return (
-                <button key={tac} onClick={() => !sel && onSetTactic && onSetTactic(tac)}
-                  style={{ background: sel ? C.acc + "1f" : C.panel2, border: `1px solid ${sel ? C.acc : C.line}`, borderRadius: 8, padding: "8px 10px", textAlign: "left", cursor: sel ? "default" : "pointer" }}>
-                  <div style={{ fontWeight: 700, fontSize: 12, color: sel ? C.acc : C.ink, marginBottom: 3 }}>{tac}</div>
-                  <div style={{ fontSize: 9, color: C.dim, lineHeight: 1.3 }}>{info.desc}</div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      );
-    })()}
-
     {/* ── Time-sensitive alerts ── */}
     {season.pendingEvent && (
       <div style={{ background: "rgba(99,102,241,.10)", border: `1px solid #6366f155`, borderRadius: 12, padding: "16px 18px", marginBottom: 16 }}>

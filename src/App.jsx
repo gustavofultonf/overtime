@@ -17,6 +17,10 @@ import {
   weekToLabel,
   weekToMonth,
   CONTRACT_TERMS,
+  DEBT_GAMEOVER_THRESHOLD,
+  DEBT_SUSTAINED_WEEKS,
+  DEBT_WARNING_WEEKS,
+  DEBT_FINAL_WARNING_WEEKS,
 } from "./constants/events.js";
 
 // Engine
@@ -109,6 +113,7 @@ import { EventDebrief } from "./ui/EventDebrief.jsx";
 import { DynamicsView } from "./ui/DynamicsView.jsx";
 import { TacticsView } from "./ui/TacticsView.jsx";
 import { BoardReview } from "./ui/BoardReview.jsx";
+import { BankruptcyScreen } from "./ui/BankruptcyScreen.jsx";
 
 export default function App() {
   const [phase, setPhase] = useState("loading"); // loading | saves | draft | season
@@ -199,13 +204,34 @@ export default function App() {
     return tt;
   }
 
+  // Older snapshotTournament() output double-wrapped each team's match log in an
+  // extra array ([[f1,f2,...]] instead of [f1,f2,...]) — harmless for
+  // JSON.stringify/localStorage, but Firestore's setDoc() rejects nested arrays
+  // outright, and EventDetail.jsx's matches.map() was silently rendering garbage
+  // for it too. Self-heals any save already carrying the bad shape.
+  function sanitizeHistory(history) {
+    return (history || []).map((h) => {
+      const records = h.tournament?.swiss?.records;
+      if (!records) return h;
+      const fixed = {};
+      let changed = false;
+      for (const [team, r] of Object.entries(records)) {
+        const flatMatches = Array.isArray(r.matches) ? r.matches.flat() : r.matches;
+        if (flatMatches !== r.matches) changed = true;
+        fixed[team] = { ...r, matches: flatMatches };
+      }
+      if (!changed) return h;
+      return { ...h, tournament: { ...h.tournament, swiss: { ...h.tournament.swiss, records: fixed } } };
+    });
+  }
+
   // overrideT lets callers pass a tournament object that was just created via setT()
   // this render — the `t` state variable itself won't reflect it until next render.
   function buildSaveData(overrideT) {
     if (!season || !myTeam) return null;
     return {
       myTeam,
-      season: { ...season, simState: undefined }, // simState saved separately
+      season: { ...season, simState: undefined, history: sanitizeHistory(season.history) }, // simState saved separately
       simState: season.simState,
       tournament: tournamentForSave(overrideT !== undefined ? overrideT : t), // in-progress event, if any
       savedAt: new Date().toISOString(),
@@ -242,7 +268,11 @@ export default function App() {
 
   function loadFromSave(save) {
     if (!save) return;
-    const s = { ...save.season, simState: save.simState };
+    const s = {
+      ...save.season,
+      simState: save.simState,
+      history: sanitizeHistory(save.season.history),
+    };
     const restoredT = save.tournament
       ? tournamentFromSave(save.tournament, s.simState)
       : null;
@@ -379,6 +409,9 @@ export default function App() {
       pendingEntry: null,
       sponsorships: [],
       scoutedTeams: {},
+      debtWeeks: 0,
+      debtWarnStage: 0,
+      debtInterestRate: 0,
     };
     setSeason(s);
     setPhase("season");
@@ -595,7 +628,7 @@ export default function App() {
             w: 0,
             l: 0,
             buchholz: swiss.records[tm]?.buchholz || 0,
-            matches: [(swiss.records[tm].matches || []).map((f) => ({ ...f }))],
+            matches: (swiss.records[tm].matches || []).map((f) => ({ ...f })),
           };
         }
         return {
@@ -709,6 +742,50 @@ export default function App() {
     updateMorale(season.simState, myTeam, place);
 
     season.budget += prize;
+
+    // Resolve a pending "place top N at the next event" sponsor bonus, if one fired
+    // during a random event — it was previously set but never actually checked.
+    if (season.simState.pendingBonus) {
+      const pb = season.simState.pendingBonus;
+      const met = pb.condition === "top4" ? place <= 4 : false;
+      if (met) {
+        season.budget += pb.amount;
+        season.weekLog.push({
+          week: season.week,
+          activity: "news",
+          event: `[$$] Sponsor bonus paid out: +${pb.amount}K for a top-4 finish!`,
+        });
+      } else {
+        season.weekLog.push({
+          week: season.week,
+          activity: "news",
+          event: `[X] Sponsor bonus missed — needed a top-4 finish.`,
+        });
+      }
+      season.simState.pendingBonus = null;
+    }
+
+    // Mark one-time sponsor achievements met by this result: "win an event" needs a
+    // 1st-place finish; "make a Major" just needs to have qualified and played in one
+    // (reaching endEvent for a Major event already means you were in it).
+    (season.sponsorships || []).forEach((sp) => {
+      if (!sp.active || sp.achieved) return;
+      if (sp.checkWin && place === 1) {
+        sp.achieved = true;
+        season.weekLog.push({
+          week: season.week,
+          activity: "news",
+          event: `[OK] ${sp.brand}'s sponsorship condition met — event win delivered.`,
+        });
+      } else if (sp.checkMajor && ev.tier === "Major") {
+        sp.achieved = true;
+        season.weekLog.push({
+          week: season.week,
+          activity: "news",
+          event: `[OK] ${sp.brand}'s sponsorship condition met — Major appearance delivered.`,
+        });
+      }
+    });
 
     season.history.push({
       eventNum: season.eventNum,
@@ -1048,6 +1125,27 @@ export default function App() {
           condition: "Make a Major",
           checkMajor: true,
         },
+        {
+          brand: "Secretlab",
+          monthly: 20,
+          duration: 7,
+          condition: "None",
+          checkRank: 99,
+        },
+        {
+          brand: "ASUS ROG",
+          monthly: rank <= 6 ? 45 : 22,
+          duration: 5,
+          condition: rank <= 6 ? "Stay top 6" : "Stay top 12",
+          checkRank: rank <= 6 ? 6 : 12,
+        },
+        {
+          brand: "Vindex",
+          monthly: 55,
+          duration: 3,
+          condition: "Win an event",
+          checkWin: true,
+        },
       ];
       const offer = offers[Math.floor(Math.random() * offers.length)];
       // Bigger brands command bigger sponsorship cheques.
@@ -1062,6 +1160,7 @@ export default function App() {
         offered: true,
         weeksLeft: offer.duration * 4,
         startWeek: season.week,
+        achieved: !offer.checkWin && !offer.checkMajor, // one-time conditions start unmet
       });
       season.weekLog.push({
         week: season.week,
@@ -1069,11 +1168,39 @@ export default function App() {
         event: `[>] ${offer.brand} offers ${monthly}K/month for ${offer.duration} months (${offer.condition})`,
       });
     }
-    // Tick active sponsorships
+    // Tick active sponsorships and enforce their conditions:
+    //  - checkRank ("stay top N"): checked every week, ongoing — pulls out the
+    //    moment the threshold breaks, instead of riding out the rest of the deal.
+    //  - checkWin/checkMajor ("win an event" / "make a Major"): one-time
+    //    achievements. `sp.achieved` is flipped in endEvent() the moment they're
+    //    met. If the contract runs out (weeksLeft hits 0) and it was never met,
+    //    the sponsor walks unrenewed instead of quietly disappearing.
+    const sponsorRank = (() => {
+      const r = getRankedTeams(season.simState, myTeam);
+      return r.findIndex((x) => x.team === myTeam) + 1;
+    })();
     (season.sponsorships || []).forEach((sp) => {
-      if (sp.active) {
-        sp.weeksLeft--;
-        if (sp.weeksLeft <= 0) sp.active = false;
+      if (!sp.active) return;
+      if (sp.checkRank && sponsorRank > sp.checkRank) {
+        sp.active = false;
+        sp.weeksLeft = 0;
+        season.weekLog.push({
+          week: season.week,
+          activity: "news",
+          event: `[X] ${sp.brand} pulled their sponsorship — ${myTeam} dropped out of top ${sp.checkRank} (now #${sponsorRank}).`,
+        });
+        return;
+      }
+      sp.weeksLeft--;
+      if (sp.weeksLeft <= 0) {
+        sp.active = false;
+        if (!sp.achieved) {
+          season.weekLog.push({
+            week: season.week,
+            activity: "news",
+            event: `[X] ${sp.brand}'s deal expired unfulfilled — ${myTeam} never delivered "${sp.condition}."`,
+          });
+        }
       }
     });
     season.weekLog.push({
@@ -1097,8 +1224,100 @@ export default function App() {
         activity: "salary",
         event: salMsg,
       });
+
+    if (tickDebtForWeek(true)) {
+      triggerBankruptcy();
+      return;
+    }
     const newT = checkWeekTransition();
     autoSave(newT);
+  }
+
+  // Applies one week of debt consequences: interest on any active loan,
+  // chemistry/morale decay while insolvent, debtWeeks tracking, and — when
+  // `interactive` is true — board-warning choice events at set milestones.
+  // Bulk "sim to next event" passes interactive=false, matching how all other
+  // CHOICE_EVENTS are already silently skipped during that mode; debt still
+  // accrues and can still trigger bankruptcy there, it just won't show a card.
+  // Returns true if this tick crossed into bankruptcy.
+  function tickDebtForWeek(interactive) {
+    if (season.budget < 0) {
+      if (season.debtInterestRate) {
+        season.budget -= Math.round(
+          -season.budget * (season.debtInterestRate / 100),
+        );
+      }
+      season.debtWeeks = (season.debtWeeks || 0) + 1;
+      season.simState.chemistry[myTeam] = Math.max(
+        15,
+        (season.simState.chemistry[myTeam] || 70) - 2,
+      );
+      rosterOf(season.simState, myTeam).forEach((p) => {
+        p.morale = Math.max(5, (p.morale ?? 60) - 3);
+      });
+      if (season.debtWeeks === 1) {
+        season.weekLog.push({
+          week: season.week,
+          activity: "news",
+          event: `[!] ${myTeam} is running a deficit — squad morale and chemistry will keep suffering until it's cleared.`,
+        });
+      }
+      if (
+        interactive &&
+        season.debtWeeks >= DEBT_WARNING_WEEKS &&
+        (season.debtWarnStage || 0) < 1 &&
+        !season.pendingEvent
+      ) {
+        season.debtWarnStage = 1;
+        season.pendingEvent = {
+          id: "debt_warning",
+          title: "Board Warning",
+          text: `The board is alarmed — ${myTeam} has run a deficit for ${season.debtWeeks} straight weeks. They want action.`,
+          choices: [
+            { label: "Emergency loan", desc: "+$150K now · 5%/wk interest accrues on the debt until it's repaid" },
+            { label: "Cut costs immediately", desc: "Release your lowest-morale player to free agency, no refund" },
+            { label: "Reassure the board", desc: "No cost · -5 chemistry from the scare" },
+          ],
+        };
+      } else if (
+        interactive &&
+        season.debtWeeks >= DEBT_FINAL_WARNING_WEEKS &&
+        (season.debtWarnStage || 0) < 2 &&
+        !season.pendingEvent
+      ) {
+        season.debtWarnStage = 2;
+        season.pendingEvent = {
+          id: "debt_final_warning",
+          title: "Final Warning",
+          text: `${myTeam} has been insolvent for ${season.debtWeeks} weeks. The board says this is the last chance before they pull funding entirely.`,
+          choices: [
+            { label: "Sell your best player", desc: "Force-sell your highest-OVR player for 70% market value, immediate cash" },
+            { label: "High-interest bailout", desc: "+$300K now · 10%/wk interest accrues on the debt until it's repaid" },
+            { label: "Refuse — ride it out", desc: "No cost · bankruptcy risk is now severe" },
+          ],
+        };
+      }
+    } else {
+      season.debtWeeks = 0;
+      season.debtWarnStage = 0;
+      season.debtInterestRate = 0;
+    }
+    return (
+      season.budget <= DEBT_GAMEOVER_THRESHOLD ||
+      season.debtWeeks >= DEBT_SUSTAINED_WEEKS
+    );
+  }
+
+  function triggerBankruptcy() {
+    season.phase = "bankrupt";
+    season.weekLog.push({
+      week: season.week,
+      activity: "news",
+      event: `[X] ${myTeam} has gone bankrupt. The organization folds.`,
+    });
+    setSeason({ ...season });
+    setT(null);
+    autoSave(null);
   }
 
   function simToNextEvent() {
@@ -1112,8 +1331,11 @@ export default function App() {
       target,
       season.facilities,
     );
-    // Inject salary deductions into the log for each payday week
+    // Inject salary deductions into the log for each payday week, and tick debt
+    // consequences for every simulated week — bulk-simming must not be a way to
+    // dodge bankruptcy that single-stepping through weeks would otherwise trigger.
     const enriched = [];
+    let bankrupt = false;
     for (const entry of log) {
       enriched.push(entry);
       if (isSalaryWeek(entry.week + 1)) {
@@ -1129,8 +1351,17 @@ export default function App() {
           event: `[$] Payday (${weekToLabel(entry.week + 1, season.year)}) — ${totalSalary}K salaries paid${season.budget < 0 ? " ! DEBT!" : ""}`,
         });
       }
+      season.week = entry.week + 1;
+      if (tickDebtForWeek(false)) {
+        bankrupt = true;
+        break;
+      }
     }
     season.weekLog.push(...enriched);
+    if (bankrupt) {
+      triggerBankruptcy();
+      return;
+    }
     season.week = target;
     tickContractWeeks(target - startWk);
     const newT = checkWeekTransition();
@@ -1350,14 +1581,17 @@ export default function App() {
       const totalReward = (season.boardObjectives || [])
         .filter((o) => o.met)
         .reduce((s, o) => s + (o.reward || 0), 0);
-      const carryover = Math.max(0, Math.round(season.budget * 0.5));
+      // Budget is a continuous, persistent resource now — no season-boundary
+      // halving or floor. Debt (if any) follows you into the new year exactly
+      // as it stood; only board objective rewards add anything on top.
+      const carryover = season.budget;
       const awards = computeSeasonAwards(season.simState, myTeam);
       season.boardSummary = {
         finalRank,
         totalReward,
         carryover,
         oldBudget: season.budget,
-        newBudget: 400 + totalReward + carryover,
+        newBudget: carryover + totalReward,
         awards,
       };
       // Award winners get a form/morale boost
@@ -1964,12 +2198,16 @@ export default function App() {
       budgetEnd: season.budget,
       rank: endRank,
       trophies: season.history.filter((h) => h.place === 1).length,
+      // Keep the actual championship details (not just the count) so a career
+      // trophy case can show what was won, not just how many — see TrophyCase.jsx.
+      titles: season.history
+        .filter((h) => h.place === 1)
+        .map((h) => ({ label: h.label, tier: h.tier, eventNum: h.eventNum })),
       roster: rosterOf(season.simState, myTeam).map((p) => p.name),
     });
-    // Apply board budget (carryover + rewards + base allocation)
-    season.budget =
-      season.boardSummary?.newBudget ??
-      Math.max(400, 400 + Math.max(0, Math.round(season.budget * 0.5)));
+    // Apply board budget — pure carryover of last season's balance plus any
+    // objective rewards. No reset, no floor: debt persists into the new year.
+    season.budget = season.boardSummary?.newBudget ?? season.budget;
     // Age all players +1
     season.simState.players.forEach((p) => {
       p.age++;
@@ -2478,6 +2716,57 @@ export default function App() {
         }
         break;
       }
+      case "debt_warning":
+        if (choiceIdx === 0) {
+          season.budget += 150;
+          season.debtInterestRate = 5;
+        } else if (choiceIdx === 1) {
+          const worst = [...roster].sort(
+            (a, b) => (a.morale ?? 60) - (b.morale ?? 60),
+          )[0];
+          if (worst) {
+            worst.team = "FA";
+            worst.contract = 0;
+            season.weekLog.push({
+              week: season.week,
+              activity: "news",
+              event: `[--] ${worst.name} released to cut costs amid financial trouble.`,
+            });
+          }
+        } else {
+          season.simState.chemistry[myTeam] = Math.max(
+            15,
+            (season.simState.chemistry[myTeam] || 70) - 5,
+          );
+        }
+        break;
+      case "debt_final_warning":
+        if (choiceIdx === 0) {
+          const best = [...roster].sort(
+            (a, b) => playerOvr(b) - playerOvr(a),
+          )[0];
+          if (best) {
+            const sale = Math.round(marketValue(best) * 0.7);
+            season.budget += sale;
+            best.team = "FA";
+            best.contract = 0;
+            season.weekLog.push({
+              week: season.week,
+              activity: "news",
+              event: `[$] Forced sale: ${best.name} sold for ${sale}K to cover debts.`,
+            });
+          }
+        } else if (choiceIdx === 1) {
+          season.budget += 300;
+          season.debtInterestRate = 10;
+        } else {
+          season.weekLog.push({
+            week: season.week,
+            activity: "news",
+            event: `[!] ${myTeam} refuses board intervention — bankruptcy risk is now severe.`,
+          });
+        }
+        break;
       default:
         break;
     }
@@ -2819,7 +3108,6 @@ export default function App() {
               onResolveContract={resolveContract}
               onAcceptEntry={acceptEntry}
               onDeclineEntry={declineEntry}
-              onSetTactic={setTactic}
             />
           )}
           {tab === "roster" && (
@@ -2893,6 +3181,12 @@ export default function App() {
           />
         )}
       </div>
+    );
+
+  // Bankrupt — organization folded, only path forward is a new org
+  if (season?.phase === "bankrupt")
+    return (
+      <BankruptcyScreen season={season} myTeam={myTeam} onNewOrg={resetAll} />
     );
 
   // Season done — board review

@@ -3,6 +3,7 @@ import { C, sans, mono } from "./theme.js";
 import { getRankedTeams } from "../engine/player.js";
 import { Intro, Locked, MiniStat } from "./primitives.jsx";
 import { EventDetail } from "./EventDetail.jsx";
+import { TrophyCase } from "./TrophyCase.jsx";
 
 function BudgetChart({ history }) {
   if (!history || history.length < 1) return null;
@@ -129,9 +130,88 @@ function BudgetChart({ history }) {
   );
 }
 
+// Placement over events — inverted y-axis (1st place plots highest) so the line
+// reads as "up = better," matching how the budget chart reads "up = more money."
+function PlacementChart({ history }) {
+  if (!history || history.length < 2) return null;
+  const W = 420,
+    H = 90,
+    PL = 26,
+    PR = 14,
+    PT = 10,
+    PB = 22;
+  const plotW = W - PL - PR,
+    plotH = H - PT - PB;
+  const n = history.length;
+  const places = history.map((h) => h.place);
+  const maxPlace = Math.max(...places, 8);
+  const xOf = (i) => (n === 1 ? PL + plotW / 2 : PL + (i / (n - 1)) * plotW);
+  // place=1 → top of plot, place=maxPlace → bottom
+  const yOf = (p) => PT + ((p - 1) / (maxPlace - 1 || 1)) * plotH;
+  const plCol = (p) =>
+    p === 1 ? C.gold : p === 2 ? "#c9d2e0" : p <= 4 ? C.acc : p <= 8 ? C.live : C.dim;
+  return (
+    <svg
+      width="100%"
+      viewBox={`0 0 ${W} ${H}`}
+      style={{ display: "block", overflow: "visible" }}
+    >
+      {[1, Math.round((maxPlace + 1) / 2), maxPlace]
+        .filter((v, i, a) => a.indexOf(v) === i)
+        .map((v) => (
+          <g key={v}>
+            <line
+              x1={PL}
+              x2={W - PR}
+              y1={yOf(v)}
+              y2={yOf(v)}
+              stroke={C.line}
+              strokeWidth={0.5}
+              strokeDasharray="3,3"
+            />
+            <text x={PL - 3} y={yOf(v) + 3} fontSize="8" fill={C.faint} textAnchor="end">
+              {v === 1 ? "1st" : `T${v}`}
+            </text>
+          </g>
+        ))}
+      {n > 1 && (
+        <polyline
+          points={history.map((h, i) => `${xOf(i)},${yOf(h.place)}`).join(" ")}
+          fill="none"
+          stroke={C.acc}
+          strokeWidth="2"
+          strokeLinejoin="round"
+          strokeLinecap="round"
+        />
+      )}
+      {history.map((h, i) => (
+        <g key={i}>
+          <circle cx={xOf(i)} cy={yOf(h.place)} r="3.5" fill={plCol(h.place)} />
+          <text x={xOf(i)} y={H - 4} fontSize="8" fill={C.faint} textAnchor="middle">
+            #{h.eventNum}
+          </text>
+        </g>
+      ))}
+      <text x={PL} y={PT - 3} fontSize="8" fill={C.faint}>
+        placement
+      </text>
+    </svg>
+  );
+}
+
 export function SeasonHistory({ season, myTeam }) {
-  if (!season.history.length)
+  const hasPastTitles = (season.yearHistory || []).some(
+    (y) => (y.titles || []).length > 0,
+  );
+  if (!season.history.length && !hasPastTitles)
     return <Locked text="Season history appears after your first event." />;
+  if (!season.history.length)
+    return (
+      <div>
+        <TrophyCase season={season} myTeam={myTeam} />
+        <Locked text="This season's history appears after your first event." />
+      </div>
+    );
   const plCol = (p) =>
     p === 1
       ? C.gold
@@ -161,6 +241,7 @@ export function SeasonHistory({ season, myTeam }) {
   return (
     <div>
       <Intro text="Your results across all events this season." />
+      <TrophyCase season={season} myTeam={myTeam} />
       <div
         style={{
           background: C.panel2,
@@ -224,6 +305,30 @@ export function SeasonHistory({ season, myTeam }) {
             <span style={{ color: C.gold }}>— budget after event</span>
             <span style={{ color: C.win }}>prize earned</span>
           </div>
+        </div>
+      )}
+      {season.history.length >= 2 && (
+        <div
+          style={{
+            background: C.panel,
+            border: `1px solid ${C.line}`,
+            borderRadius: 10,
+            padding: "12px 16px",
+            marginBottom: 12,
+          }}
+        >
+          <div
+            style={{
+              fontFamily: mono,
+              fontSize: 10,
+              color: C.faint,
+              letterSpacing: 1,
+              marginBottom: 8,
+            }}
+          >
+            PLACEMENT TREND
+          </div>
+          <PlacementChart history={season.history} />
         </div>
       )}
       <div

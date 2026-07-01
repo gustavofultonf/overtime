@@ -2,13 +2,14 @@ import React from 'react';
 import { C, sans, mono } from './theme.js';
 import { computeFinances, INCOME_LABELS, brandTier } from '../engine/finance.js';
 import { SL, MiniStat, Empty } from './primitives.jsx';
+import { DEBT_GAMEOVER_THRESHOLD, DEBT_SUSTAINED_WEEKS, DEBT_WARNING_WEEKS } from '../constants/events.js';
 
 const fmt = v => `${v < 0 ? "-" : ""}$${Math.abs(Math.round(v))}K`;
 
 // ── Budget trend: bank balance after each event + prize bars ──
 function BudgetChart({ history }) {
   if (!history || history.length < 2) return null;
-  const W = 440, H = 120, PL = 42, PR = 16, PT = 14, PB = 26;
+  const W = 440, H = 170, PL = 46, PR = 16, PT = 16, PB = 28;
   const plotW = W - PL - PR, plotH = H - PT - PB;
   const n = history.length;
   const budgets = history.map(h => h.budgetAfter);
@@ -23,29 +24,43 @@ function BudgetChart({ history }) {
   const yOf = v => PT + (1 - (v - lo) / range) * plotH;
   const maxPrize = Math.max(...prizes, 1);
   const barW = Math.max(5, Math.min(20, (plotW / n) * 0.5));
-  const fmt = v => Math.abs(v) >= 1000 ? (v / 1000).toFixed(1) + 'k' : `${Math.round(v)}`;
-  const gridVals = [hi, lo + range / 2, lo]; // strictly within bounds
-  const baseY = yOf(lo);          // prize-bar baseline (plot bottom)
+  const fmtAxis = v => Math.abs(v) >= 1000 ? (v / 1000).toFixed(1) + 'k' : `${Math.round(v)}`;
+  // 4 evenly-spaced gridlines instead of 3 — easier to interpolate an exact value.
+  const gridVals = [hi, lo + range * 0.667, lo + range * 0.333, lo].filter((v, i, a) => a.indexOf(v) === i);
+  const baseY = yOf(lo); // prize-bar baseline (plot bottom)
+  // With many events the x-axis labels collide — thin them out to at most ~8, but
+  // always keep the first and last so the timeline's start/end stay legible.
+  const labelStep = Math.max(1, Math.ceil(n / 8));
+  const showLabel = i => i === 0 || i === n - 1 || i % labelStep === 0;
   return (
     <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ display: 'block', overflow: 'visible' }}>
+      <text x={PL} y={11} fontSize="9" fill={C.faint} fontFamily={mono}>$K</text>
       {gridVals.map((v, i) => (
         <g key={i}>
           <line x1={PL} x2={W - PR} y1={yOf(v)} y2={yOf(v)} stroke={C.line} strokeWidth={0.5} strokeDasharray="3,3" />
-          <text x={PL - 5} y={yOf(v) + 3} fontSize="8" fill={C.faint} textAnchor="end">{fmt(v)}</text>
+          <text x={PL - 6} y={yOf(v) + 3} fontSize="9" fill={C.faint} textAnchor="end" fontFamily={mono}>{fmtAxis(v)}</text>
         </g>
       ))}
-      {lo < 0 && <line x1={PL} x2={W - PR} y1={yOf(0)} y2={yOf(0)} stroke={C.red} strokeWidth={1} opacity={0.5} />}
+      {lo < 0 && hi > 0 && <line x1={PL} x2={W - PR} y1={yOf(0)} y2={yOf(0)} stroke={C.red} strokeWidth={1} opacity={0.5} />}
       {/* Prize earned per event — bars rise from the baseline */}
       {history.map((h, i) => {
         if (!h.prize) return null;
         const barH = (h.prize / maxPrize) * plotH * 0.35;
-        return <rect key={i} x={xOf(i) - barW / 2} y={baseY - barH} width={barW} height={barH} fill={C.win + '40'} rx={2} />;
+        return (
+          <rect key={i} x={xOf(i) - barW / 2} y={baseY - barH} width={barW} height={barH} fill={C.win + '66'} rx={2}>
+            <title>{`Event #${h.eventNum}: +${h.prize}K prize`}</title>
+          </rect>
+        );
       })}
-      <polyline points={history.map((h, i) => `${xOf(i)},${yOf(h.budgetAfter)}`).join(' ')} fill="none" stroke={C.gold} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+      <polyline points={history.map((h, i) => `${xOf(i)},${yOf(h.budgetAfter)}`).join(' ')} fill="none" stroke={C.gold} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
       {history.map((h, i) => (
         <g key={i}>
-          <circle cx={xOf(i)} cy={yOf(h.budgetAfter)} r="3.5" fill={h.budgetAfter >= 0 ? C.gold : C.red} />
-          <text x={xOf(i)} y={H - 7} fontSize="8" fill={C.faint} textAnchor="middle">#{h.eventNum}</text>
+          <circle cx={xOf(i)} cy={yOf(h.budgetAfter)} r="4" fill={h.budgetAfter >= 0 ? C.gold : C.red} stroke={C.panel} strokeWidth="1.5">
+            <title>{`Event #${h.eventNum} — balance ${fmt(h.budgetAfter)}${h.prize ? `, prize +${h.prize}K` : ''}`}</title>
+          </circle>
+          {showLabel(i) && (
+            <text x={xOf(i)} y={H - 8} fontSize="9" fill={C.faint} textAnchor="middle" fontFamily={mono}>#{h.eventNum}</text>
+          )}
         </g>
       ))}
     </svg>
@@ -176,7 +191,11 @@ export function FinanceView({ season, myTeam }) {
       {(inDebt || (losing && fin.runwayWeeks <= 8)) && (
         <div style={{ background: 'rgba(255,76,76,.1)', border: `1px solid ${C.red}`, borderRadius: 8, padding: '10px 16px', marginBottom: 18, fontFamily: mono, fontSize: 12, color: C.red }}>
           {inDebt
-            ? '! Your organization is in debt. Win prize money or cut salaries to recover.'
+            ? (() => {
+                const weeks = season.debtWeeks || 0;
+                const weeksLeft = Math.max(0, DEBT_SUSTAINED_WEEKS - weeks);
+                return `! Bankruptcy risk: in debt for ${weeks} week${weeks === 1 ? '' : 's'} (folds at ${DEBT_SUSTAINED_WEEKS}, or instantly below $${Math.abs(DEBT_GAMEOVER_THRESHOLD)}K). ${weeks >= DEBT_WARNING_WEEKS ? 'The board is watching closely.' : `${weeksLeft} weeks of runway before the board intervenes.`}`;
+              })()
             : `! Burning ${-fin.net}K/month — the bank runs dry in about ${fin.runwayWeeks} weeks. Secure a sponsor or shed salary.`}
         </div>
       )}
@@ -212,16 +231,36 @@ export function FinanceView({ season, myTeam }) {
         </div>
       </div>
 
+      {/* ── Merch store breakdown ── */}
+      <SL n="MRC" t="MERCH STORE" />
+      <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 12, padding: '6px 18px 12px', marginBottom: 20 }}>
+        {(fin.merchLines || []).map(item => (
+          <Row key={item.key} label={item.label} value={`+${item.value}K`} color={C.win}
+               pct={(item.value / (fin.income.merch || 1)) * 100} barColor={item.key === 'champDrop' ? C.gold : C.acc} />
+        ))}
+      </div>
+
       {/* ── Active sponsorships ── */}
       <SL n="SPN" t="ACTIVE SPONSORSHIPS" />
       <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 12, padding: '6px 18px 12px', marginBottom: 20 }}>
         {activeSponsors.length === 0
           ? <Empty text="No active sponsorships. Offers appear on the calendar as your ranking improves." />
-          : activeSponsors.map((sp, i) => (
-            <Row key={i} label={sp.brand}
-                 sub={`${Math.ceil((sp.weeksLeft || 0) / 4)}mo left${sp.condition && sp.condition !== 'None' ? ' · ' + sp.condition : ''}`}
-                 value={`+${sp.monthly}K/mo`} color={C.gold} />
-          ))}
+          : activeSponsors.map((sp, i) => {
+              const hasCondition = sp.condition && sp.condition !== 'None';
+              // checkRank is an ongoing gate (enforced weekly, void-on-break — see
+              // advanceWeek), not a one-time goal, so it doesn't get a ✓/pending badge.
+              const isOneTimeGoal = hasCondition && (sp.checkWin || sp.checkMajor);
+              const conditionTag = !hasCondition
+                ? ''
+                : isOneTimeGoal
+                  ? sp.achieved ? ' · ✓ ' + sp.condition : ' · ' + sp.condition + ' (pending)'
+                  : ' · ' + sp.condition;
+              return (
+                <Row key={i} label={sp.brand}
+                     sub={`${Math.ceil((sp.weeksLeft || 0) / 4)}mo left${conditionTag}`}
+                     value={`+${sp.monthly}K/mo`} color={isOneTimeGoal && !sp.achieved ? C.live : C.gold} />
+              );
+            })}
       </div>
 
       {/* ── Budget trend ── */}

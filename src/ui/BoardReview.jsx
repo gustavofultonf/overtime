@@ -64,11 +64,8 @@ export function BoardReview({season,myTeam,onBeginNewYear,onMenu}){
       <div style={{fontFamily:mono,fontSize:9,color:C.faint,letterSpacing:1.5,marginBottom:12}}>BUDGET FOR {yr+1} SEASON</div>
       <div style={{display:"flex",flexDirection:"column",gap:7}}>
         <div style={{display:"flex",justifyContent:"space-between",fontFamily:mono,fontSize:12,color:C.dim}}>
-          <span>Base allocation</span><span style={{color:C.ink}}>$400K</span>
-        </div>
-        <div style={{display:"flex",justifyContent:"space-between",fontFamily:mono,fontSize:12,color:C.dim}}>
-          <span>Budget carryover (50% of ${summary.oldBudget}K)</span>
-          <span style={{color:summary.carryover>0?C.gold:C.faint}}>+${summary.carryover}K</span>
+          <span>Budget carryover (full balance)</span>
+          <span style={{color:summary.carryover>=0?C.gold:C.red}}>{summary.carryover>=0?"+":""}${summary.carryover}K</span>
         </div>
         <div style={{display:"flex",justifyContent:"space-between",fontFamily:mono,fontSize:12,color:C.dim}}>
           <span>Board rewards ({metCount} objectives)</span>
@@ -76,7 +73,7 @@ export function BoardReview({season,myTeam,onBeginNewYear,onMenu}){
         </div>
         <div style={{borderTop:`1px solid ${C.line}`,paddingTop:8,marginTop:4,display:"flex",justifyContent:"space-between"}}>
           <span style={{fontFamily:mono,fontSize:14,fontWeight:800,color:C.ink}}>NEW SEASON BUDGET</span>
-          <span style={{fontFamily:mono,fontSize:16,fontWeight:800,color:C.gold}}>${summary.newBudget}K</span>
+          <span style={{fontFamily:mono,fontSize:16,fontWeight:800,color:summary.newBudget>=0?C.gold:C.red}}>{summary.newBudget<0?"-":""}${Math.abs(summary.newBudget)}K</span>
         </div>
       </div>
     </div>)}
