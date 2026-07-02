@@ -3,7 +3,7 @@ import { C, sans, mono } from './theme.js';
 import { weekToLabel } from '../constants/events.js';
 import { isRivalMatch } from '../engine/state.js';
 import { predictMatch } from '../engine/prediction.js';
-import { SL, Locked, Empty, TeamCrest, Btn } from './primitives.jsx';
+import { SL, Locked, Empty, TeamCrest, Btn, MatchScore } from './primitives.jsx';
 
 // Small status chip used for match stakes / ownership tags.
 function Tag({c,children,solid}){
@@ -154,14 +154,18 @@ export function MatchPrediction({t,myTeam,opp,bo}){
     <button onClick={()=>setOpen(o=>!o)} style={{background:"transparent",border:"none",color:C.acc,fontFamily:sans,fontSize:11.5,fontWeight:600,padding:"8px 0 0",cursor:"pointer"}}>
       {open?"▾ Hide map-by-map projection":"▸ Show map-by-map projection"}
     </button>
-    {open&&<div style={{display:"flex",gap:6,marginTop:8,flexWrap:"wrap"}}>
-      {pred.mapBreakdown.map(m=>{const mp=Math.round(m.winProbA*100);return(
-        <div key={m.map} style={{flex:"1 1 64px",background:C.panel2,border:`1px solid ${C.line}`,borderRadius:6,padding:"7px 6px",textAlign:"center"}}>
-          <div style={{fontSize:10,fontWeight:600,color:C.faint,whiteSpace:"nowrap"}}>{m.map}</div>
-          <div style={{fontFamily:mono,fontSize:14,fontWeight:700,color:mp>=55?C.win:mp>=45?C.gold:C.red}}>{mp}%</div>
-          <div title={`Map rating: ${m.ratingA} vs ${m.ratingB}`} style={{fontFamily:mono,fontSize:8.5,color:C.faint}}>{m.ratingA} v {m.ratingB}</div>
-        </div>);})}
-    </div>}
+    {open&&<>
+      <div style={{display:"flex",gap:6,marginTop:8,flexWrap:"wrap"}}>
+        {pred.mapBreakdown.map(m=>{const mp=Math.round(m.winProbA*100);return(
+          <div key={m.map} title={m.projected?"Projected to be played after the veto":undefined}
+            style={{flex:"1 1 64px",background:m.projected?C.acc+"14":C.panel2,border:`1px solid ${m.projected?C.acc+"77":C.line}`,borderRadius:6,padding:"7px 6px",textAlign:"center"}}>
+            <div style={{fontSize:10,fontWeight:600,color:m.projected?C.acc:C.faint,whiteSpace:"nowrap"}}>{m.map}</div>
+            <div style={{fontFamily:mono,fontSize:14,fontWeight:700,color:mp>=55?C.win:mp>=45?C.gold:C.red}}>{mp}%</div>
+            <div title={`Map rating: ${m.ratingA} vs ${m.ratingB}`} style={{fontFamily:mono,fontSize:8.5,color:C.faint}}>{m.ratingA} v {m.ratingB}</div>
+          </div>);})}
+      </div>
+      <div style={{fontSize:10.5,color:C.faint,marginTop:6}}>Highlighted maps are the ones the veto is projected to land on — the headline odds are built from those.</div>
+    </>}
   </div>);
 }
 
@@ -201,9 +205,9 @@ export function SwissResults({t,myTeam,onOpen,SEED}){
             const bubble=fixtureBubble(fx);
             if(!fx.done)return(
               <div key={fi} style={{background:isMe?C.acc+"22":C.panel,border:`1px solid ${isMe?C.acc:bubble?bubble.color+"55":C.line}`,borderRadius:8,padding:"10px 14px",display:"flex",alignItems:"center",gap:10}}>
-                <span style={{fontFamily:mono,fontSize:10,color:C.faint,width:28}}>Bo{fx.bo}</span>
+                <span style={{fontFamily:sans,fontSize:9.5,fontWeight:700,color:C.faint,width:26,flexShrink:0}}>Bo{fx.bo}</span>
                 <span style={{flex:1,fontWeight:isMe?700:500,color:isMe?C.acc:C.ink}}>{fx.a}</span>
-                <span style={{fontFamily:mono,fontSize:10,color:C.faint}}>vs</span>
+                <span style={{fontFamily:mono,fontSize:10,color:C.faint,minWidth:46,textAlign:"center"}}>vs</span>
                 <span style={{flex:1,textAlign:"right",fontWeight:isMe?700:500,color:isMe?C.acc:C.ink}}>{fx.b}</span>
                 {bubble&&<Tag c={bubble.color}>{bubble.label}</Tag>}
                 {isMe&&!bubble&&<Tag c={C.acc}>Your match</Tag>}
@@ -214,12 +218,13 @@ export function SwissResults({t,myTeam,onOpen,SEED}){
             return(
             <button key={fi} onClick={()=>onOpen({...fx.res,title:`Swiss R${ri+1} · Bo${fx.bo}`,a:fx.a,b:fx.b})}
               style={{background:isMe?(wA===myTeamIsA?C.win+"0f":C.red+"0f"):C.panel,border:`1px solid ${isMe?(wA===myTeamIsA?C.win+"44":C.red+"44"):C.line}`,borderRadius:8,padding:"10px 14px",textAlign:"left",display:"flex",alignItems:"center",gap:10}}>
-              <span style={{fontFamily:mono,fontSize:9,color:C.faint,width:28}}>Bo{fx.bo}</span>
-              <span style={{flex:1,fontWeight:700,color:wA?C.win:C.dim}}>{fx.a}</span>
-              <span style={{fontFamily:mono,fontWeight:700,fontSize:13,color:C.ink}}>{fx.res.bo>=3?fx.res.seriesScore.join("–"):fx.res.scoreLine}</span>
-              <span style={{flex:1,textAlign:"right",fontWeight:700,color:!wA?C.win:C.dim}}>{fx.b}</span>
-              {upset&&<Tag c={C.gold}>Upset</Tag>}
-              {isMe&&<span style={{fontFamily:mono,fontSize:9,color:wA===myTeamIsA?C.win:C.red,fontWeight:700,width:28}}>{wA===myTeamIsA?"W":"L"}</span>}
+              <span style={{fontFamily:sans,fontSize:9.5,fontWeight:700,color:C.faint,width:26,flexShrink:0}}>Bo{fx.bo}</span>
+              <span style={{flex:1,fontWeight:700,color:wA?C.win:C.dim,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{fx.a}</span>
+              <MatchScore res={fx.res}/>
+              <span style={{flex:1,textAlign:"right",fontWeight:700,color:!wA?C.win:C.dim,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{fx.b}</span>
+              <span style={{display:"flex",gap:6,flexShrink:0}}>
+                {upset&&<Tag c={C.gold}>Upset</Tag>}
+              </span>
             </button>);
           })}
         </div>
@@ -241,10 +246,10 @@ export function PlayoffMatchList({bracket,myTeam,onOpen}){
     list.forEach(fx=>{if(!fx.res)return;const isMe=fx.a===myTeam||fx.b===myTeam;const wA=fx.res.winnerName===fx.a;
       rows.push(<button key={r+fx.a} onClick={()=>onOpen({...fx.res,title:`${rndNames[r]} · Bo${fx.res.bo}`,a:fx.a,b:fx.b})}
         style={{background:isMe?(wA===(fx.a===myTeam)?C.win+"0f":C.red+"0f"):C.panel,border:`1px solid ${isMe?(wA===(fx.a===myTeam)?C.win+"44":C.red+"44"):C.line}`,borderRadius:8,padding:"10px 14px",textAlign:"left",display:"flex",alignItems:"center",gap:10,width:"100%"}}>
-        <span style={{fontFamily:mono,fontSize:9,color:C.gold,width:60}}>{rndNames[r].toUpperCase()}</span>
-        <span style={{flex:1,fontWeight:700,color:wA?C.win:C.dim}}>{fx.a}</span>
-        <span style={{fontFamily:mono,fontWeight:700,fontSize:13}}>{fx.res.seriesScore?.join("–")||fx.res.scoreLine}</span>
-        <span style={{flex:1,textAlign:"right",fontWeight:700,color:!wA?C.win:C.dim}}>{fx.b}</span>
+        <span style={{fontFamily:sans,fontSize:10,fontWeight:700,color:C.gold,width:74,flexShrink:0}}>{rndNames[r]}</span>
+        <span style={{flex:1,fontWeight:700,color:wA?C.win:C.dim,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{fx.a}</span>
+        <MatchScore res={fx.res}/>
+        <span style={{flex:1,textAlign:"right",fontWeight:700,color:!wA?C.win:C.dim,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{fx.b}</span>
       </button>);
     });
   }
@@ -267,7 +272,7 @@ export function SwissStandings({t,myTeam,SEED}){
     return "active";
   };
   const statusColor={advanced:C.win,eliminated:C.red,match_adv:C.live,match_eli:C.gold,active:C.dim};
-  const statusLabel={advanced:"ADVANCED",eliminated:"ELIMINATED",match_adv:"ADV MATCH",match_eli:"ELI MATCH",active:""};
+  const statusLabel={advanced:"Advanced",eliminated:"Eliminated",match_adv:"Can advance",match_eli:"Must win",active:""};
   const maxRounds=adv+eli-1;
   function WLSquares({w,l}){
     return(
@@ -280,8 +285,8 @@ export function SwissStandings({t,myTeam,SEED}){
   }
   return(<div>
     <div style={{background:C.panel,border:`1px solid ${C.line}`,borderRadius:10,overflow:"hidden"}}>
-      <div style={{display:"grid",gridTemplateColumns:"28px 1fr auto 90px",gap:6,padding:"8px 14px",fontFamily:sans,fontSize:10.5,fontWeight:700,color:C.faint,letterSpacing:.7}}>
-        <span>#</span><span>TEAM</span><span style={{textAlign:"center"}}>RECORD</span><span style={{textAlign:"right"}}>STATUS</span>
+      <div style={{display:"grid",gridTemplateColumns:"28px 1fr auto 90px",gap:6,padding:"8px 14px",fontFamily:sans,fontSize:10.5,fontWeight:700,color:C.dim,letterSpacing:.3,background:C.panel2,borderBottom:`1px solid ${C.line}`}}>
+        <span>#</span><span>Team</span><span style={{textAlign:"center"}}>Record</span><span style={{textAlign:"right"}}>Status</span>
       </div>
       {teams.map((team,i)=>{
         const r=swiss.records[team];const me=team===myTeam;const st=statusOf(team);const sc=statusColor[st];
@@ -290,13 +295,13 @@ export function SwissStandings({t,myTeam,SEED}){
           <span style={{fontFamily:mono,fontSize:12,color:C.faint}}>{i+1}</span>
           <span style={{display:"flex",alignItems:"center",gap:7,fontWeight:me?700:600,fontSize:13,color:me?C.acc:C.ink}}><TeamCrest name={team} size={22}/>{team}</span>
           <WLSquares w={r.w} l={r.l}/>
-          <span style={{fontFamily:mono,fontSize:9,textAlign:"right",color:sc||C.faint}}>{statusLabel[st]||`${r.w}–${r.l}`}</span>
+          <span style={{fontFamily:sans,fontSize:10.5,fontWeight:700,textAlign:"right",color:sc||C.faint}}>{statusLabel[st]||`${r.w}–${r.l}`}</span>
         </div>);
       })}
     </div>
     {/* Legend */}
-    <div style={{display:"flex",gap:16,marginTop:10,fontFamily:mono,fontSize:9,flexWrap:"wrap",color:C.faint}}>
-      {[[C.win,`ADVANCED (${adv}W)`],[C.live,"ADV MATCH"],[C.gold,"ELI MATCH"],[C.red,`ELIMINATED (${eli}L)`]].map(([c,l])=>(
+    <div style={{display:"flex",gap:16,marginTop:10,fontSize:11,flexWrap:"wrap",color:C.faint}}>
+      {[[C.win,`Advanced (${adv} wins)`],[C.live,"One win from advancing"],[C.gold,"One loss from elimination"],[C.red,`Eliminated (${eli} losses)`]].map(([c,l])=>(
         <span key={l} style={{display:"inline-flex",alignItems:"center",gap:6}}><span style={{width:8,height:8,borderRadius:2,background:c}}/>{l}</span>
       ))}
     </div>
@@ -305,7 +310,7 @@ export function SwissStandings({t,myTeam,SEED}){
 
 export function PlayoffBracket({bracket,champion,myTeam,onOpen,SEED}){
   const rounds=bracket.qf?["qf","sf","final"]:bracket.sf?["sf","final"]:["final"];
-  const roundNames={qf:"QUARTERFINALS",sf:"SEMIFINALS",final:"GRAND FINAL"};
+  const roundNames={qf:"Quarterfinals",sf:"Semifinals",final:"Grand Final"};
   return(<div>
     <div style={{overflowX:"auto",paddingBottom:10}}>
       <div style={{display:"flex",gap:24,minWidth:bracket.qf?860:500,padding:"8px 4px"}}>
@@ -314,8 +319,8 @@ export function PlayoffBracket({bracket,champion,myTeam,onOpen,SEED}){
           const isFinale=r==="final";
           return(
           <div key={r} style={{flex:1,minWidth:220}}>
-            <div style={{fontFamily:mono,fontSize:10,color:r==="final"?C.gold:C.acc,letterSpacing:1.5,fontWeight:700,marginBottom:12,paddingBottom:6,borderBottom:`1px solid ${C.line}`}}>
-              {roundNames[r]} {isFinale&&bracket.bo5Final?"· BO5":"· BO3"}
+            <div style={{fontFamily:sans,fontSize:12,color:r==="final"?C.gold:C.acc,fontWeight:800,marginBottom:12,paddingBottom:6,borderBottom:`1px solid ${C.line}`}}>
+              {roundNames[r]} {isFinale&&bracket.bo5Final?"· Bo5":"· Bo3"}
             </div>
             <div style={{display:"flex",flexDirection:"column",gap:10}}>
               {list.map((fx,i)=>{

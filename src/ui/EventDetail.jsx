@@ -165,11 +165,11 @@ function SwissStandings({ swiss, myTeam }) {
               }}
             >
               <span>R</span>
-              <span>OPPONENT</span>
-              <span style={{ textAlign: "center" }}>RESULT</span>
+              <span>Opponent</span>
+              <span style={{ textAlign: "center" }}>Result</span>
               <span>BO</span>
               <span></span>
-              <span>PRESS</span>
+              <span>Press</span>
             </div>
 
             {matches.map((fx, fi) => {
@@ -315,9 +315,9 @@ function SwissStandings({ swiss, myTeam }) {
         }}
       >
         <span>R</span>
-        <span>TEAM</span>
-        <span style={{ textAlign: "center" }}>RECORD</span>
-        <span style={{ textAlign: "right" }}>STATUS</span>
+        <span>Team</span>
+        <span style={{ textAlign: "center" }}>Record</span>
+        <span style={{ textAlign: "right" }}>Status</span>
       </div>
       {teams.map((team) => (
         <TeamRow key={team} team={team} />
@@ -389,9 +389,9 @@ function PlayoffBracket({ bracket, myTeam }) {
           letterSpacing: 1,
         }}
       >
-        <span>BRACKET</span>
-        <span style={{ textAlign: "center" }}>SCORE</span>
-        <span>TITLE</span>
+        <span>Bracket</span>
+        <span style={{ textAlign: "center" }}>Score</span>
+        <span>Title</span>
       </div>
       {rounds.map((r) => (
         <div key={r}>
@@ -496,10 +496,10 @@ function PlayerStats({ roster, myTeam, statsMap }) {
           padding: "3px 8px",
         }}
       >
-        <span>PLAYER</span>
+        <span>Player</span>
         <span style={{ textAlign: "center" }}>.000</span>
         <span style={{ textAlign: "right" }}>MVP</span>
-        <span style={{ textAlign: "right" }}>CLUTCHES</span>
+        <span style={{ textAlign: "right" }}>Clutches</span>
       </div>
       {sorted.map((p) => (
         <div

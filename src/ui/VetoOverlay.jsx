@@ -73,7 +73,7 @@ export function VetoOverlay({session,myTeam,t,onClose,onResolved}){
 
   const phaseText=resolving?"Resolving series…"
     :stepIdx>=steps.length?"Decider locked — heading to the server…"
-    :isYour?<span><b style={{color:C.acc}}>YOUR TURN</b> — {step[1]==="ban"?"ban a map":"pick a map"}</span>
+    :isYour?<span><b style={{color:C.acc}}>Your turn</b> — {step[1]==="ban"?"ban a map":"pick a map"}</span>
     :<span style={{color:C.dim}}>{opp} is {step[1]==="ban"?"banning":"picking"}…</span>;
 
   return(
@@ -135,8 +135,8 @@ function VetoStrip({steps,stepIdx,log,myTeam,opp,resolving}){
       })}
       {/* Decider slot */}
       <div style={{display:"flex",flexDirection:"column",alignItems:"center",minWidth:64,background:resolving?C.gold+"1a":C.panel2,border:`1px solid ${resolving?C.gold:C.line}`,borderRadius:6,padding:"4px 6px",opacity:resolving?1:0.5,transition:"all .25s ease"}}>
-        <span style={{fontFamily:mono,fontSize:8,color:C.gold,letterSpacing:.5}}>LEFT</span>
-        <span style={{fontFamily:mono,fontSize:9,fontWeight:700,color:C.gold}}>DECIDER</span>
+        <span style={{fontFamily:mono,fontSize:8,color:C.gold,letterSpacing:.5}}>Left</span>
+        <span style={{fontFamily:mono,fontSize:9,fontWeight:700,color:C.gold}}>Decider</span>
         <span style={{fontFamily:mono,fontSize:8,color:C.faint}}>auto</span>
       </div>
     </div>

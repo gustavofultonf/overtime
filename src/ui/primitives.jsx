@@ -174,6 +174,22 @@ export function Empty({text}){return <div style={{color:C.faint,fontSize:13,padd
 export function Intro({text}){return <p style={{color:C.dim,fontSize:13,lineHeight:1.65,margin:"0 0 18px",maxWidth:740}}>{text}</p>;}
 export function ColHead({children}){return <div style={{fontFamily:mono,fontSize:10,fontWeight:700,color:C.dim,letterSpacing:1.5,paddingBottom:7,borderBottom:`1px solid ${C.line}`,textTransform:"uppercase"}}>{children}</div>;}
 export function Pill({children,c}){return <span style={{fontFamily:sans,fontSize:9.5,fontWeight:700,color:c,background:c+"1a",border:`1px solid ${c}55`,borderRadius:5,padding:"1px 7px",letterSpacing:.2,textTransform:"capitalize"}}>{deCap(children)}</span>;}
+
+// ── Match score, self-labeled ────────────────────────────────────────
+// A Bo1 score ("13–10") and a Bo3/Bo5 score ("2–1") are different units —
+// rounds within one map vs. maps within a series — but read identically as
+// bare numbers. Always caption which one this is so a results list mixing
+// both formats never has to be puzzled out from a "Bo1"/"Bo3" tag alone.
+export function MatchScore({res}){
+  const isSeries=res.bo>=3;
+  const main=isSeries?res.seriesScore.join("–"):(res.scoreLine||(res.maps?.[0]?.score||[]).join("–"));
+  return(
+    <span style={{display:"flex",flexDirection:"column",alignItems:"center",minWidth:46,flexShrink:0}}>
+      <span style={{fontFamily:mono,fontWeight:800,fontSize:14,color:C.ink,lineHeight:1}}>{main}</span>
+      <span style={{fontFamily:sans,fontSize:8,fontWeight:700,color:C.faint,letterSpacing:.5,textTransform:"uppercase",marginTop:2}}>{isSeries?"maps":"rounds"}</span>
+    </span>
+  );
+}
 export function TraitPill({t}){const m={clutch:["Clutch",C.win],boom:["Boom/Bust",C.acc],leader:["Leader",C.live]};const[l,c]=m[t]||[t,C.dim];return <Pill c={c}>{l}</Pill>;}
 export function MoodTag({offered,desired}){
   const [label,col]=

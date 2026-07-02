@@ -39,6 +39,8 @@ a{color:${C.acc};}
 @keyframes risePop{0%{opacity:0;transform:translateY(14px) scale(.96);}60%{opacity:1;}100%{opacity:1;transform:translateY(0) scale(1);}}
 @keyframes sheen{0%{background-position:200% 0;}100%{background-position:-200% 0;}}
 @keyframes confettiFall{0%{transform:translateY(-8vh) rotate(0deg);opacity:1;}90%{opacity:1;}100%{transform:translateY(108vh) rotate(540deg);opacity:0;}}
+@keyframes shake{0%,100%{transform:translateX(0);}20%{transform:translateX(-7px);}40%{transform:translateX(6px);}60%{transform:translateX(-4px);}80%{transform:translateX(2px);}}
+@keyframes bannerSweep{0%{transform:scaleX(0);opacity:0;}55%{opacity:1;}100%{transform:scaleX(1);opacity:1;}}
 
 /* ── Data tables (Table primitive) ── */
 table.tbl{border-collapse:separate;border-spacing:0;width:100%;font-family:${sans};}

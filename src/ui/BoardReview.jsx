@@ -52,7 +52,7 @@ export function BoardReview({season,myTeam,onBeginNewYear,onMenu}){
     </div>
 
     {/* Objectives */}
-    <div style={{fontFamily:sans,fontSize:9.5,fontWeight:700,color:C.faint,letterSpacing:.7,marginBottom:8}}>BOARD OBJECTIVES</div>
+    <div style={{fontFamily:sans,fontSize:9.5,fontWeight:700,color:C.faint,letterSpacing:.7,marginBottom:8}}>Board objectives</div>
     <div style={{marginBottom:20}}>
       {objectives.map(o=><ObjRow key={o.id} obj={o}/>)}
       {objectives.length===0&&<div style={{fontFamily:mono,fontSize:12,color:C.faint}}>No objectives were set this season.</div>}
@@ -72,7 +72,7 @@ export function BoardReview({season,myTeam,onBeginNewYear,onMenu}){
           <span style={{color:summary.totalReward>0?C.win:C.faint}}>+${summary.totalReward}K</span>
         </div>
         <div style={{borderTop:`1px solid ${C.line}`,paddingTop:8,marginTop:4,display:"flex",justifyContent:"space-between"}}>
-          <span style={{fontFamily:mono,fontSize:14,fontWeight:800,color:C.ink}}>NEW SEASON BUDGET</span>
+          <span style={{fontFamily:mono,fontSize:14,fontWeight:800,color:C.ink}}>New season budget</span>
           <span style={{fontFamily:mono,fontSize:16,fontWeight:800,color:summary.newBudget>=0?C.gold:C.red}}>{summary.newBudget<0?"-":""}${Math.abs(summary.newBudget)}K</span>
         </div>
       </div>
@@ -81,7 +81,7 @@ export function BoardReview({season,myTeam,onBeginNewYear,onMenu}){
     {/* Season Awards */}
     {summary?.awards&&(
     <div style={{marginBottom:20}}>
-      <div style={{fontFamily:sans,fontSize:9.5,fontWeight:700,color:C.faint,letterSpacing:.7,marginBottom:8}}>SEASON AWARDS</div>
+      <div style={{fontFamily:sans,fontSize:9.5,fontWeight:700,color:C.faint,letterSpacing:.7,marginBottom:8}}>Season awards</div>
       <div style={{display:"flex",flexDirection:"column",gap:6}}>
         {summary.awards.mvp&&<AwardRow icon="MVP" label="Season MVP" player={summary.awards.mvp.name} team={summary.awards.mvp.team} detail={`${summary.awards.mvp.rating.toFixed(2)} rating · ${summary.awards.mvp.maps} maps`} color={C.gold} myTeam={myTeam}/>}
         {summary.awards.bestAWP&&<AwardRow icon="AWP" label="Best AWPer" player={summary.awards.bestAWP.name} team={summary.awards.bestAWP.team} detail={`${summary.awards.bestAWP.rating.toFixed(2)} rating`} color={C.live} myTeam={myTeam}/>}
@@ -91,7 +91,7 @@ export function BoardReview({season,myTeam,onBeginNewYear,onMenu}){
       </div>
       {summary.awards.allStar&&summary.awards.allStar.length>0&&(
       <div style={{marginTop:12}}>
-        <div style={{fontFamily:sans,fontSize:9.5,fontWeight:700,color:C.faint,letterSpacing:.7,marginBottom:6}}>ALL-STAR TEAM</div>
+        <div style={{fontFamily:sans,fontSize:9.5,fontWeight:700,color:C.faint,letterSpacing:.7,marginBottom:6}}>All-star team</div>
         <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
           {summary.awards.allStar.map((p,i)=>{
             const isOwn=p.team===myTeam;
@@ -106,7 +106,7 @@ export function BoardReview({season,myTeam,onBeginNewYear,onMenu}){
     </div>)}
 
     {/* Season results */}
-    <div style={{fontFamily:sans,fontSize:9.5,fontWeight:700,color:C.faint,letterSpacing:.7,marginBottom:8}}>SEASON RESULTS</div>
+    <div style={{fontFamily:sans,fontSize:9.5,fontWeight:700,color:C.faint,letterSpacing:.7,marginBottom:8}}>Season results</div>
     <div style={{marginBottom:20}}>
       <SeasonHistory season={season} myTeam={myTeam}/>
     </div>
@@ -114,7 +114,7 @@ export function BoardReview({season,myTeam,onBeginNewYear,onMenu}){
     {/* Previous years */}
     {season.yearHistory?.length>0&&(
     <div style={{marginBottom:24}}>
-      <div style={{fontFamily:sans,fontSize:9.5,fontWeight:700,color:C.faint,letterSpacing:.7,marginBottom:8}}>CAREER HISTORY</div>
+      <div style={{fontFamily:sans,fontSize:9.5,fontWeight:700,color:C.faint,letterSpacing:.7,marginBottom:8}}>Career history</div>
       <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
         {season.yearHistory.map((yh,i)=>(
         <div key={i} style={{background:C.panel,border:`1px solid ${C.line}`,borderRadius:8,padding:"10px 14px",minWidth:110}}>

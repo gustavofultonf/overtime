@@ -74,7 +74,7 @@ function MomentumBar({ momentum, myTeam }) {
     <div style={{ marginBottom: 10 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: mono, fontSize: 9, color: C.faint, marginBottom: 3 }}>
         <span style={{ color: myColor }}>▲ {myTeam}</span>
-        <span style={{ fontSize: 9, color: C.dim }}>MOMENTUM</span>
+        <span style={{ fontSize: 9, color: C.dim }}>Momentum</span>
         <span style={{ color: oppColor }}>OPP ▲</span>
       </div>
       <div style={{ position: 'relative', height: 8, background: C.panel2, borderRadius: 4, overflow: 'hidden' }}>
@@ -161,12 +161,12 @@ function RoundHistory({ rounds, tA, tB, myTeam, mapDone }) {
         </div>
       </div>
       <div style={{ display: 'flex', gap: 13, justifyContent: 'center', marginTop: 9, flexWrap: 'wrap', fontFamily: mono, fontSize: 8.5, color: C.faint }}>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><span style={{ width: 8, height: 8, borderRadius: 2, background: SIDE_COL.T }} />T-SIDE</span>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><span style={{ width: 8, height: 8, borderRadius: 2, background: SIDE_COL.CT }} />CT-SIDE</span>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><RoundIcon method="elim" color={C.dim} size={11} />KILLS</span>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><RoundIcon method="bomb" color={C.dim} size={11} />BOMB</span>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><RoundIcon method="defuse" color={C.dim} size={11} />DEFUSE</span>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><RoundIcon method="time" color={C.dim} size={11} />TIME</span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><span style={{ width: 8, height: 8, borderRadius: 2, background: SIDE_COL.T }} />T-side</span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><span style={{ width: 8, height: 8, borderRadius: 2, background: SIDE_COL.CT }} />CT-side</span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><RoundIcon method="elim" color={C.dim} size={11} />Kills</span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><RoundIcon method="bomb" color={C.dim} size={11} />Bomb</span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><RoundIcon method="defuse" color={C.dim} size={11} />Defuse</span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><RoundIcon method="time" color={C.dim} size={11} />Time</span>
       </div>
     </div>
   );
@@ -244,6 +244,54 @@ function ChoiceButton({ opt, onClick }) {
   );
 }
 
+// ── Celebration bits ─────────────────────────────────────────────────
+// Full-viewport confetti burst for series wins. Pure CSS animation
+// (confettiFall in Gstyle); pieces are deterministic per index so the
+// component doesn't reshuffle on re-render.
+function Confetti({ n = 90 }) {
+  const colors = [C.gold, C.win, C.acc, C.acc2, '#fff'];
+  const pieces = Array.from({ length: n }, (_, i) => {
+    const h = (i * 2654435761) >>> 0; // knuth hash for stable pseudo-random
+    const left = (h % 1000) / 10;
+    const delay = ((h >> 10) % 1800) / 1000;
+    const dur = 2.6 + ((h >> 18) % 1600) / 1000;
+    const size = 5 + ((h >> 8) % 6);
+    const color = colors[i % colors.length];
+    return (
+      <span key={i} style={{
+        position: 'fixed', top: 0, left: left + '%', width: size, height: size * 1.6,
+        background: color, borderRadius: 2, zIndex: 70, pointerEvents: 'none',
+        animation: `confettiFall ${dur}s linear ${delay}s both`,
+        transform: 'translateY(-8vh)',
+      }} />
+    );
+  });
+  return <>{pieces}</>;
+}
+
+// Banner stamped across the scoreboard the moment a map finishes.
+function MapEndBanner({ won, neutral, score, map }) {
+  const col = neutral ? C.dim : won ? C.win : C.red;
+  const label = neutral ? 'Map complete' : won ? 'Map won' : 'Map lost';
+  return (
+    <div style={{ position: 'relative', margin: '2px 0 12px' }}>
+      <div style={{ height: 2, background: `linear-gradient(90deg,transparent,${col},transparent)`, animation: 'bannerSweep .45s ease both', transformOrigin: 'center' }} />
+      <div style={{
+        textAlign: 'center', padding: '9px 0 7px',
+        animation: won ? 'popIn .5s ease both' : 'stampIn .5s ease both',
+      }}>
+        <span style={{
+          fontFamily: sans, fontWeight: 800, fontSize: 21, letterSpacing: 3, textTransform: 'uppercase',
+          color: col, textShadow: neutral ? 'none' : `0 0 22px ${col}66`,
+        }}>{label}</span>
+        <span style={{ fontFamily: mono, fontWeight: 800, fontSize: 16, color: C.ink, marginLeft: 12 }}>{score}</span>
+        <span style={{ fontSize: 11, color: C.faint, marginLeft: 8 }}>{map}</span>
+      </div>
+      <div style={{ height: 2, background: `linear-gradient(90deg,transparent,${col},transparent)`, animation: 'bannerSweep .45s ease both', transformOrigin: 'center' }} />
+    </div>
+  );
+}
+
 // ── Main component ───────────────────────────────────────────────────
 
 export function MatchReveal({ reveal, myTeam, t, onDone }) {
@@ -289,10 +337,11 @@ export function MatchReveal({ reveal, myTeam, t, onDone }) {
   useEffect(() => {
     if (done || !mp || paused || showHalftime) return;
     if (roundIdx >= mp.rounds.length) {
+      // Hold on the finished map long enough for the map-end banner to land.
       const timer = setTimeout(() => {
         if (mapIdx < res.maps.length - 1) { setMapIdx(i => i + 1); setRoundIdx(0); }
         else setDone(true);
-      }, 1200);
+      }, 2200);
       return () => clearTimeout(timer);
     }
 
@@ -378,6 +427,61 @@ export function MatchReveal({ reveal, myTeam, t, onDone }) {
     mp.score = fA > fB ? [fA, fB] : [fB, fA];
     mp.winnerName = fA > fB ? tA : tB;
     mp.loserName = fA > fB ? tB : tA;
+    recomputeSeriesResult();
+  }
+
+  // A halftime choice re-sims the second half of `mp` and can flip who wins
+  // that map — playSeries() already pre-simulated the *entire* series (every
+  // map res.mapList could need) before this reveal ever started, so a flip
+  // can now contradict how many maps should actually have been played:
+  //
+  //   - Shrink: the original sim had this map going the other way, needing a
+  //     3rd/5th decider that's already sitting in res.maps unplayed-by-the-
+  //     user. If the flip clinches the series here, that map is no longer
+  //     real — keeping it around let the reveal walk into and play a map
+  //     that a genuine Bo3/Bo5 would never have needed (the reported bug:
+  //     still watching map 3 after winning maps 1 and 2 2-0).
+  //   - Grow: the reverse — the original sim ended the series in 2 maps, but
+  //     the flip ties it back up, and no 3rd map exists yet to decide it.
+  //     res.mapList (the full veto pick order, always 2·need-1 long) always
+  //     has one waiting to be resolved for exactly this case.
+  //
+  // Either way, res.winnerName/seriesScore/scoreLine — the fields swiss and
+  // bracket progression trust once App.jsx consumes fx.res after onDone —
+  // must always describe a series that actually played out like a real
+  // Bo1/Bo3/Bo5, not whatever the pre-sim guessed before the user's choices.
+  function recomputeSeriesResult() {
+    const need = res.bo === 5 ? 3 : res.bo === 3 ? 2 : 1;
+    let aw = 0, bw = 0, decidedAt = -1;
+    for (let i = 0; i < res.maps.length; i++) {
+      if (res.maps[i].winnerName === tA) aw++; else bw++;
+      if (aw === need || bw === need) { decidedAt = i; break; }
+    }
+
+    if (decidedAt === -1) {
+      const nextMap = res.mapList?.[res.maps.length];
+      if (nextMap) {
+        const extra = resolveMap(t.simState, nextMap, tA, tB, { stage: 'group', decider: true }, t.rng);
+        res.maps = [...res.maps, extra];
+        recomputeSeriesResult();
+        return;
+      }
+      // No more maps to draw from (shouldn't happen — mapList is always long
+      // enough) — fall back to whichever side is ahead on what was played.
+      decidedAt = res.maps.length - 1;
+    } else if (decidedAt < res.maps.length - 1) {
+      res.maps = res.maps.slice(0, decidedAt + 1);
+    }
+
+    aw = 0; bw = 0;
+    res.maps.forEach(m => { if (m.winnerName === tA) aw++; else bw++; });
+    res.seriesScore = [aw, bw];
+    res.winnerName = aw >= bw ? tA : tB;
+    res.loserName = res.winnerName === tA ? tB : tA;
+    if (res.bo === 1) {
+      const m = res.maps[0];
+      res.scoreLine = `${Math.max(...m.score)}-${Math.min(...m.score)}`;
+    }
   }
 
   // ── Interactive: halftime team talk ─────────────────────────────────
@@ -522,6 +626,16 @@ export function MatchReveal({ reveal, myTeam, t, onDone }) {
           );
         })()}
 
+        {/* Map-end stamp (series continues) */}
+        {mapDone && !done && (
+          <MapEndBanner
+            won={mp.winnerName === myTeam}
+            neutral={!isMyMap}
+            score={`${curScore.scoreA}–${curScore.scoreB}`}
+            map={mp.map}
+          />
+        )}
+
         {/* Event toast */}
         {toast && (
           <div style={{
@@ -580,7 +694,7 @@ export function MatchReveal({ reveal, myTeam, t, onDone }) {
             color: C.acc,
             display: 'flex', gap: 8, alignItems: 'center',
           }}>
-            <span style={{ fontWeight: 700 }}>HALF-TIME</span>
+            <span style={{ fontWeight: 700 }}>Half-time</span>
             <span style={{ color: C.dim }}>"{lastInteraction.choice}"</span>
             <span style={{ color: C.faint }}>— {lastInteraction.desc}</span>
             {lastInteraction.gambleOutcome && (
@@ -650,12 +764,47 @@ export function MatchReveal({ reveal, myTeam, t, onDone }) {
           <button onClick={() => { setRoundIdx(mp?.rounds?.length || 0); }} style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 6, padding: '6px 12px', fontFamily: mono, fontSize: 11, color: C.dim, cursor: 'pointer' }}>Skip Map</button>
           <button onClick={() => { setMapIdx(res.maps.length - 1); setRoundIdx(res.maps[res.maps.length - 1]?.rounds?.length || 0); setDone(true); }} style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 6, padding: '6px 12px', fontFamily: mono, fontSize: 11, color: C.dim, cursor: 'pointer' }}>Skip All</button>
         </>)}
-        {done && (
-          <button onClick={onDone} style={{ background: C.acc, color: C.onAcc, border: 'none', borderRadius: 9, padding: '13px 26px', fontWeight: 800, fontSize: 15, cursor: 'pointer' }}>
-            {res.winnerName === myTeam ? 'VICTORY — Continue' : 'Continue →'}
-          </button>
-        )}
       </div>
+
+      {/* Series-end celebration / commiseration */}
+      {done && (() => {
+        const won = res.winnerName === myTeam;
+        const seriesScore = res.bo >= 3 ? (res.seriesScore || []).join('–') : (res.scoreLine || '');
+        return (
+          <div style={{ textAlign: 'center', padding: '16px 0 6px', position: 'relative' }}>
+            {won && <Confetti />}
+            <div style={{
+              fontFamily: sans, fontWeight: 800, fontSize: 46, letterSpacing: 7, lineHeight: 1.1,
+              animation: won ? 'risePop .55s ease both' : 'shake .55s ease both',
+              ...(won
+                ? { background: `linear-gradient(100deg,${C.gold},${C.win})`, WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent', filter: `drop-shadow(0 0 18px ${C.gold}55)` }
+                : { color: C.red, textShadow: `0 0 22px ${C.red}44` }),
+            }}>
+              {won ? 'VICTORY' : 'DEFEAT'}
+            </div>
+            <div style={{ fontSize: 13.5, color: C.dim, marginTop: 4, animation: 'fadeUp .5s ease .25s both' }}>
+              {won ? `${myTeam} take the ${res.bo >= 3 ? 'series' : 'map'} ${seriesScore}` : `${res.winnerName} take it ${seriesScore}`}
+            </div>
+            {res.bo >= 3 && (
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 10, flexWrap: 'wrap', animation: 'fadeUp .5s ease .35s both' }}>
+                {res.maps.map((m, i) => (
+                  <span key={i} style={{ fontFamily: mono, fontSize: 11, color: m.winnerName === myTeam ? C.win : C.red, background: (m.winnerName === myTeam ? C.win : C.red) + '14', border: `1px solid ${(m.winnerName === myTeam ? C.win : C.red)}44`, borderRadius: 6, padding: '3px 10px' }}>
+                    {m.map} {m.score.join('–')}
+                  </span>
+                ))}
+              </div>
+            )}
+            <button onClick={onDone} style={{
+              marginTop: 16, background: won ? `linear-gradient(100deg,${C.gold},${C.win})` : `linear-gradient(100deg,${C.accDeep},${C.acc})`,
+              color: won ? C.onAcc : '#fff', border: 'none', borderRadius: 9, padding: '13px 30px',
+              fontWeight: 800, fontSize: 15, cursor: 'pointer', animation: 'fadeUp .5s ease .45s both',
+              boxShadow: won ? `0 8px 26px -10px ${C.gold}88` : `0 8px 26px -10px ${C.accDeep}88`,
+            }}>
+              Continue →
+            </button>
+          </div>
+        );
+      })()}
     </Overlay>
   );
 }

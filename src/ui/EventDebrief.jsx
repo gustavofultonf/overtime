@@ -53,7 +53,7 @@ export function EventDebrief({debrief,onDismiss}){
         <div style={{display:"flex",gap:12,alignItems:"center",flexWrap:"wrap"}}>
           <span style={{fontFamily:mono,fontSize:22,fontWeight:800,color:placeColor,display:"inline-block",animation:"stampIn .5s ease"}}>{placeLabel}</span>
           <CountUp value={prize} prefix="+$" suffix="K" style={{fontFamily:mono,fontSize:15,color:C.gold,fontWeight:700}}/>
-          {won&&<span style={{fontFamily:mono,fontSize:13,color:C.onAcc,background:C.gold,padding:"5px 12px",borderRadius:6,letterSpacing:1,fontWeight:800,animation:"glowPulse 1.8s ease-in-out infinite"}}>CHAMPIONS</span>}
+          {won&&<span style={{fontFamily:mono,fontSize:13,color:C.onAcc,background:C.gold,padding:"5px 12px",borderRadius:6,letterSpacing:1,fontWeight:800,animation:"glowPulse 1.8s ease-in-out infinite"}}>Champions</span>}
         </div>
         {!won&&champion&&<div style={{fontFamily:mono,fontSize:11,color:C.faint,marginTop:5}}>Champion: <span style={{color:C.dim}}>{champion}</span></div>}
       </div>
@@ -67,7 +67,7 @@ export function EventDebrief({debrief,onDismiss}){
         )}
 
         {/* Player performance table */}
-        <div style={{fontFamily:sans,fontSize:10.5,fontWeight:700,color:C.faint,letterSpacing:.7,marginBottom:8}}>PLAYER PERFORMANCE</div>
+        <div style={{fontFamily:sans,fontSize:10.5,fontWeight:700,color:C.faint,letterSpacing:.7,marginBottom:8}}>Player performance</div>
         <div style={{display:"flex",flexDirection:"column",gap:5,marginBottom:18}}>
           {[...playerStats].sort((a,b)=>b.rating-a.rating).map((p,i)=>{
             const isMvp=mvp&&p.name===mvp.name&&p.maps>=2;
@@ -83,11 +83,11 @@ export function EventDebrief({debrief,onDismiss}){
               </div>
               <div style={{display:"flex",gap:16,marginLeft:"auto",fontFamily:mono,flexWrap:"wrap"}}>
                 <div style={{textAlign:"center"}}>
-                  <div style={{fontSize:9,color:C.faint,marginBottom:1}}>MAPS</div>
+                  <div style={{fontSize:9,color:C.faint,marginBottom:1}}>Maps</div>
                   <div style={{fontSize:14,fontWeight:700,color:C.dim}}>{p.maps}</div>
                 </div>
                 <div style={{textAlign:"center"}}>
-                  <div style={{fontSize:9,color:C.faint,marginBottom:1}}>RATING</div>
+                  <div style={{fontSize:9,color:C.faint,marginBottom:1}}>Rating</div>
                   <div style={{fontSize:14,fontWeight:700,color:rColor}}>{p.rating.toFixed(2)}</div>
                 </div>
                 <div style={{textAlign:"center"}}>
@@ -105,7 +105,7 @@ export function EventDebrief({debrief,onDismiss}){
 
         {/* Chemistry */}
         <div style={{display:"flex",gap:10,alignItems:"center",fontFamily:mono,fontSize:12,marginBottom:20,padding:"8px 12px",background:C.panel2,borderRadius:7,border:`1px solid ${C.line}`}}>
-          <span style={{color:C.faint,letterSpacing:1}}>CHEMISTRY</span>
+          <span style={{color:C.faint,letterSpacing:1}}>Chemistry</span>
           <span style={{fontWeight:700,color:C.dim}}>{Math.round(chemBefore)}</span>
           <span style={{color:C.faint}}>→</span>
           <span style={{fontWeight:700,color:chemDelta>=0?C.win:C.red}}>{Math.round(chemAfter)}</span>

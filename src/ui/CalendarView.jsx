@@ -7,7 +7,7 @@ import { rosterOf, getMapProf, currentMapPool, teamActivePool } from '../engine/
 import { SL, Banner, Pill, Stat, FormArrow } from './primitives.jsx';
 
 const tierColor = t => t === "Major" ? C.gold : t === "A" ? C.live : C.dim;
-const tierLabel = t => t === "Major" ? "MAJOR" : t === "A" ? "A-TIER" : "B-TIER";
+const tierLabel = t => t === "Major" ? "Major" : t === "A" ? "A-Tier" : "B-Tier";
 const ordinal = n => { const s = ["th","st","nd","rd"]; const v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); };
 
 export function CalendarView({ season, myTeam, onAdvance, onSim, onAcceptSponsor, onDeclineSponsor, onResolveEvent, onResolveContract, onAcceptEntry, onDeclineEntry }) {
@@ -47,7 +47,7 @@ export function CalendarView({ season, myTeam, onAdvance, onSim, onAcceptSponsor
     {season.pendingEvent && (
       <div style={{ background: C.acc + "14", border: `1px solid ${C.acc}55`, borderRadius: 12, padding: "16px 18px", marginBottom: 16 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-          <span style={{ fontFamily: sans, fontWeight: 800, fontSize: 9.5, color: C.onAcc, background: C.acc, borderRadius: 5, padding: "2px 8px", letterSpacing: .5 }}>DECISION</span>
+          <span style={{ fontFamily: sans, fontWeight: 800, fontSize: 9.5, color: C.onAcc, background: C.acc, borderRadius: 5, padding: "2px 8px", letterSpacing: .5 }}>Decision</span>
           <span style={{ fontWeight: 700, fontSize: 15, color: C.ink }}>{season.pendingEvent.title}</span>
         </div>
         <div style={{ fontSize: 13, color: C.dim, marginBottom: 14 }}>{season.pendingEvent.text}</div>
@@ -74,7 +74,7 @@ export function CalendarView({ season, myTeam, onAdvance, onSim, onAcceptSponsor
       return (
         <div key={c.playerName} style={{ background: urgent ? C.red + "14" : C.gold + "0f", border: `1px solid ${urgent ? C.red + "55" : C.gold + "44"}`, borderRadius: 12, padding: "14px 18px", marginBottom: 12 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-            <span style={{ fontFamily: sans, fontWeight: 800, fontSize: 9.5, color: C.onAcc, background: urgent ? C.red : C.gold, borderRadius: 5, padding: "2px 8px", letterSpacing: .5 }}>{urgent ? "EXPIRED" : "CONTRACT"}</span>
+            <span style={{ fontFamily: sans, fontWeight: 800, fontSize: 9.5, color: C.onAcc, background: urgent ? C.red : C.gold, borderRadius: 5, padding: "2px 8px", letterSpacing: .5 }}>{urgent ? "Expired" : "Contract"}</span>
             <span style={{ fontWeight: 700, fontSize: 14, color: C.ink }}>{c.playerName}</span>
             <span style={{ fontFamily: mono, fontSize: 10, color: C.faint, marginLeft: "auto" }}>rating {c.avgRating} · ${c.currentSalary}K/mo</span>
           </div>
@@ -107,13 +107,13 @@ export function CalendarView({ season, myTeam, onAdvance, onSim, onAcceptSponsor
           const idx = (season.sponsorships || []).indexOf(sp);
           return (
             <div key={i} style={{ background: C.gold + "0f", border: `1px solid ${C.gold}44`, borderRadius: 10, padding: "12px 16px", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-              <span style={{ fontFamily: sans, fontWeight: 800, fontSize: 9.5, color: C.onAcc, background: C.gold, borderRadius: 5, padding: "2px 8px", letterSpacing: .5 }}>SPONSOR</span>
+              <span style={{ fontFamily: sans, fontWeight: 800, fontSize: 9.5, color: C.onAcc, background: C.gold, borderRadius: 5, padding: "2px 8px", letterSpacing: .5 }}>Sponsor</span>
               <span style={{ fontWeight: 700, fontSize: 14, color: C.ink }}>{sp.brand}</span>
               <span style={{ fontFamily: mono, fontSize: 11, color: C.dim }}>${sp.monthly}K/mo × {sp.duration}mo</span>
               <span style={{ fontSize: 11, color: C.faint }}>{sp.condition !== "None" ? `Condition: ${sp.condition}` : "No conditions"}</span>
               <div style={{ marginLeft: "auto", display: "flex", gap: 6 }}>
-                <button onClick={() => onAcceptSponsor(idx)} style={{ background: C.win, color: C.onAcc, border: "none", borderRadius: 6, padding: "6px 14px", fontFamily: mono, fontSize: 10, fontWeight: 700 }}>ACCEPT</button>
-                <button onClick={() => onDeclineSponsor(idx)} style={{ background: "transparent", border: `1px solid ${C.line}`, color: C.dim, borderRadius: 6, padding: "6px 12px", fontFamily: mono, fontSize: 10, fontWeight: 700 }}>DECLINE</button>
+                <button onClick={() => onAcceptSponsor(idx)} style={{ background: C.win, color: C.onAcc, border: "none", borderRadius: 6, padding: "6px 14px", fontFamily: mono, fontSize: 10, fontWeight: 700 }}>Accept</button>
+                <button onClick={() => onDeclineSponsor(idx)} style={{ background: "transparent", border: `1px solid ${C.line}`, color: C.dim, borderRadius: 6, padding: "6px 12px", fontFamily: mono, fontSize: 10, fontWeight: 700 }}>Decline</button>
               </div>
             </div>);
         })}
@@ -134,14 +134,14 @@ export function CalendarView({ season, myTeam, onAdvance, onSim, onAcceptSponsor
       return (
         <div style={{ background: C.acc + "14", border: `1px solid ${tc}66`, borderRadius: 12, padding: "16px 18px", marginBottom: 16 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
-            <span style={{ fontFamily: sans, fontWeight: 800, fontSize: 9.5, color: C.onAcc, background: tc, borderRadius: 5, padding: "2px 8px", letterSpacing: .5 }}>{isA ? "A-TIER INVITATIONAL" : "B-TIER OPEN QUALIFIER"}</span>
+            <span style={{ fontFamily: sans, fontWeight: 800, fontSize: 9.5, color: C.onAcc, background: tc, borderRadius: 5, padding: "2px 8px", letterSpacing: .5 }}>{isA ? "A-Tier invitational" : "B-Tier open qualifier"}</span>
             <span style={{ fontWeight: 700, fontSize: 15, color: C.ink }}>{ev.label}</span>
             <span style={{ fontFamily: mono, fontSize: 10, color: C.faint, marginLeft: "auto" }}>{ev.location} · {ev.teams} teams · winner ${ev.prize?.[1] || 0}K</span>
           </div>
           <div style={{ fontSize: 13, color: C.dim, marginBottom: 14 }}>{reason}</div>
           {isA && (
             <div style={{ background: C.live + "0f", border: `1px solid ${C.live}33`, borderRadius: 8, padding: "8px 12px", marginBottom: 14, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-              <span style={{ fontFamily: mono, fontWeight: 700, fontSize: 9, color: C.live, letterSpacing: 1 }}>CIRCUIT FORM</span>
+              <span style={{ fontFamily: mono, fontWeight: 700, fontSize: 9, color: C.live, letterSpacing: 1 }}>Circuit form</span>
               {recentB ? (
                 <>
                   <span style={{ fontFamily: mono, fontSize: 11, color: recentB.place <= 4 ? C.win : C.dim }}>
@@ -218,7 +218,7 @@ export function CalendarView({ season, myTeam, onAdvance, onSim, onAcceptSponsor
               const activeP = teamActivePool(season.simState, myTeam) || [];
               return (
               <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${C.line}` }}>
-                <div style={{ fontFamily: sans, fontSize: 11, fontWeight: 700, color: C.dim, letterSpacing: .4, marginBottom: 8 }}>MAP TO DRILL</div>
+                <div style={{ fontFamily: sans, fontSize: 11, fontWeight: 700, color: C.dim, letterSpacing: .4, marginBottom: 8 }}>Map to drill</div>
                 <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>
                   {pool.map(m => { const prof = getMapProf(season.simState, myTeam)[m] || 50; const inPool = activeP.includes(m); return (
                     <button key={m} onClick={() => setMapChoice(m)}
@@ -232,7 +232,7 @@ export function CalendarView({ season, myTeam, onAdvance, onSim, onAcceptSponsor
 
             {act === "scout" && (
               <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${C.line}` }}>
-                <div style={{ fontFamily: sans, fontSize: 11, fontWeight: 700, color: C.dim, letterSpacing: .4, marginBottom: 8 }}>TEAM TO SCOUT</div>
+                <div style={{ fontFamily: sans, fontSize: 11, fontWeight: 700, color: C.dim, letterSpacing: .4, marginBottom: 8 }}>Team to scout</div>
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                   {AI_TEAMS.filter(tm => rosterOf(season.simState, tm).length > 0).map(tm => {
                     const scouted = season.scoutedTeams?.[tm];
@@ -247,7 +247,7 @@ export function CalendarView({ season, myTeam, onAdvance, onSim, onAcceptSponsor
 
             {act === "individual" && (
               <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${C.line}` }}>
-                <div style={{ fontFamily: sans, fontSize: 11, fontWeight: 700, color: C.dim, letterSpacing: .4, marginBottom: 8 }}>PLAYER TO COACH 1-ON-1</div>
+                <div style={{ fontFamily: sans, fontSize: 11, fontWeight: 700, color: C.dim, letterSpacing: .4, marginBottom: 8 }}>Player to coach 1-on-1</div>
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                   {roster.map(p => (
                     <button key={p.name} onClick={() => setPlayerChoice(p.name)}
@@ -306,7 +306,7 @@ export function CalendarView({ season, myTeam, onAdvance, onSim, onAcceptSponsor
         })();
         return (
           <div key={ev.week} className="lift" style={{ background: isNext ? `linear-gradient(135deg,${C.panel2},${C.panel})` : C.panel, border: `1px solid ${isNext ? tc : C.line}`, borderLeft: `3px solid ${tc}`, borderRadius: 10, padding: "12px 16px", display: "flex", alignItems: "center", gap: 14, animation: "risePop .4s ease both", animationDelay: `${i * 0.06}s`, ...(isNext ? { boxShadow: `0 0 18px -6px ${tc}66` } : {}) }}>
-            <div style={{ background: tc + "22", border: `1px solid ${tc}`, borderRadius: 6, padding: "3px 9px", fontFamily: mono, fontSize: 9, color: tc, fontWeight: 700, flexShrink: 0 }}>{tierLabel(ev.tier)}</div>
+            <div style={{ background: tc + "22", border: `1px solid ${tc}`, borderRadius: 6, padding: "3px 9px", fontFamily: sans, fontSize: 10, color: tc, fontWeight: 800, flexShrink: 0 }}>{tierLabel(ev.tier)}</div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontWeight: 700, fontSize: 14, color: isNext ? C.ink : C.dim }}>{ev.label}</div>
               <div style={{ fontSize: 11.5, color: C.faint, marginTop: 2 }}>{ev.location} · {weekToLabel(ev.week, season.year)} · {ev.teams} teams</div>

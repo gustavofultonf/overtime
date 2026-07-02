@@ -30,7 +30,7 @@ export function DynamicsView({season,myTeam}){
   const roster=rosterOf(state,myTeam);
   const avgMorale=roster.length?Math.round(roster.reduce((s,p)=>s+(p.morale??60),0)/roster.length):60;
   const moodColor=avgMorale>=70?C.win:avgMorale>=50?C.gold:C.red;
-  const moodLabel=avgMorale>=75?"POSITIVE":avgMorale>=58?"NEUTRAL":avgMorale>=38?"TENSE":"CRISIS";
+  const moodLabel=avgMorale>=75?"Positive":avgMorale>=58?"Neutral":avgMorale>=38?"Tense":"Crisis";
   const chem=state.chemistry[myTeam]||70;
   const unhappyLeaders=roster.filter(p=>(p.morale??60)<45&&(p.traits.includes("leader")||p.igl>=88));
 
@@ -47,15 +47,15 @@ export function DynamicsView({season,myTeam}){
     <div style={{background:C.panel,border:`1px solid ${C.line}`,borderRadius:12,padding:"18px 20px",marginBottom:16}}>
       <div style={{display:"flex",gap:24,alignItems:"center",flexWrap:"wrap"}}>
         <div>
-          <div style={{fontFamily:sans,fontSize:9.5,fontWeight:700,color:C.faint,letterSpacing:.7,marginBottom:5}}>TEAM MOOD</div>
+          <div style={{fontFamily:sans,fontSize:9.5,fontWeight:700,color:C.faint,letterSpacing:.7,marginBottom:5}}>Team mood</div>
           <div style={{fontFamily:mono,fontSize:18,fontWeight:800,color:moodColor,letterSpacing:1}}>{moodLabel}</div>
         </div>
         <div>
-          <div style={{fontFamily:sans,fontSize:9.5,fontWeight:700,color:C.faint,letterSpacing:.7,marginBottom:5}}>AVG MORALE</div>
+          <div style={{fontFamily:sans,fontSize:9.5,fontWeight:700,color:C.faint,letterSpacing:.7,marginBottom:5}}>Avg morale</div>
           <MoralBar morale={avgMorale}/>
         </div>
         <div>
-          <div style={{fontFamily:sans,fontSize:9.5,fontWeight:700,color:C.faint,letterSpacing:.7,marginBottom:5}}>CHEMISTRY</div>
+          <div style={{fontFamily:sans,fontSize:9.5,fontWeight:700,color:C.faint,letterSpacing:.7,marginBottom:5}}>Chemistry</div>
           <div style={{fontFamily:mono,fontSize:15,fontWeight:700,color:chem>=70?C.win:chem>=55?C.gold:C.red}}>{chem}</div>
         </div>
         <div style={{marginLeft:"auto",fontFamily:mono,fontSize:10,color:C.faint,lineHeight:1.9}}>
@@ -66,13 +66,13 @@ export function DynamicsView({season,myTeam}){
       </div>
       {unhappyLeaders.length>0&&(
         <div style={{marginTop:12,background:C.red+"14",border:`1px solid ${C.red}44`,borderRadius:8,padding:"8px 12px",fontFamily:mono,fontSize:11,color:C.red}}>
-          !! LOCKER ROOM UNREST — {unhappyLeaders.map(p=>p.name).join(", ")} {unhappyLeaders.length===1?"is":"are"} critically unhappy. A crisis event will trigger next week.
+          Locker room unrest — {unhappyLeaders.map(p=>p.name).join(", ")} {unhappyLeaders.length===1?"is":"are"} critically unhappy. A crisis event will trigger next week.
         </div>
       )}
     </div>
 
     {/* Squad hierarchy table */}
-    <div style={{fontFamily:sans,fontSize:9.5,fontWeight:700,color:C.faint,letterSpacing:.7,marginBottom:8}}>SQUAD DYNAMICS</div>
+    <div style={{fontFamily:sans,fontSize:9.5,fontWeight:700,color:C.faint,letterSpacing:.7,marginBottom:8}}>Squad dynamics</div>
     <div style={{display:"flex",flexDirection:"column",gap:5,marginBottom:20}}>
       {sorted.map(p=>{
         const tier=hierarchyTier(p,roster);
@@ -90,14 +90,14 @@ export function DynamicsView({season,myTeam}){
           <div style={{minWidth:120}}>
             <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:3}}>
               <span style={{fontWeight:700,fontSize:14}}>{p.name}</span>
-              <span style={{fontFamily:mono,fontSize:8,color:tColor,border:`1px solid ${tColor}44`,borderRadius:3,padding:"1px 5px"}}>{tier.toUpperCase()}</span>
+              <span style={{fontFamily:mono,fontSize:8,color:tColor,border:`1px solid ${tColor}44`,borderRadius:3,padding:"1px 5px"}}>{tier}</span>
             </div>
             <div style={{fontFamily:mono,fontSize:10,color:rColor}}>{p.role} · age {p.age}</div>
           </div>
 
           <div style={{display:"flex",gap:14,alignItems:"center",marginLeft:"auto",flexWrap:"wrap"}}>
             <div>
-              <div style={{fontFamily:mono,fontSize:9,color:C.faint,marginBottom:3}}>MORALE</div>
+              <div style={{fontFamily:mono,fontSize:9,color:C.faint,marginBottom:3}}>Morale</div>
               <MoralBar morale={morale}/>
             </div>
             <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
@@ -112,7 +112,7 @@ export function DynamicsView({season,myTeam}){
 
     {/* How it works */}
     <div style={{background:C.panel2,border:`1px solid ${C.line}`,borderRadius:8,padding:"12px 16px",fontFamily:mono,fontSize:10,color:C.faint,lineHeight:2}}>
-      <div style={{color:C.dim,fontWeight:700,marginBottom:4}}>HOW MORALE WORKS</div>
+      <div style={{color:C.dim,fontWeight:700,marginBottom:4}}>How morale works</div>
       <div>• Results: 1st +12 · 2nd +7 · top 4 +3 · group exit -5 — moderated by mentality</div>
       <div>• Pay: fair pay +2 · below market -2 · severely underpaid -5 per event</div>
       <div>• Low-morale Leaders drain -1 chemistry per activity week</div>

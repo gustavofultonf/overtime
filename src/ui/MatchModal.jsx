@@ -198,7 +198,7 @@ export function MatchModal({ m, onClose }) {
                     <span></span>
                     <span style={{ textAlign: "center" }}></span>
                     <span>{tB}</span>
-                    <span>PLAY</span>
+                    <span>Play</span>
                   </div>
                   {mp.rounds.map((rd, ri) => {
                     const halfBreak =

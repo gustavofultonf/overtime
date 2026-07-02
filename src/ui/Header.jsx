@@ -25,7 +25,7 @@ export function Header({season,myTeam,onReset,stageLabel,onSave}){
       <div style={{position:"relative"}}>
         <button onClick={()=>setShowSave(!showSave)} title="Save game" style={{background:`linear-gradient(100deg,${C.accDeep},${C.acc2})`,color:"#fff",border:"none",borderRadius:9,padding:"8px 16px",fontSize:12,fontFamily:sans,fontWeight:700,boxShadow:`0 6px 18px -8px ${C.accDeep}aa`}}>Save</button>
         {showSave&&<div style={{position:"absolute",right:0,top:"100%",marginTop:6,background:C.panel,border:`1px solid ${C.line}`,borderRadius:10,padding:"8px",zIndex:30,minWidth:140,display:"flex",flexDirection:"column",gap:5,boxShadow:"0 18px 50px -20px rgba(0,0,0,.8)"}}>
-          <div style={{fontFamily:sans,fontSize:9.5,fontWeight:700,color:C.faint,letterSpacing:.7,padding:"2px 6px 4px"}}>SAVE TO SLOT</div>
+          <div style={{fontFamily:sans,fontSize:9.5,fontWeight:700,color:C.faint,letterSpacing:.7,padding:"2px 6px 4px"}}>Save to slot</div>
           {[1,2,3].map(i=><button key={i} onClick={()=>{onSave(i);setShowSave(false);}} style={{background:C.panel2,border:`1px solid ${C.line}`,borderRadius:7,padding:"8px 12px",fontFamily:sans,fontSize:12,fontWeight:600,color:C.ink,textAlign:"left"}}>Slot {i}</button>)}
         </div>}
       </div>

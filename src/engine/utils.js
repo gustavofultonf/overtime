@@ -5,14 +5,14 @@ export function playerOvr(p){return Math.round(0.20*p.aim+0.15*p.gameSense+0.10*
 export function marketValue(p){
   const ovr=playerOvr(p);
   let base;
-  if(ovr>=94)      base=1000; // generational (the undisputed #1)
-  else if(ovr>=91) base=700;  // superstar
-  else if(ovr>=88) base=460;  // elite (HLTV top 5)
-  else if(ovr>=85) base=300;  // star
-  else if(ovr>=82) base=195;  // quality starter
-  else if(ovr>=79) base=125;  // solid
-  else if(ovr>=75) base=80;   // rotation
-  else if(ovr>=71) base=50;   // budget
+  if(ovr>=86)      base=1000; // generational (the undisputed #1)
+  else if(ovr>=84) base=700;  // superstar
+  else if(ovr>=81) base=460;  // elite (HLTV top 5)
+  else if(ovr>=79) base=300;  // star
+  else if(ovr>=76) base=195;  // quality starter
+  else if(ovr>=74) base=125;  // solid
+  else if(ovr>=71) base=80;   // rotation
+  else if(ovr>=67) base=50;   // budget
   else             base=32;   // bargain
   // Legend premium: prime-era players cost 25% more
   if(p.era&&p.era!=="current") base=Math.round(base*1.25);
@@ -23,7 +23,7 @@ export function marketValue(p){
 // steep premium so the world's best can't be had on the cheap.
 export function transferPremium(p){
   const ovr=playerOvr(p);
-  return ovr>=92?3.0:ovr>=89?2.6:ovr>=86?2.3:ovr>=82?2.0:1.8;
+  return ovr>=84?3.0:ovr>=82?2.6:ovr>=80?2.3:ovr>=76?2.0:1.8;
 }
 
 // Cash buyout floor. sellerRank is the 0-based world rank of the holding team —
@@ -38,13 +38,13 @@ export function buyoutPrice(p,sellerRank=10){
 // talent on appropriately large contracts.
 export function desiredSalary(p){
   const ovr=playerOvr(p);
-  if(ovr>=94) return 55;
-  if(ovr>=91) return 42;
-  if(ovr>=88) return 32;
-  if(ovr>=85) return 24;
-  if(ovr>=82) return 18;
-  if(ovr>=79) return 13;
-  if(ovr>=75) return 9;
+  if(ovr>=86) return 55;
+  if(ovr>=84) return 42;
+  if(ovr>=81) return 32;
+  if(ovr>=79) return 24;
+  if(ovr>=76) return 18;
+  if(ovr>=74) return 13;
+  if(ovr>=71) return 9;
   return 6;
 }
 

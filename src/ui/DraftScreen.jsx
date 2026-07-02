@@ -148,11 +148,11 @@ export function DraftScreen({onComplete}){
       <span style={{fontFamily:sans,fontSize:12,color:C.dim,fontWeight:600}}>Draft · <span style={{color:C.ink,fontWeight:700}}>{teamName}</span></span>
       <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:10}}>
         <div style={{display:"flex",alignItems:"center",gap:6,background:C.panel,border:`1px solid ${C.line}`,borderRadius:9,padding:"5px 11px"}}>
-          <span style={{fontFamily:sans,fontSize:9.5,fontWeight:700,color:C.faint,letterSpacing:.7}}>BUDGET</span>
+          <span style={{fontFamily:sans,fontSize:9.5,fontWeight:700,color:C.faint,letterSpacing:.7}}>Budget</span>
           <span style={{fontFamily:mono,fontSize:12,color:C.gold,fontWeight:700}}>${budget}K</span>
         </div>
         <div style={{display:"flex",alignItems:"center",gap:6,background:C.panel,border:`1px solid ${C.line}`,borderRadius:9,padding:"5px 11px"}}>
-          <span style={{fontFamily:sans,fontSize:9.5,fontWeight:700,color:C.faint,letterSpacing:.7}}>ROSTER</span>
+          <span style={{fontFamily:sans,fontSize:9.5,fontWeight:700,color:C.faint,letterSpacing:.7}}>Roster</span>
           <span style={{fontFamily:mono,fontSize:12,color:roster.length===5?C.win:C.ink,fontWeight:700}}>{roster.length}/5</span>
         </div>
       </div>
@@ -170,13 +170,13 @@ export function DraftScreen({onComplete}){
               <Stat l="OVR" v={playerOvr(p)}/><Stat l="AIM" v={p.aim}/><Stat l="SENSE" v={p.gameSense}/>
               <span style={{fontFamily:mono,fontSize:11,color:C.gold}}>${p.salary}K/mo</span>
               <span style={{fontFamily:mono,fontSize:9,color:C.faint}}>age {p.age}</span>
-              <button onClick={e=>{e.stopPropagation();releasePlayer(p);}} style={{marginLeft:"auto",background:"transparent",border:`1px solid ${C.red}`,color:C.red,borderRadius:6,padding:"5px 10px",fontFamily:mono,fontSize:10,fontWeight:700}}>DROP</button>
+              <button onClick={e=>{e.stopPropagation();releasePlayer(p);}} style={{marginLeft:"auto",background:"transparent",border:`1px solid ${C.red}`,color:C.red,borderRadius:6,padding:"5px 10px",fontFamily:mono,fontSize:10,fontWeight:700}}>Drop</button>
             </div>))}
         </div>)}
       {roster.length>0&&(()=>{const syn=synergyPreview(roster);const col=syn.score>=70?C.win:syn.score>=40?C.gold:C.red;return(
         <div style={{background:C.panel2,border:`1px solid ${C.line}`,borderRadius:10,padding:"14px 16px",marginBottom:16,display:"flex",gap:18,flexWrap:"wrap",alignItems:"flex-start"}}>
           <div style={{minWidth:90,textAlign:"center"}}>
-            <div style={{fontFamily:sans,fontSize:9.5,fontWeight:700,color:C.faint,letterSpacing:.7,marginBottom:4}}>SYNERGY</div>
+            <div style={{fontFamily:sans,fontSize:9.5,fontWeight:700,color:C.faint,letterSpacing:.7,marginBottom:4}}>Synergy</div>
             <div style={{fontFamily:mono,fontSize:30,fontWeight:800,color:col,lineHeight:1}}>{syn.score}</div>
             <div style={{height:5,background:C.line,borderRadius:3,overflow:"hidden",marginTop:6}}>
               <div style={{width:`${syn.score}%`,height:"100%",background:col,borderRadius:3}}/>
@@ -190,7 +190,7 @@ export function DraftScreen({onComplete}){
             ))}
           </div>
           {syn.identity&&<div style={{minWidth:150,padding:"8px 12px",background:syn.identity.color+"14",border:`1px solid ${syn.identity.color}44`,borderRadius:8}}>
-            <div style={{fontFamily:sans,fontSize:9.5,fontWeight:700,color:C.faint,letterSpacing:.7,marginBottom:3}}>SUGGESTED IDENTITY</div>
+            <div style={{fontFamily:sans,fontSize:9.5,fontWeight:700,color:C.faint,letterSpacing:.7,marginBottom:3}}>Suggested identity</div>
             <div style={{fontFamily:mono,fontSize:13,fontWeight:800,color:syn.identity.color}}>{syn.identity.style}</div>
             <div style={{fontSize:10.5,color:C.dim,marginTop:3,lineHeight:1.4}}>{syn.identity.desc}</div>
           </div>}

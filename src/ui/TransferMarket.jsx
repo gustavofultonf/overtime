@@ -97,12 +97,12 @@ function FaTab({ simState, season, myTeam, onNegotiateFA }) {
               style={{background:roleFilter===r?C.acc:C.panel,color:roleFilter===r?C.onAcc:C.dim,
                 border:`1px solid ${roleFilter===r?C.acc:C.line}`,borderRadius:5,
                 padding:"4px 9px",fontFamily:mono,fontSize:9,fontWeight:700}}>
-              {r.toUpperCase()}
+              {r==="all"?"All":r}
             </button>
           ))}
         </div>
         <div style={{marginLeft:"auto",display:"flex",gap:3}}>
-          {[["ovr","OVR"],["salary","SALARY"],["age","AGE"]].map(([k,l]) => (
+          {[["ovr","OVR"],["salary","Salary"],["age","Age"]].map(([k,l]) => (
             <button key={k} onClick={() => setSortKey(k)}
               style={{background:sortKey===k?C.panel2:C.panel,color:sortKey===k?C.acc:C.faint,
                 border:`1px solid ${sortKey===k?C.acc+"44":C.line}`,borderRadius:4,
@@ -164,7 +164,7 @@ function FaTab({ simState, season, myTeam, onNegotiateFA }) {
                 {isExp && (
                   <div style={{background:C.panel2,borderTop:`1px solid ${C.line}`,padding:"12px 14px"}}>
                     <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
-                      <span style={{fontFamily:mono,fontSize:10,color:C.faint}}>SALARY OFFER ($/mo)</span>
+                      <span style={{fontFamily:mono,fontSize:10,color:C.faint}}>Salary offer ($/mo)</span>
                       <MoodTag offered={curOffer} desired={desired}/>
                       {career?.totalMaps > 0 && (
                         <span style={{fontFamily:mono,fontSize:9,color:C.dim,marginLeft:"auto"}}>
@@ -204,9 +204,9 @@ function FaTab({ simState, season, myTeam, onNegotiateFA }) {
                         color:(!canAfford||rosterFull)?C.faint:C.onAcc,
                         border:"none",borderRadius:7,padding:"10px",
                         fontWeight:800,fontSize:13,fontFamily:mono}}>
-                      {rosterFull   ? "ROSTER FULL"                  :
-                       !canAfford   ? `NEED $${mv - season.budget}K` :
-                                      `OFFER $${curOffer}K/MO`}
+                      {rosterFull   ? "Roster full"                  :
+                       !canAfford   ? `Need $${mv - season.budget}K more` :
+                                      `Offer $${curOffer}K/mo`}
                     </button>
                   </div>
                 )}
@@ -276,7 +276,7 @@ function BuyTab({ simState, season, myTeam, onBuyoutOffer }) {
         <div style={{background:C.panel,border:`1px solid ${C.line}`,borderRadius:9,overflow:"hidden"}}>
           <div style={{padding:"8px 14px",borderBottom:`1px solid ${C.line}`,
             fontFamily:mono,fontSize:10,color:C.dim,letterSpacing:1}}>
-            {selectedTeam} — ROSTER
+            {selectedTeam} — roster
           </div>
           {rosterOf(simState, selectedTeam).map(p => {
             const mv  = marketValue(p);
@@ -347,9 +347,9 @@ function BuyTab({ simState, season, myTeam, onBuyoutOffer }) {
                         color:(!canAfford||rosterFull)?C.faint:C.onAcc,
                         border:"none",borderRadius:7,padding:"10px",
                         fontWeight:800,fontSize:13,fontFamily:mono}}>
-                      {rosterFull  ? "ROSTER FULL"       :
-                       !canAfford  ? "INSUFFICIENT FUNDS" :
-                                     `OFFER $${buyOffer}K`}
+                      {rosterFull  ? "Roster full"       :
+                       !canAfford  ? "Insufficient funds" :
+                                     `Offer $${buyOffer}K`}
                     </button>
                   </div>
                 )}
@@ -477,9 +477,9 @@ function TradeTab({ simState, season, myTeam, onTradeOffer }) {
             background:(!tradeReady||season.budget<tradeCash)?C.panel2:C.acc,
             color:(!tradeReady||season.budget<tradeCash)?C.faint:C.onAcc,
             border:"none",borderRadius:7,padding:"12px",fontWeight:800,fontSize:14,fontFamily:mono}}>
-          {!tradeReady          ? "SELECT PLAYERS ABOVE" :
-           season.budget<tradeCash ? "INSUFFICIENT FUNDS"   :
-                                     "PROPOSE TRADE"}
+          {!tradeReady          ? "Select players above" :
+           season.budget<tradeCash ? "Insufficient funds"   :
+                                     "Propose trade"}
         </button>
       </div>
     </div>
@@ -518,7 +518,7 @@ function SellTab({ simState, season, myTeam, onSellPlayer, onRelease }) {
   return (
     <div>
       <div style={{fontFamily:mono,fontSize:10,color:C.faint,marginBottom:12}}>
-        SELL — generate AI bids. RELEASE — instant 30% refund.
+        Sell — generate AI bids. Release — instant 30% refund.
       </div>
 
       <ResultBanner result={result} onClose={() => setResult(null)}/>
@@ -554,7 +554,7 @@ function SellTab({ simState, season, myTeam, onSellPlayer, onRelease }) {
                     style={{background:isSel?C.gold:C.panel2,color:isSel?C.onAcc:C.gold,
                       border:`1px solid ${C.gold}44`,borderRadius:5,
                       padding:"4px 10px",fontFamily:mono,fontSize:9,fontWeight:700}}>
-                    {isSel?"HIDE":"SELL"}
+                    {isSel?"Hide":"Sell"}
                   </button>
                   <button
                     onClick={() => {
@@ -568,7 +568,7 @@ function SellTab({ simState, season, myTeam, onSellPlayer, onRelease }) {
                       border:`1px solid ${roster.length<=4?C.faint:C.red}`,
                       color:roster.length<=4?C.faint:C.red,
                       borderRadius:5,padding:"4px 10px",fontFamily:mono,fontSize:9,fontWeight:700}}>
-                    RELEASE
+                    Release
                   </button>
                 </div>
               </div>
@@ -576,7 +576,7 @@ function SellTab({ simState, season, myTeam, onSellPlayer, onRelease }) {
               {/* AI bids panel */}
               {isSel && (
                 <div style={{background:C.panel2,borderTop:`1px solid ${C.line}`,padding:"12px 14px"}}>
-                  <div style={{fontFamily:mono,fontSize:10,color:C.dim,marginBottom:8}}>AI INTEREST</div>
+                  <div style={{fontFamily:mono,fontSize:10,color:C.dim,marginBottom:8}}>AI interest</div>
                   {sellBids.length === 0 ? (
                     <div style={{fontFamily:mono,fontSize:11,color:C.faint}}>
                       No teams are interested right now.
@@ -592,7 +592,7 @@ function SellTab({ simState, season, myTeam, onSellPlayer, onRelease }) {
                           </span>
                           {i===0 && (
                             <span style={{fontFamily:mono,fontSize:8,color:C.win,
-                              border:`1px solid ${C.win}44`,borderRadius:3,padding:"1px 5px"}}>BEST</span>
+                              border:`1px solid ${C.win}44`,borderRadius:3,padding:"1px 5px"}}>Best</span>
                           )}
                           <span style={{fontFamily:mono,fontSize:14,fontWeight:700,color:C.gold}}>
                             ${bid.bid}K
@@ -605,7 +605,7 @@ function SellTab({ simState, season, myTeam, onSellPlayer, onRelease }) {
                             }}
                             style={{background:C.win,color:C.onAcc,border:"none",
                               borderRadius:5,padding:"5px 12px",fontFamily:mono,fontSize:10,fontWeight:700}}>
-                            SELL
+                            Sell
                           </button>
                         </div>
                       ))}
@@ -627,7 +627,7 @@ export function TransferMarket({ season, myTeam, onNegotiateFA, onBuyoutOffer, o
   const [tab, setTab] = useState("fa");
   const simState = season.simState;
 
-  const TABS = [["fa","FREE AGENTS"],["buy","BUYOUT"],["trade","TRADE"],["sell","SELL / RELEASE"]];
+  const TABS = [["fa","Free Agents"],["buy","Buyout"],["trade","Trade"],["sell","Sell / Release"]];
 
   return (
     <div>
@@ -645,9 +645,9 @@ export function TransferMarket({ season, myTeam, onNegotiateFA, onBuyoutOffer, o
           </button>
         ))}
         <div style={{marginLeft:"auto",paddingBottom:10,fontFamily:mono,fontSize:11}}>
-          <span style={{color:C.faint}}>BUDGET </span>
+          <span style={{color:C.faint}}>Budget </span>
           <span style={{color:season.budget>0?C.gold:C.red,fontWeight:700}}>${season.budget}K</span>
-          <span style={{color:C.faint,marginLeft:10}}>ROSTER </span>
+          <span style={{color:C.faint,marginLeft:10}}>Roster </span>
           <span style={{color:C.ink,fontWeight:700}}>{rosterOf(simState,myTeam).length}/5</span>
         </div>
       </div>

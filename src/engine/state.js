@@ -131,9 +131,9 @@ export function initState(eras){
   const tactics={};
   AI_TEAMS.forEach(team=>{
     const r=players.filter(p=>p.team===team);
-    const hasEliteAWP=r.some(p=>p.role==="AWP"&&(p.awp||50)>=85);
-    const hasEliteIGL=r.some(p=>p.igl>=88);
-    const highAimEntries=r.filter(p=>p.role==="Entry"&&p.aim>=88).length;
+    const hasEliteAWP=r.some(p=>p.role==="AWP"&&(p.awp||50)>=79);
+    const hasEliteIGL=r.some(p=>p.igl>=81);
+    const highAimEntries=r.filter(p=>p.role==="Entry"&&p.aim>=81).length;
     if(hasEliteAWP&&!hasEliteIGL) tactics[team]="AWP-Dependent";
     else if(hasEliteIGL) tactics[team]="Structured";
     else if(highAimEntries>=2) tactics[team]="Aggressive";
@@ -175,6 +175,30 @@ export function teamBase(state,team){
   // subtracts its severity, so playing hurt is a real, felt penalty.
   const injuryPenalty=r.reduce((s,p)=>s+(p.injury?p.injury.sev:0),0);
   return core*(0.85+TUNING.SYNERGY*chem)+formAdj+momentumAdj-fatiguePenalty-injuryPenalty;
+}
+
+// Display-oriented team rating on a familiar 0–100 "power level" curve.
+//
+// Deliberately built from roster skill + chemistry only — NOT teamBase(),
+// which also folds in momentum and form. Those two are meant to swing actual
+// match odds (a team on a heater should play like it), but they used to leak
+// into this display number too: momentum/form can add up to ~±9 raw points
+// during a hot streak, and this curve's ×2.6 slope turned that into a ~±23
+// point swing — a team could look 20 points stronger by the end of a single
+// good tournament and be right back down after one bad week. A club's
+// headline rating should only move when something durable changes (the
+// roster gets better via training, chemistry builds or erodes over many
+// results) — both already slow by construction — not because of this
+// week's form. teamBase() is untouched and still drives the actual sim.
+export function teamRating(state,team){
+  const r=rosterOf(state,team);
+  if(!r.length) return 0;
+  const mean=k=>r.reduce((s,p)=>s+p[k],0)/r.length;
+  const igl=r.reduce((b,p)=>p.igl>b.igl?p:b,r[0]);
+  const core=0.45*mean("aim")+0.25*mean("gameSense")+0.20*mean("util")+0.10*igl.igl;
+  const chem=(state.chemistry[team]||70)/100;
+  const stableBase=core*(0.85+TUNING.SYNERGY*chem);
+  return Math.max(30,Math.min(99,Math.round(62+(stableBase-76)*2.6)));
 }
 
 // ── Injuries ─────────────────────────────────────────────────────────
@@ -233,7 +257,13 @@ export function getMapProf(state,team){
 }
 
 export function mapRating(state,team,map){
-  return teamBase(state,team)*(0.70+0.006*(getMapProf(state,team)[map]||50));
+  // Map proficiency swings effective strength by roughly ±7% around the
+  // roster's base. The old 0.70+0.006·prof curve swung ±15%, which let a map
+  // spec (a hash-random 45–95 prof) outweigh an entire skill tier — a mid
+  // table team could be the on-paper favourite over the world #1 on the
+  // right map. Map pools should decide close matchups, not invert lopsided
+  // ones, so the veto stays meaningful without breaking the power ranking.
+  return teamBase(state,team)*(0.85+0.003*(getMapProf(state,team)[map]||50));
 }
 
 // ── rivalries ────────────────────────────────────────────────────────
@@ -286,7 +316,7 @@ export function styleModifier(state,A,B){
 
 // ── Team Dynamics ────────────────────────────────────────────────────
 export function hierarchyTier(p,roster){
-  const isLeader=p.mentality>=88&&(p.experience||50)>=65&&(p.traits.includes("leader")||p.igl>=88);
+  const isLeader=p.mentality>=81&&(p.experience||50)>=65&&(p.traits.includes("leader")||p.igl>=81);
   const maxOvr=roster.length?Math.max(...roster.map(x=>playerOvr(x))):0;
   const isStar=playerOvr(p)>=maxOvr-4;
   const isProspect=p.age<=21;

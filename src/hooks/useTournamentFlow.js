@@ -538,7 +538,7 @@ export function useTournamentFlow({
     // Morale crisis: unhappy leader → pending choice event
     const unhappyLeader = roster.find(
       (p) =>
-        (p.morale || 60) < 40 && (p.traits.includes("leader") || p.igl >= 88),
+        (p.morale || 60) < 40 && (p.traits.includes("leader") || p.igl >= 81),
     );
     if (unhappyLeader && !season.pendingEvent) {
       season.pendingEvent = {

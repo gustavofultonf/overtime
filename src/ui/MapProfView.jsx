@@ -113,7 +113,7 @@ function MapCard({
             marginBottom: 4,
           }}
         >
-          <span style={{ color: C.faint }}>EFF RATING</span>
+          <span style={{ color: C.faint }}>Eff rating</span>
           <span style={{ color: C.ink, fontWeight: 700 }}>
             {effRating.toFixed(1)}
           </span>
@@ -162,7 +162,7 @@ function MapCard({
             marginBottom: 4,
           }}
         >
-          <span style={{ color: C.faint }}>RECORD</span>
+          <span style={{ color: C.faint }}>Record</span>
           <span>
             <span style={{ color: C.win }}>{w}W</span>
             <span style={{ color: C.faint }}> – </span>
@@ -194,7 +194,7 @@ function MapCard({
             marginBottom: 4,
           }}
         >
-          <span style={{ color: C.faint }}>BEST</span>
+          <span style={{ color: C.faint }}>Best</span>
           <span style={{ color: C.ink }}>
             {bestPlayer.name}{" "}
             <span style={{ color: C.gold }}>
@@ -215,7 +215,7 @@ function MapCard({
             marginBottom: 2,
           }}
         >
-          <span style={{ color: C.faint }}>TEAM AVG</span>
+          <span style={{ color: C.faint }}>Team avg</span>
           <span
             style={{
               color:

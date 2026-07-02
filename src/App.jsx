@@ -279,7 +279,7 @@ export default function App() {
           myTeam={myTeam}
           onReset={saveSystem.resetAll}
           onSave={saveSystem.saveToSlot}
-          stageLabel={`${season.year || 2026} SEASON COMPLETE`}
+          stageLabel={`${season.year || 2026} season complete`}
         />
         <main
           style={{ maxWidth: 900, margin: "0 auto", padding: "32px 18px 80px" }}
@@ -307,7 +307,7 @@ export default function App() {
   const evLabel = season.currentEvent?.label || (isMajor ? "MAJOR" : "EVENT");
   const tierTag = season.currentEvent?.tier || "Major";
   const stageLabel =
-    { swiss: "GROUP STAGE", playoffs: "PLAYOFFS", done: "COMPLETE" }[t.stage] ||
+    { swiss: "Group Stage", playoffs: "Playoffs", done: "Complete" }[t.stage] ||
     "";
   const SEED = getSeed(myTeam, season?.simState);
 

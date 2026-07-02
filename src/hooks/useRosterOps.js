@@ -250,7 +250,7 @@ export function useRosterOps({ season, setSeason, myTeam, redraw }) {
     const prem = transferPremium(theirP);
     const tradeBar = Math.round(theirMv * prem * 0.85);
     const bigDowngrade = theirOvr - myOvr > 4; // can't pay mostly in scrubs
-    const star = theirOvr >= 86;
+    const star = theirOvr >= 80;
     const franchiseBlock = isFranchise && offerVal < Math.round(theirMv * prem);
     if (offerVal >= tradeBar && !(star && bigDowngrade) && !franchiseBlock) {
       season.budget -= cashBonus;

@@ -3,6 +3,16 @@ import { ACTIVITIES, RANDOM_EVENTS } from '../constants/events.js';
 import { playerOvr } from './utils.js';
 import { rosterOf, getMapProf, nervesModifier, isRivalMatch, recordMatch, autoVeto, mapRating, styleModifier, decayMapProf, currentMapPool } from './state.js';
 
+// perf/RATING_DIVISOR converts a player's raw per-map performance score into
+// an HLTV-style 2.0 rating (1.00 = average). 90 was tuned against the old,
+// inflated stat sheet where top players ran 95-99 aim/gameSense; with the
+// compressed sheet (median ~72-78, stars ~90-97) that denominator was too
+// large for almost anyone to clear 1.00 — empirically <4% of performances
+// did, capped around 1.13. 75 was picked by simulating the current roster
+// pool: it centers the league median at ~1.00 and lets standout maps for any
+// tier of player reach a realistic ~1.2-1.3 ceiling.
+const RATING_DIVISOR = 75;
+
 export function resolveMap(state,map,A,B,ctx,rng,startFrom=null){
   // ── Round-by-round CS economy engine ──
   // startFrom: {scoreA,scoreB,moneyA,moneyB,lossStreakA,lossStreakB,tiltA,tiltB,side,startRound,strModA,strModB}
@@ -13,8 +23,8 @@ export function resolveMap(state,map,A,B,ctx,rng,startFrom=null){
   // ── IGL tactical influence ──
   const iglOf=(t)=>{const r=rosterOf(state,t);return r.length?r.reduce((b,p)=>p.igl>b.igl?p:b,r[0]):null;};
   const iglA=iglOf(A),iglB=iglOf(B);
-  let iglModA=iglA?(iglA.igl-65)/900:0;
-  let iglModB=iglB?(iglB.igl-65)/900:0;
+  let iglModA=iglA?(iglA.igl-62)/900:0;
+  let iglModB=iglB?(iglB.igl-62)/900:0;
 
   // ── Tactical style ──
   const tacA=state.tactics?.[A]||null;
@@ -155,10 +165,10 @@ export function resolveMap(state,map,A,B,ctx,rng,startFrom=null){
     const tiltPenA=tilt[A]>=3?(tilt[A]-2)*0.018*Math.max(0.3,1-compA/120):0;
     const tiltPenB=tilt[B]>=3?(tilt[B]-2)*0.018*Math.max(0.3,1-compB/120):0;
     pA=pA-tiltPenA+tiltPenB;
-    if(perfA[0].perf>=82&&rng()<(perfA[0].perf-75)/120) pA=Math.min(0.95,pA+0.08);
-    if(perfB[0].perf>=82&&rng()<(perfB[0].perf-75)/120) pA=Math.max(0.05,pA-0.08);
-    if(btA==="awp_buy"){const aw=awperOf(A);const th=tacA==="AWP-Dependent"?80:85;const m=tacA==="AWP-Dependent"?1.6:1;if(aw.awp>=th)pA=Math.min(0.95,pA+(aw.awp-75)/400*m);}
-    if(btB==="awp_buy"){const aw=awperOf(B);const th=tacB==="AWP-Dependent"?80:85;const m=tacB==="AWP-Dependent"?1.6:1;if(aw.awp>=th)pA=Math.max(0.05,pA-(aw.awp-75)/400*m);}
+    if(perfA[0].perf>=76&&rng()<(perfA[0].perf-70)/120) pA=Math.min(0.95,pA+0.08);
+    if(perfB[0].perf>=76&&rng()<(perfB[0].perf-70)/120) pA=Math.max(0.05,pA-0.08);
+    if(btA==="awp_buy"){const aw=awperOf(A);const th=tacA==="AWP-Dependent"?75:79;const m=tacA==="AWP-Dependent"?1.6:1;if(aw.awp>=th)pA=Math.min(0.95,pA+(aw.awp-70)/400*m);}
+    if(btB==="awp_buy"){const aw=awperOf(B);const th=tacB==="AWP-Dependent"?75:79;const m=tacB==="AWP-Dependent"?1.6:1;if(aw.awp>=th)pA=Math.max(0.05,pA-(aw.awp-70)/400*m);}
     pA=Math.max(0.05,Math.min(0.95,pA));
 
     const aWins=rng()<pA;
@@ -377,12 +387,12 @@ export function resolveMap(state,map,A,B,ctx,rng,startFrom=null){
   if(!startFrom){
     allPerf.forEach(pp=>{
       const st=state.stats[pp.name];if(!st)return;
-      st.maps++;st.rating=(st.rating*(st.maps-1)+pp.perf/90)/st.maps;
+      st.maps++;st.rating=(st.rating*(st.maps-1)+pp.perf/RATING_DIVISOR)/st.maps;
       const c=state.career?.[pp.name];
       if(c){
         if(!c.mapStats[map])c.mapStats[map]={maps:0,wins:0,avgRating:0};
         const ms=c.mapStats[map];
-        const r=pp.perf/90;
+        const r=pp.perf/RATING_DIVISOR;
         ms.avgRating=(ms.avgRating*ms.maps+r)/(ms.maps+1);
         ms.maps++;
         if((aWon&&pp.team===A)||(!aWon&&pp.team===B)) ms.wins++;

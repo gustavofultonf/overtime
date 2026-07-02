@@ -49,7 +49,7 @@ export function RankingsView({ state, myTeam, week = 1, year = 2026 }) {
 
       {/* Legend */}
       <div style={{ display: 'flex', gap: 14, marginBottom: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-        <div style={{ fontSize: 10, fontFamily: mono, color: C.faint, letterSpacing: 1 }}>MODIFIERS: BOUNTY OFFERED · BOUNTY COLLECTED · OPPONENT NETWORK · LAN 1.0×</div>
+        <div style={{ fontSize: 10, fontFamily: mono, color: C.faint, letterSpacing: 1 }}>Modifiers: bounty offered · bounty collected · opponent network · LAN 1.0×</div>
         <div style={{ marginLeft: 'auto', fontSize: 10, fontFamily: mono, color: C.faint }}>Legends: #1–8 · Challengers: #9–16</div>
       </div>
 
@@ -64,7 +64,7 @@ export function RankingsView({ state, myTeam, week = 1, year = 2026 }) {
           const isChal = i >= 8 && i < 16;
           const col = i === 0 ? C.gold : i <= 2 ? C.acc : isLegend ? C.live : C.dim;
           const pct = maxPts > 0 ? r.pts / maxPts * 100 : 0;
-          const badge = isLegend ? { label: 'LEGEND', color: C.gold } : isChal ? { label: 'CHALL', color: C.live } : null;
+          const badge = isLegend ? { label: 'Legend', color: C.gold } : isChal ? { label: 'Challenger', color: C.live } : null;
           const isExpanded = expandedTeam === r.team;
           const prevRank = prevRankOf[r.team];
           const delta = prevRank != null ? prevRank - (i + 1) : null;
@@ -86,10 +86,10 @@ export function RankingsView({ state, myTeam, week = 1, year = 2026 }) {
                 <div style={{ gridColumn: '1 / -1', marginTop: 8, padding: '12px 14px', background: C.panel2, border: `1px solid ${C.line}`, borderRadius: 8 }}>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                     {[
-                      { label: 'BOUNTY OFFERED', value: state.valveBounty[r.team].bountyOffered, desc: 'Prize money earned (recency-weighted)', color: C.gold },
-                      { label: 'BOUNTY COLLECTED', value: state.valveBounty[r.team].bountyCollected, desc: 'Value of opponents beaten', color: C.win },
-                      { label: 'OPPONENT NETWORK', value: state.valveBounty[r.team].opponentNetwork, desc: 'Strength of schedule', color: C.live },
-                      { label: 'SEED VALUE', value: state.valveBounty[r.team].seedValue, desc: `Initial Glicko rating: ${state.valveBounty[r.team].initialRating}`, color: C.acc },
+                      { label: 'Bounty offered', value: state.valveBounty[r.team].bountyOffered, desc: 'Prize money earned (recency-weighted)', color: C.gold },
+                      { label: 'Bounty collected', value: state.valveBounty[r.team].bountyCollected, desc: 'Value of opponents beaten', color: C.win },
+                      { label: 'Opponent network', value: state.valveBounty[r.team].opponentNetwork, desc: 'Strength of schedule', color: C.live },
+                      { label: 'Seed value', value: state.valveBounty[r.team].seedValue, desc: `Initial Glicko rating: ${state.valveBounty[r.team].initialRating}`, color: C.acc },
                     ].map(({ label, value, desc, color }) => (
                       <div key={label} style={{ background: C.panel, borderRadius: 6, padding: '8px 12px', border: `1px solid ${C.line}` }}>
                         <div style={{ fontFamily: sans, fontSize: 9.5, fontWeight: 700, color: C.faint, letterSpacing: .7, marginBottom: 4 }}>{label}</div>
@@ -115,15 +115,15 @@ export function RankingsView({ state, myTeam, week = 1, year = 2026 }) {
       {myBounty && (
         <div style={{ marginTop: 12 }}>
           <button onClick={() => setExpanded(v => !v)} style={{ background: 'none', border: `1px solid ${C.line}`, borderRadius: 6, padding: '6px 12px', color: C.faint, fontFamily: mono, fontSize: 11, cursor: 'pointer', letterSpacing: 1 }}>
-            {expanded ? '▾' : '▸'} YOUR RANKING BREAKDOWN
+            {expanded ? '▾' : '▸'} Your ranking breakdown
           </button>
           {expanded && (
             <div style={{ marginTop: 6, background: C.panel2, border: `1px solid ${C.line}`, borderRadius: 8, padding: '12px 14px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               {[
-                { label: 'BOUNTY OFFERED', value: myBounty.bountyOffered, desc: 'Prize money earned (recency-weighted)', color: C.gold },
-                { label: 'BOUNTY COLLECTED', value: myBounty.bountyCollected, desc: 'Value of opponents beaten', color: C.win },
-                { label: 'OPPONENT NETWORK', value: myBounty.opponentNetwork, desc: 'Strength of schedule', color: C.live },
-                { label: 'SEED VALUE', value: myBounty.seedValue, desc: `Initial Glicko rating: ${myBounty.initialRating}`, color: C.acc },
+                { label: 'Bounty offered', value: myBounty.bountyOffered, desc: 'Prize money earned (recency-weighted)', color: C.gold },
+                { label: 'Bounty collected', value: myBounty.bountyCollected, desc: 'Value of opponents beaten', color: C.win },
+                { label: 'Opponent network', value: myBounty.opponentNetwork, desc: 'Strength of schedule', color: C.live },
+                { label: 'Seed value', value: myBounty.seedValue, desc: `Initial Glicko rating: ${myBounty.initialRating}`, color: C.acc },
               ].map(({ label, value, desc, color }) => (
                 <div key={label} style={{ background: C.panel, borderRadius: 6, padding: '8px 12px', border: `1px solid ${C.line}` }}>
                   <div style={{ fontFamily: sans, fontSize: 9.5, fontWeight: 700, color: C.faint, letterSpacing: .7, marginBottom: 4 }}>{label}</div>

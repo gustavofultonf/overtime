@@ -1,21 +1,21 @@
 // ── OVERTIME design system ──────────────────────────────────────────
-// "Matchnight" palette — modern sports-sim look in the FM26 vein: a
-// near-black plum base, saturated violet brand with magenta section
-// accents, and clear semantic greens/golds/reds for data. Token names
-// are stable; every component reads from these so the whole app
-// re-skins from this one file.
+// "Broadcast" palette — an esports-native look (HLTV/BLAST energy, not
+// a Football Manager clone): dark slate base, electric-blue brand with
+// teal section accents, and clear semantic greens/golds/reds for data.
+// Token names are stable; every component reads from these so the
+// whole app re-skins from this one file.
 export const C = {
   // surfaces
-  bg:"#14101c", panel:"#1d1829", panel2:"#272134", line:"#342c47",
+  bg:"#0f141d", panel:"#171e2b", panel2:"#202939", line:"#2d3a52",
   // ink
-  ink:"#f1edf8", dim:"#a49bb8", faint:"#6b6280",
+  ink:"#edf2fa", dim:"#96a3ba", faint:"#5e6b83",
   // brand + semantic accents
-  acc:"#a78bfa",        // violet — primary brand
-  accDeep:"#7c5cff",    // saturated violet — CTA gradients / fills
-  acc2:"#e879d9",       // magenta — section headings / highlights
+  acc:"#4da3ff",        // electric blue — primary brand
+  accDeep:"#2f6bff",    // saturated blue — CTA gradients / fills
+  acc2:"#2dd6c4",       // teal — section headings / highlights
   gold:"#f3c25b", silver:"#c9d2e0", bronze:"#cd7f32",
-  win:"#3ddc97", live:"#5b9dff", ban:"#5c5472",
-  red:"#f0596b", rival:"#e879d9",
+  win:"#3ddc97", live:"#9d8cff", ban:"#566077",
+  red:"#f0596b", rival:"#ff6ea9",
   // muted mid-tier form/rating shades (between neutral and full win/red)
   winSoft:"#8bc99a", redSoft:"#c98b8b",
   // role accent (AWP) — a warmer red than the semantic danger red
@@ -23,9 +23,9 @@ export const C = {
   // CS side colors (broadcast convention): T orange, CT blue
   tSide:"#f0883e", ctSide:"#5aa9e6",
   // text that sits on a bright accent fill
-  onAcc:"#150f20",
+  onAcc:"#0a1120",
   // depth helpers
-  glow:"rgba(167,139,250,.16)",
+  glow:"rgba(77,163,255,.16)",
 };
 
 // Cohesive accent for any team/era tinting that needs a stable hue set.
@@ -39,12 +39,12 @@ export const SHADOW = {
   glow:`0 0 0 1px ${C.acc}55, 0 8px 30px -10px ${C.glow}`,
 };
 
-// Page-level backdrop: near-black plum with a violet glow top-right and a
-// faint magenta wash low-right — echoes FM-style menu art without noise.
+// Page-level backdrop: dark slate with an electric-blue glow top-right and
+// a faint teal wash low-right — arena-lighting depth without visual noise.
 export const GRAD =
-  "radial-gradient(1000px 620px at 90% -12%, rgba(167,139,250,.13), transparent 60%)," +
-  "radial-gradient(800px 560px at 104% 96%, rgba(232,121,217,.07), transparent 55%)," +
-  "linear-gradient(200deg, #191322 0%, #14101c 55%, #171126 100%)";
+  "radial-gradient(1000px 620px at 90% -12%, rgba(77,163,255,.12), transparent 60%)," +
+  "radial-gradient(800px 560px at 104% 96%, rgba(45,214,196,.06), transparent 55%)," +
+  "linear-gradient(200deg, #131a26 0%, #0f141d 55%, #101724 100%)";
 
 export const sans = "'Manrope','Inter',system-ui,sans-serif";
 export const mono = "'JetBrains Mono',ui-monospace,Menlo,monospace";

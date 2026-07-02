@@ -89,7 +89,7 @@ function CashflowBars({ fin }) {
   );
   return (
     <div style={{ display: 'flex', alignItems: 'flex-end', gap: 24, justifyContent: 'center', padding: '4px 0' }}>
-      <Bar label="INCOME" total={fin.income.total}>
+      <Bar label="Income" total={fin.income.total}>
         {segs.map(s => (
           <div key={s.k} title={`${INCOME_LABELS[s.k]}: ${fmt(s.v)}`}
                style={{ height: `${(s.v / max) * 100}%`, background: s.c, borderTop: `1px solid ${C.bg}` }} />
@@ -97,13 +97,13 @@ function CashflowBars({ fin }) {
       </Bar>
       {/* net arrow */}
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, paddingBottom: 30 }}>
-        <span style={{ fontFamily: sans, fontSize: 9.5, fontWeight: 700, color: C.faint, letterSpacing: .7 }}>NET</span>
+        <span style={{ fontFamily: sans, fontSize: 9.5, fontWeight: 700, color: C.faint, letterSpacing: .7 }}>Net</span>
         <span style={{ fontFamily: mono, fontSize: 18, fontWeight: 800, color: fin.net >= 0 ? C.win : C.red }}>
           {fin.net >= 0 ? '+' : ''}{fin.net}K
         </span>
         <span style={{ fontFamily: mono, fontSize: 10, color: fin.net >= 0 ? C.win : C.red }}>/mo</span>
       </div>
-      <Bar label="EXPENSES" total={fin.expenses.total}>
+      <Bar label="Expenses" total={fin.expenses.total}>
         <div title={`Player salaries: ${fmt(fin.expenses.playerSalary)}`}
              style={{ height: `${(fin.expenses.playerSalary / max) * 100}%`, background: C.red, borderTop: `1px solid ${C.bg}` }} />
         {fin.expenses.coachSalary > 0 &&
@@ -136,7 +136,7 @@ export function FinanceView({ season, myTeam }) {
   const losing = fin.net < 0;
   // Runway label
   let runwayLabel, runwayColor;
-  if (inDebt) { runwayLabel = 'IN DEBT'; runwayColor = C.red; }
+  if (inDebt) { runwayLabel = 'In debt'; runwayColor = C.red; }
   else if (!losing) { runwayLabel = 'Sustainable'; runwayColor = C.win; }
   else {
     const w = fin.runwayWeeks;
@@ -159,7 +159,7 @@ export function FinanceView({ season, myTeam }) {
         border: `1px solid ${inDebt ? C.red : C.line}`, borderRadius: 12,
       }}>
         <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <span style={{ fontFamily: sans, fontSize: 10.5, fontWeight: 700, color: C.faint, letterSpacing: .7 }}>IN THE BANK</span>
+          <span style={{ fontFamily: sans, fontSize: 10.5, fontWeight: 700, color: C.faint, letterSpacing: .7 }}>In the bank</span>
           <span style={{ fontFamily: mono, fontSize: 30, fontWeight: 800, color: inDebt ? C.red : C.gold }}>{fmt(season.budget)}</span>
         </div>
         <div style={{ width: 1, background: C.line }} />
@@ -209,7 +209,7 @@ export function FinanceView({ season, myTeam }) {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(280px,1fr))', gap: 16, marginBottom: 20 }}>
         {/* ── Income breakdown ── */}
         <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 12, padding: '14px 18px' }}>
-          <div style={{ fontFamily: mono, fontSize: 11, color: C.acc, letterSpacing: 1.5, fontWeight: 700, marginBottom: 4 }}>INCOME · {fin.income.total}K/mo</div>
+          <div style={{ fontFamily: mono, fontSize: 11, color: C.acc, letterSpacing: 1.5, fontWeight: 700, marginBottom: 4 }}>Income · {fin.income.total}K/mo</div>
           {incSegs.map(s => {
             const v = fin.income[s.k];
             return <Row key={s.k} label={INCOME_LABELS[s.k]} value={`+${v}K`} color={v > 0 ? C.win : C.faint}
@@ -219,7 +219,7 @@ export function FinanceView({ season, myTeam }) {
 
         {/* ── Salary breakdown ── */}
         <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 12, padding: '14px 18px' }}>
-          <div style={{ fontFamily: mono, fontSize: 11, color: C.acc, letterSpacing: 1.5, fontWeight: 700, marginBottom: 4 }}>PAYROLL · {fin.expenses.total}K/mo</div>
+          <div style={{ fontFamily: mono, fontSize: 11, color: C.acc, letterSpacing: 1.5, fontWeight: 700, marginBottom: 4 }}>Payroll · {fin.expenses.total}K/mo</div>
           {fin.expenses.players.map(p => (
             <Row key={p.name} label={p.name} sub={p.role} value={`-${p.salary}K`} color={C.red}
                  pct={(p.salary / (fin.expenses.total || 1)) * 100} barColor={C.red} />
